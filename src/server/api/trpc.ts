@@ -7,14 +7,14 @@
  * need to use are documented accordingly near the end.
  */
 
-import { initTRPC, TRPCError } from "@trpc/server";
-import { type CreateNextContextOptions } from "@trpc/server/adapters/next";
-import { type Session } from "next-auth";
-import superjson from "superjson";
-import { ZodError } from "zod";
+import type { Session } from "next-auth";
+import superjson from 'superjson';
+import { ZodError } from 'zod';
+import { db } from '~/server/db';
 
-import { auth } from "~/server/auth";
-import { db } from "~/server/db";
+import { initTRPC, TRPCError } from '@trpc/server';
+
+import type { CreateNextContextOptions } from "@trpc/server/adapters/next";
 
 /**
  * 1. CONTEXT
@@ -54,8 +54,18 @@ const createInnerTRPCContext = (opts: CreateContextOptions) => {
 export const createTRPCContext = async (opts: CreateNextContextOptions) => {
   const { req, res } = opts;
 
-  // Get the session from the server using the getServerSession wrapper function
-  const session = await auth(req, res);
+  // Get the session from the server using the getServerSession wrapper function.
+  // In test environments, avoid importing next-auth to keep Vitest lightweight.
+  let session: Session | null = null;
+  try {
+    // Dynamic import to avoid pulling next-auth in unit tests
+    const mod = await import("~/server/auth");
+    if (typeof mod.auth === "function") {
+      session = await mod.auth(req, res);
+    }
+  } catch {
+    session = null;
+  }
 
   return createInnerTRPCContext({
     session,

@@ -170,6 +170,7 @@ export const seats = createTable(
       .array()
       .notNull()
       .default(sql`ARRAY[]::text[]`),
+    isActive: d.boolean().notNull().default(true),
     createdAt: d
       .timestamp({ withTimezone: true })
       .default(sql`CURRENT_TIMESTAMP`)
@@ -194,6 +195,18 @@ export const gameStatusEnum = pgEnum("game_status", [
   "completed",
 ]);
 
+export const gameStateEnum = pgEnum("game_state", [
+  "INITIAL",
+  "GAME_START",
+  "DEAL_HOLE_CARDS",
+  "BETTING",
+  "DEAL_FLOP",
+  "DEAL_TURN",
+  "DEAL_RIVER",
+  "SHOWDOWN",
+  "RESET_TABLE",
+]);
+
 export const games = createTable(
   "game",
   (d) => ({
@@ -207,13 +220,17 @@ export const games = createTable(
       .notNull()
       .references(() => pokerTables.id),
     status: gameStatusEnum("status").notNull().default("pending"),
+    state: gameStateEnum("state").notNull().default("INITIAL"),
     dealerButtonSeatId: d.varchar({ length: 255 }).references(() => seats.id),
+    assignedSeatId: d.varchar({ length: 255 }).references(() => seats.id),
     communityCards: d
       .text()
       .array()
       .notNull()
       .default(sql`ARRAY[]::text[]`),
     potTotal: d.integer().notNull().default(0),
+    betCount: d.integer().notNull().default(0),
+    requiredBetCount: d.integer().notNull().default(0),
     createdAt: d
       .timestamp({ withTimezone: true })
       .default(sql`CURRENT_TIMESTAMP`)
@@ -223,6 +240,7 @@ export const games = createTable(
   (t) => [
     index("game_table_id_idx").on(t.tableId),
     index("game_dealer_button_seat_id_idx").on(t.dealerButtonSeatId),
+    index("game_assigned_seat_id_idx").on(t.assignedSeatId),
   ],
 );
 
