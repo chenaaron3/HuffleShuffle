@@ -49,10 +49,7 @@ export function CardImage({
             alt={code}
             width={size}
             height={Math.round(size * 1.4)}
-            className={
-                className ??
-                "h-7 w-5 select-none rounded-sm shadow [image-rendering:auto]"
-            }
+            className={className ?? "select-none rounded-sm shadow [image-rendering:auto]"}
             draggable={false}
         />
     );

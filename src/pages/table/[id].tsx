@@ -12,7 +12,7 @@ export default function TableView() {
     const { id } = router.query as { id?: string };
     const { data: session } = useSession();
 
-    const tableQuery = api.table.get.useQuery({ tableId: id ?? '' }, { enabled: !!id });
+    const tableQuery = api.table.get.useQuery({ tableId: id ?? '' }, { enabled: !!id, });
     const action = api.table.action.useMutation({ onSuccess: () => tableQuery.refetch() });
 
     const [dealRank, setDealRank] = useState<string>('A');
@@ -77,15 +77,14 @@ export default function TableView() {
 
                     {/* Center stage */}
                     <section className="order-1 md:order-2 md:col-span-2">
-                        <div className="aspect-video w-full rounded-lg border border-white/10 bg-zinc-900/50"></div>
-                        <div className="relative mt-3 flex items-center justify-between rounded-lg border border-white/10 bg-zinc-900/50 px-4 py-2">
+                        <div className="relative mt-3 flex items-center justify-between rounded-lg border border-white/10 bg-zinc-900/50 px-5 py-4">
                             <GlowingEffect disabled={false} blur={4} proximity={80} spread={24} className="rounded-lg" />
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-4">
                                 {(snapshot?.game?.communityCards ?? []).map((c: string) => (
-                                    <CardImage key={c} code={c} size={36} />
+                                    <CardImage key={c} code={c} size={120} />
                                 ))}
                             </div>
-                            <div className="text-sm text-zinc-300">Pot: {snapshot?.game?.potTotal ?? 0}</div>
+                            <div className="text-base text-zinc-200">Pot: {snapshot?.game?.potTotal ?? 0}</div>
                         </div>
 
                         <GameStatusBanner
@@ -137,14 +136,23 @@ export default function TableView() {
                             ) : (
                                 <>
                                     <ActionBtn disabled={state !== 'BETTING' || currentUserSeatId !== bettingActorSeatId} onClick={() => action.mutate({ tableId: id!, action: 'CHECK' })}>Check</ActionBtn>
-                                    <ActionBtn disabled={state !== 'BETTING' || currentUserSeatId !== bettingActorSeatId} onClick={() => action.mutate({ tableId: id!, action: 'RAISE', params: { amount: 20 } })}>Raise +20</ActionBtn>
+                                    <ActionBtn
+                                        disabled={state !== 'BETTING' || currentUserSeatId !== bettingActorSeatId}
+                                        onClick={() => {
+                                            const activeSeats = (seats as any[]).filter((s: any) => s.isActive);
+                                            const maxBet = activeSeats.length ? Math.max(...activeSeats.map((s: any) => s.currentBet ?? 0)) : 0;
+                                            const amount = maxBet + 20;
+                                            action.mutate({ tableId: id!, action: 'RAISE', params: { amount } });
+                                        }}
+                                    >
+                                        Raise +20
+                                    </ActionBtn>
                                     <ActionBtn disabled={state !== 'BETTING' || currentUserSeatId !== bettingActorSeatId} onClick={() => action.mutate({ tableId: id!, action: 'FOLD' })}>Fold</ActionBtn>
                                 </>
                             )}
                         </div>
 
-
-                        <div className="mt-6 h-48 rounded-lg border border-white/10 bg-zinc-900/50 p-3 text-sm text-zinc-400">Chat coming soon…</div>
+                        {/* Dealer video and chat removed for now */}
                     </section>
 
                     {/* Right rail seats */}
@@ -183,9 +191,9 @@ function SeatCard({ seat, index, small, big, active }: { seat: SeatWithPlayer; i
                 <div className="text-xs text-zinc-400">Total Chips: {seat.buyIn} chips</div>
                 <div className="text-xs text-zinc-400">Current Bet: {seat.currentBet} chips</div>
                 {Array.isArray(seat.cards) && seat.cards.length > 0 && (
-                    <div className="mt-2 flex gap-1">
+                    <div className="mt-2 flex gap-3">
                         {seat.cards.map((c: string) => (
-                            <CardImage key={c} code={c} />
+                            <CardImage key={c} code={c} size={110} />
                         ))}
                     </div>
                 )}
