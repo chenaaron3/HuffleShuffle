@@ -1,7 +1,7 @@
 import { and, asc, count, desc, eq, inArray, isNotNull, sql } from 'drizzle-orm';
 import { createRequire } from 'node:module';
 import { z } from 'zod';
-import { createTRPCRouter, protectedProcedure } from '~/server/api/trpc';
+import { createTRPCRouter, protectedProcedure, publicProcedure } from '~/server/api/trpc';
 import { db } from '~/server/db';
 import { games, pokerTables, seats, users } from '~/server/db/schema';
 
@@ -52,6 +52,17 @@ const rotateToNextActiveSeatId = (
 };
 
 export const tableRouter = createTRPCRouter({
+  list: publicProcedure.query(async () => {
+    const rows = await db.query.pokerTables.findMany({
+      orderBy: (t, { asc }) => [asc(t.createdAt)],
+    });
+    return rows.map((t) => ({
+      id: t.id,
+      name: t.name,
+      smallBlind: t.smallBlind,
+      bigBlind: t.bigBlind,
+    }));
+  }),
   create: protectedProcedure
     .input(
       z.object({
@@ -609,5 +620,12 @@ export const tableRouter = createTRPCRouter({
       });
 
       return result;
+    }),
+
+  get: protectedProcedure
+    .input(z.object({ tableId: z.string() }))
+    .query(async ({ input }) => {
+      const snapshot = await summarizeTable(db, input.tableId);
+      return snapshot;
     }),
 });

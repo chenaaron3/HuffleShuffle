@@ -1,3 +1,8 @@
+import type { Session } from "next-auth";
+import superjson from 'superjson';
+import { ZodError } from 'zod';
+import { auth } from '~/server/auth';
+
 /**
  * YOU PROBABLY DON'T NEED TO EDIT THIS FILE, UNLESS:
  * 1. You want to modify request context (see Part 1).
@@ -6,12 +11,6 @@
  * TL;DR - This is where all the tRPC server stuff is created and plugged in. The pieces you will
  * need to use are documented accordingly near the end.
  */
-
-import type { Session } from "next-auth";
-import superjson from 'superjson';
-import { ZodError } from 'zod';
-import { db } from '~/server/db';
-
 import { initTRPC, TRPCError } from '@trpc/server';
 
 import type { CreateNextContextOptions } from "@trpc/server/adapters/next";
@@ -38,10 +37,9 @@ interface CreateContextOptions {
  *
  * @see https://create.t3.gg/en/usage/trpc#-serverapitrpcts
  */
-const createInnerTRPCContext = (opts: CreateContextOptions) => {
+const createInnerTRPCContext = ({ session }: CreateContextOptions) => {
   return {
-    session: opts.session,
-    db,
+    session,
   };
 };
 
@@ -51,21 +49,12 @@ const createInnerTRPCContext = (opts: CreateContextOptions) => {
  *
  * @see https://trpc.io/docs/context
  */
-export const createTRPCContext = async (opts: CreateNextContextOptions) => {
-  const { req, res } = opts;
-
-  // Get the session from the server using the getServerSession wrapper function.
-  // In test environments, avoid importing next-auth to keep Vitest lightweight.
-  let session: Session | null = null;
-  try {
-    // Dynamic import to avoid pulling next-auth in unit tests
-    const mod = await import("~/server/auth");
-    if (typeof mod.auth === "function") {
-      session = await mod.auth(req, res);
-    }
-  } catch {
-    session = null;
-  }
+export const createTRPCContext = async ({
+  req,
+  res,
+}: CreateNextContextOptions) => {
+  // Get the session from the server using the getServerSession wrapper function
+  const session = await auth(req, res);
 
   return createInnerTRPCContext({
     session,
