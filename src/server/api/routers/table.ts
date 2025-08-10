@@ -22,11 +22,14 @@ const ensurePlayerRole = (role: string | undefined) => {
 
 type DB = typeof db;
 type SeatRow = typeof seats.$inferSelect;
+export type SeatWithPlayer = SeatRow & {
+  player?: { id: string; name: string | null } | null;
+};
 type GameRow = typeof games.$inferSelect;
 type TableRow = typeof pokerTables.$inferSelect;
 type TableSnapshot = {
   table: TableRow | null;
-  seats: SeatRow[];
+  seats: SeatWithPlayer[];
   game: GameRow | null;
 };
 type TableTransaction = { update: typeof db.update; query: typeof db.query };
@@ -41,6 +44,14 @@ const summarizeTable = async (
   const tableSeats = await client.query.seats.findMany({
     where: eq(seats.tableId, tableId),
     orderBy: (s, { asc }) => [asc(s.seatNumber)],
+    with: {
+      player: {
+        columns: {
+          id: true,
+          name: true,
+        },
+      },
+    },
   });
   const game = await client.query.games.findFirst({
     where: eq(games.tableId, tableId),
@@ -48,6 +59,18 @@ const summarizeTable = async (
   });
   return { table: table ?? null, seats: tableSeats, game: game ?? null };
 };
+
+function redactSnapshotForUser(
+  snapshot: TableSnapshot,
+  userId: string,
+): TableSnapshot {
+  const isShowdown = snapshot.game?.state === "SHOWDOWN";
+  const redactedSeats: SeatWithPlayer[] = snapshot.seats.map((s) => {
+    if (isShowdown || s.playerId === userId) return s;
+    return { ...s, cards: [] } as SeatWithPlayer;
+  });
+  return { ...snapshot, seats: redactedSeats };
+}
 
 const pickNextIndex = (currentIndex: number, total: number) =>
   (currentIndex + 1) % total;
@@ -285,6 +308,34 @@ async function collectBigAndSmallBlind(
       buyIn: sql`${seats.buyIn} - ${table.bigBlind}`,
     })
     .where(eq(seats.id, bigBlindSeat.id));
+}
+
+async function resetGame(
+  tx: TableTransaction,
+  game: GameRow | null,
+  orderedSeats: Array<SeatRow>,
+): Promise<void> {
+  if (!game) return;
+  // Reset all seats
+  for (const s of orderedSeats) {
+    await tx
+      .update(seats)
+      .set({
+        cards: sql`ARRAY[]::text[]`,
+        isActive: true,
+        currentBet: 0,
+      })
+      .where(eq(seats.id, s.id));
+    s.cards = [];
+    s.isActive = true;
+    s.currentBet = 0;
+  }
+
+  // Mark current game complete and create a fresh one
+  await tx
+    .update(games)
+    .set({ status: "completed" })
+    .where(eq(games.id, game.id));
 }
 
 async function createNewGame(
@@ -542,9 +593,19 @@ export const tableRouter = createTRPCRouter({
           return codes;
         };
 
-        if (input.action === "START_GAME") {
-          if (!isDealerCaller) throw new Error("Only dealer can START_GAME");
-          const dealerButtonSeatId = orderedSeats[0]!.id;
+        if (input.action === "START_GAME" || input.action === "RESET_TABLE") {
+          if (!isDealerCaller)
+            throw new Error("Only dealer can START_GAME or RESET_TABLE");
+          let dealerButtonSeatId = orderedSeats[0]!.id;
+          if (input.action === "RESET_TABLE") {
+            if (!game) throw new Error("Game not found");
+            await resetGame(tx, game, orderedSeats);
+            // Create a new game
+            const prevButton = game.dealerButtonSeatId!;
+            const prevIdx = orderedSeats.findIndex((s) => s.id === prevButton);
+            dealerButtonSeatId =
+              orderedSeats[pickNextIndex(prevIdx, orderedSeats.length)]!.id;
+          }
           await createNewGame(tx, table, orderedSeats, dealerButtonSeatId);
           return { ok: true } as const;
         }
@@ -606,38 +667,6 @@ export const tableRouter = createTRPCRouter({
           }
 
           throw new Error("DEAL_CARD not valid in current state");
-        }
-
-        if (input.action === "RESET_TABLE") {
-          if (!isDealerCaller) throw new Error("Only dealer can RESET_TABLE");
-          // Reset all seats
-          for (const s of orderedSeats) {
-            await tx
-              .update(seats)
-              .set({
-                cards: sql`ARRAY[]::text[]`,
-                isActive: true,
-                currentBet: 0,
-              })
-              .where(eq(seats.id, s.id));
-            s.cards = [];
-            s.isActive = true;
-            s.currentBet = 0;
-          }
-
-          // Mark current game complete and create a fresh one
-          await tx
-            .update(games)
-            .set({ status: "completed" })
-            .where(eq(games.id, game.id));
-
-          // Create a new game
-          const prevButton = game.dealerButtonSeatId!;
-          const prevIdx = orderedSeats.findIndex((s) => s.id === prevButton);
-          const nextButtonSeatId =
-            orderedSeats[pickNextIndex(prevIdx, orderedSeats.length)]!.id;
-          await createNewGame(tx, table, orderedSeats, nextButtonSeatId);
-          return { ok: true } as const;
         }
 
         // Player actions require assigned seat
@@ -715,13 +744,13 @@ export const tableRouter = createTRPCRouter({
 
       // transaction complete -> fetch committed snapshot
       const snapshot = await summarizeTable(db, input.tableId);
-      return snapshot;
+      return redactSnapshotForUser(snapshot, userId);
     }),
 
   get: protectedProcedure
     .input(z.object({ tableId: z.string() }))
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
       const snapshot = await summarizeTable(db, input.tableId);
-      return snapshot;
+      return redactSnapshotForUser(snapshot, ctx.session.user.id);
     }),
 });

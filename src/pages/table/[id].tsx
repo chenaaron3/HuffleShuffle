@@ -2,9 +2,11 @@ import { useSession } from 'next-auth/react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { useState } from 'react';
+import { CardImage } from '~/components/ui/card-img';
 import { GlowingEffect } from '~/components/ui/glowing-effect';
 import { api } from '~/utils/api';
 
+import type { SeatWithPlayer } from '~/server/api/routers/table';
 export default function TableView() {
     const router = useRouter();
     const { id } = router.query as { id?: string };
@@ -19,12 +21,6 @@ export default function TableView() {
     const snapshot = tableQuery.data;
     const seats = snapshot?.seats ?? [];
     const state: string | undefined = snapshot?.game?.state as any;
-    const isDealingState = [
-        'DEAL_HOLE_CARDS',
-        'DEAL_FLOP',
-        'DEAL_TURN',
-        'DEAL_RIVER',
-    ].includes(state ?? '');
     const dealSeatId = state === 'DEAL_HOLE_CARDS' ? (snapshot?.game?.assignedSeatId ?? null) : null;
     const bettingActorSeatId = state === 'BETTING' ? (snapshot?.game?.assignedSeatId ?? null) : null;
     const currentUserSeatId = seats.find((s: any) => s.playerId === session?.user?.id)?.id ?? null;
@@ -63,7 +59,7 @@ export default function TableView() {
                             <GlowingEffect disabled={false} blur={4} proximity={80} spread={24} className="rounded-lg" />
                             <div className="flex items-center gap-2">
                                 {(snapshot?.game?.communityCards ?? []).map((c: string) => (
-                                    <span key={c} className="rounded-md bg-white px-2 py-1 text-sm font-semibold text-black">{c}</span>
+                                    <CardImage key={c} code={c} size={36} />
                                 ))}
                             </div>
                             <div className="text-sm text-zinc-300">Pot: {snapshot?.game?.potTotal ?? 0}</div>
@@ -150,13 +146,21 @@ function ActionBtn({ onClick, children, disabled }: { onClick: () => void; child
     );
 }
 
-function SeatCard({ seat, index, small, big, active }: { seat: any; index: number; small: boolean; big: boolean; active?: boolean }) {
+function SeatCard({ seat, index, small, big, active }: { seat: SeatWithPlayer; index: number; small: boolean; big: boolean; active?: boolean }) {
     return (
         <div className="flex items-center justify-between rounded-lg border bg-zinc-900/50 p-3"
             style={{ borderColor: active ? 'rgb(234 179 8 / 0.5)' : 'rgb(255 255 255 / 0.1)' }}>
             <div>
-                <div className="text-sm font-medium">Seat {seat.seatNumber}</div>
-                <div className="text-xs text-zinc-400">Buy-in: {seat.buyIn}</div>
+                <div className="text-sm font-medium">{seat.player?.name ?? 'Player'}</div>
+                <div className="text-xs text-zinc-400">Total Chips: {seat.buyIn} chips</div>
+                <div className="text-xs text-zinc-400">Current Bet: {seat.currentBet} chips</div>
+                {Array.isArray(seat.cards) && seat.cards.length > 0 && (
+                    <div className="mt-2 flex gap-1">
+                        {seat.cards.map((c: string) => (
+                            <CardImage key={c} code={c} />
+                        ))}
+                    </div>
+                )}
             </div>
             <div className="flex items-center gap-2">
                 {active && <span className="rounded bg-yellow-500/90 px-2 py-1 text-xs font-semibold text-black">Next</span>}
@@ -176,7 +180,7 @@ function GameStatusBanner({ isDealer, state, seats, activeSeatId, bettingActorSe
     let label = '' as string;
     if (state === 'DEAL_HOLE_CARDS') {
         const seat = seats.find((s: any) => s.id === activeSeatId);
-        label = seat ? `Deal next hole card to Seat ${seat.seatNumber}` : 'Deal next hole card';
+        label = seat ? `Deal next hole card to ${seat.player?.name ?? 'a player'}` : 'Deal next hole card';
     } else if (state === 'DEAL_FLOP') {
         label = 'Deal the flop';
     } else if (state === 'DEAL_TURN') {
@@ -185,7 +189,7 @@ function GameStatusBanner({ isDealer, state, seats, activeSeatId, bettingActorSe
         label = 'Deal the river';
     } else if (betting) {
         const seat = seats.find((s: any) => s.id === bettingActorSeatId);
-        const who = seat ? `Seat ${seat.seatNumber}` : 'a player';
+        const who = seat ? `${seat.player?.name ?? 'a player'}` : 'a player';
         const yourTurn = currentUserSeatId && bettingActorSeatId && currentUserSeatId === bettingActorSeatId;
         label = yourTurn ? 'Your turn to act' : `${who}'s turn to act`;
     }
