@@ -31,6 +31,29 @@ export default function TableView() {
     const smallBlindIdx = dealerIdx >= 0 ? (dealerIdx + 1) % seats.length : -1;
     const bigBlindIdx = dealerIdx >= 0 ? (dealerIdx + 2) % seats.length : -1;
 
+    function getDealtSet() {
+        const dealt = new Set<string>();
+        if (snapshot?.game?.communityCards) {
+            snapshot.game.communityCards.forEach((c) => dealt.add(c));
+        }
+        seats.forEach((s: any) => {
+            (s.cards ?? []).forEach((c: string) => dealt.add(c));
+        });
+        return dealt;
+    }
+
+    function pickRandomUndealt(): string | null {
+        const ranks = ['2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K', 'A'];
+        const suits = ['s', 'h', 'd', 'c'];
+        const dealt = getDealtSet();
+        const deck: string[] = [];
+        for (const r of ranks) for (const s of suits) deck.push(`${r}${s}`);
+        const remaining = deck.filter((c) => !dealt.has(c));
+        if (remaining.length === 0) return null;
+        const idx = Math.floor(Math.random() * remaining.length);
+        return remaining[idx] as string;
+    }
+
     return (
         <>
             <Head>
@@ -104,7 +127,12 @@ export default function TableView() {
                                     </select>
                                     <ActionBtn onClick={() => action.mutate({ tableId: id!, action: 'START_GAME' })}>Start Game</ActionBtn>
                                     <ActionBtn onClick={() => action.mutate({ tableId: id!, action: 'DEAL_CARD', params: { rank: dealRank, suit: dealSuit } })}>Deal</ActionBtn>
-                                    <ActionBtn onClick={() => action.mutate({ tableId: id!, action: 'RESET_TABLE' })}>Reset</ActionBtn>
+                                    <ActionBtn onClick={() => {
+                                        const code = pickRandomUndealt();
+                                        console.log('code', code);
+                                        if (!code) return;
+                                        action.mutate({ tableId: id!, action: 'DEAL_CARD', params: { rank: code[0], suit: code[1] } });
+                                    }}>Random</ActionBtn>
                                 </>
                             ) : (
                                 <>
@@ -171,7 +199,7 @@ function SeatCard({ seat, index, small, big, active }: { seat: SeatWithPlayer; i
     );
 }
 
-function GameStatusBanner({ isDealer, state, seats, activeSeatId, bettingActorSeatId, currentUserSeatId }: { isDealer: boolean; state?: string; seats: any[]; activeSeatId: string | null; bettingActorSeatId?: string | null; currentUserSeatId?: string | null }) {
+function GameStatusBanner({ isDealer, state, seats, activeSeatId, bettingActorSeatId, currentUserSeatId }: { isDealer: boolean; state?: string; seats: SeatWithPlayer[]; activeSeatId: string | null; bettingActorSeatId?: string | null; currentUserSeatId?: string | null }) {
     if (!state) return null;
     const dealing = ['DEAL_HOLE_CARDS', 'DEAL_FLOP', 'DEAL_TURN', 'DEAL_RIVER'].includes(state);
     const betting = state === 'BETTING';
@@ -180,7 +208,8 @@ function GameStatusBanner({ isDealer, state, seats, activeSeatId, bettingActorSe
     let label = '' as string;
     if (state === 'DEAL_HOLE_CARDS') {
         const seat = seats.find((s: any) => s.id === activeSeatId);
-        label = seat ? `Deal next hole card to ${seat.player?.name ?? 'a player'}` : 'Deal next hole card';
+        const seatIdx = seats.findIndex((s: any) => s.id === activeSeatId);
+        label = seat ? `Deal next hole card to ${seat.player?.name ?? 'a player'} at seat ${seatIdx + 0}` : 'Deal next hole card';
     } else if (state === 'DEAL_FLOP') {
         label = 'Deal the flop';
     } else if (state === 'DEAL_TURN') {

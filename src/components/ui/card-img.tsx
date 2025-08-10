@@ -1,5 +1,7 @@
 export function cardCodeToFilename(code: string): string | null {
     if (!code || code.length < 2) return null;
+    // Facedown placeholder
+    if (code === "FD") return "/cards/facedown-of-blue.svg";
     const rank = code[0]?.toUpperCase();
     const suit = code[1]?.toLowerCase();
     const rankMap: Record<string, string> = {

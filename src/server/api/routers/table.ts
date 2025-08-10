@@ -67,7 +67,8 @@ function redactSnapshotForUser(
   const isShowdown = snapshot.game?.state === "SHOWDOWN";
   const redactedSeats: SeatWithPlayer[] = snapshot.seats.map((s) => {
     if (isShowdown || s.playerId === userId) return s;
-    return { ...s, cards: [] } as SeatWithPlayer;
+    const hiddenCount = (s.cards ?? []).length;
+    return { ...s, cards: Array(hiddenCount).fill("FD") } as SeatWithPlayer;
   });
   return { ...snapshot, seats: redactedSeats };
 }
@@ -597,8 +598,8 @@ export const tableRouter = createTRPCRouter({
           if (!isDealerCaller)
             throw new Error("Only dealer can START_GAME or RESET_TABLE");
           let dealerButtonSeatId = orderedSeats[0]!.id;
-          if (input.action === "RESET_TABLE") {
-            if (!game) throw new Error("Game not found");
+          // If there was a previous game, reset it
+          if (game) {
             await resetGame(tx, game, orderedSeats);
             // Create a new game
             const prevButton = game.dealerButtonSeatId!;
