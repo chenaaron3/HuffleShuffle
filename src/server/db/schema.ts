@@ -196,8 +196,6 @@ export const gameStatusEnum = pgEnum("game_status", [
 ]);
 
 export const gameStateEnum = pgEnum("game_state", [
-  "INITIAL",
-  "GAME_START",
   "DEAL_HOLE_CARDS",
   "BETTING",
   "DEAL_FLOP",
@@ -220,7 +218,7 @@ export const games = createTable(
       .notNull()
       .references(() => pokerTables.id),
     status: gameStatusEnum("status").notNull().default("pending"),
-    state: gameStateEnum("state").notNull().default("INITIAL"),
+    state: gameStateEnum("state").notNull().default("DEAL_HOLE_CARDS"),
     dealerButtonSeatId: d.varchar({ length: 255 }).references(() => seats.id),
     assignedSeatId: d.varchar({ length: 255 }).references(() => seats.id),
     communityCards: d

@@ -1,4 +1,4 @@
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq, isNotNull, sql } from 'drizzle-orm';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { createCaller } from '~/server/api/root';
 import { db } from '~/server/db';
@@ -158,6 +158,13 @@ describe("table e2e flow", () => {
         action: "DEAL_CARD",
         params: { rank: "J", suit: "s" },
       });
+      // Ensure exactly 2 hole cards per seat, no over-deal
+      const holeSeats = await db.query.seats.findMany({
+        where: eq(seats.tableId, tableId),
+      });
+      for (const s of holeSeats) {
+        expect(s.cards.length).toBe(2);
+      }
       expect(snap.game?.state).toBe("BETTING");
 
       // Minimal betting round (two checks)
@@ -191,6 +198,8 @@ describe("table e2e flow", () => {
         action: "DEAL_CARD",
         params: { rank: "4", suit: "h" },
       });
+      // Ensure community has exactly 3 cards on flop
+      expect((snap.game?.communityCards ?? []).length).toBe(3);
       expect(snap.game?.state).toBe("BETTING");
 
       await firstCaller.table.action({ tableId, action: "CHECK" });
@@ -203,6 +212,7 @@ describe("table e2e flow", () => {
         action: "DEAL_CARD",
         params: { rank: "5", suit: "h" },
       });
+      expect((snap.game?.communityCards ?? []).length).toBe(4);
       expect(snap.game?.state).toBe("BETTING");
       await firstCaller.table.action({ tableId, action: "CHECK" });
       snap = await secondCaller.table.action({ tableId, action: "CHECK" });
@@ -214,6 +224,7 @@ describe("table e2e flow", () => {
         action: "DEAL_CARD",
         params: { rank: "6", suit: "h" },
       });
+      expect((snap.game?.communityCards ?? []).length).toBe(5);
       expect(snap.game?.state).toBe("BETTING");
       await firstCaller.table.action({ tableId, action: "CHECK" });
       snap = await secondCaller.table.action({ tableId, action: "CHECK" });
@@ -224,7 +235,7 @@ describe("table e2e flow", () => {
         tableId,
         action: "RESET_TABLE",
       });
-      expect(snap.game?.state).toBe("GAME_START");
+      expect(snap.game?.state).toBe("DEAL_HOLE_CARDS");
     } finally {
       await cleanup();
     }
@@ -233,23 +244,42 @@ describe("table e2e flow", () => {
   it("betting round supports raises and folds", async () => {
     let tableId = "";
     try {
+      const SMALL_BLIND = 5;
+      const BIG_BLIND = 10;
+      const BUY_IN = 300;
+      // Create a table with 3 players
       const res = await dealerCaller.table.create({
         name: "Vitest-RF",
-        smallBlind: 5,
-        bigBlind: 10,
+        smallBlind: SMALL_BLIND,
+        bigBlind: BIG_BLIND,
       });
       tableId = res.tableId;
 
-      await playerACaller.table.join({ tableId, buyIn: 300 });
-      await playerBCaller.table.join({ tableId, buyIn: 300 });
-      await playerCCaller.table.join({ tableId, buyIn: 300 });
+      const playerASeat = await playerACaller.table.join({
+        tableId,
+        buyIn: BUY_IN,
+      });
+      const playerBSeat = await playerBCaller.table.join({
+        tableId,
+        buyIn: BUY_IN,
+      });
+      const playerCSeat = await playerCCaller.table.join({
+        tableId,
+        buyIn: BUY_IN,
+      });
 
+      // Dealer starts the game, expects the dealer button to be the first player
       let snap = await dealerCaller.table.action({
         tableId,
         action: "START_GAME",
       });
+      expect(snap.game).not.toBeNull();
+      expect(snap.game?.dealerButtonSeatId).toBe(playerASeat.seatId);
+      expect(snap.seats[1]?.currentBet).toBe(SMALL_BLIND);
+      expect(snap.seats[2]?.currentBet).toBe(BIG_BLIND);
       expect(snap.game?.state).toBe("DEAL_HOLE_CARDS");
 
+      // Dealer deals cards to players
       const hole: Array<[string, string]> = [
         ["A", "s"],
         ["K", "s"],
@@ -265,69 +295,100 @@ describe("table e2e flow", () => {
           params: { rank, suit },
         });
       }
+      // Try to deal another card and expect it fails
+      await expect(
+        dealerCaller.table.action({
+          tableId,
+          action: "DEAL_CARD",
+          params: { rank: "8", suit: "s" },
+        }),
+      ).rejects.toThrowError();
+      // Validate each player has exactly 2 cards in their hand
+      snap.seats.forEach((s) => {
+        expect(s.cards.length).toBe(2);
+      });
       expect(snap.game?.state).toBe("BETTING");
 
-      const seatsOrdered = await db.query.seats.findMany({
-        where: eq(seats.tableId, tableId),
-        orderBy: (s, { asc }) => [asc(s.seatNumber)],
-      });
-      const seatMap = new Map(seatsOrdered.map((s) => [s.id, s]));
-      const firstSeatId = snap.game?.assignedSeatId as string;
-      expect(firstSeatId).toBeTypeOf("string");
-      const firstSeat = seatMap.get(firstSeatId!);
-      expect(firstSeat).toBeTruthy();
-      const firstUserId = (firstSeat as any).playerId as string;
+      // Player A is the first better, since they are after big blind
+      const callers: (typeof playerACaller)[] = [
+        playerACaller,
+        playerBCaller,
+        playerCCaller,
+      ];
 
-      const callers: Record<string, typeof playerACaller> = {
-        [playerAId]: playerACaller,
-        [playerBId]: playerBCaller,
-        [playerCId]: playerCCaller,
-      } as any;
+      const bets = [
+        // Player A raises to 50
+        {
+          action: "RAISE",
+          params: { amount: 50 },
+          expectedMaxBet: 50,
+        },
+        // Player B checks
+        {
+          action: "CHECK",
+          params: {},
+          expectedMaxBet: 50,
+        },
+        // Player C raises to 150
+        {
+          action: "RAISE",
+          params: { amount: 150 },
+          expectedMaxBet: 150,
+        },
+        // Player A Checks
+        {
+          action: "CHECK",
+          params: {},
+          expectedMaxBet: 150,
+        },
+        // Player B folds, betting round ends
+        {
+          action: "FOLD",
+          params: {},
+          expectedMaxBet: 0,
+        },
+      ];
 
-      // 1) First actor raises 50
-      const amount = 50;
-      snap = await (callers[firstUserId] as any).table.action({
-        tableId,
-        action: "RAISE",
-        params: { amount },
-      });
-      // 2) Next actor calls
-      const secondSeatId = snap.game?.assignedSeatId as string;
-      expect(secondSeatId).toBeTypeOf("string");
-      const secondSeat = seatMap.get(secondSeatId!);
-      expect(secondSeat).toBeTruthy();
-      const secondUserId = (secondSeat as any).playerId as string;
-      snap = await (callers[secondUserId] as any).table.action({
-        tableId,
-        action: "CHECK",
-      });
-      // 3) Next actor folds
-      const thirdSeatId = snap.game?.assignedSeatId as string;
-      expect(thirdSeatId).toBeTypeOf("string");
-      const thirdSeat = seatMap.get(thirdSeatId!);
-      expect(thirdSeat).toBeTruthy();
-      const thirdUserId = (thirdSeat as any).playerId as string;
-      snap = await (callers[thirdUserId] as any).table.action({
-        tableId,
-        action: "FOLD",
-      });
+      let betterIdx = 0;
+      for (const bet of bets) {
+        snap = await (callers[betterIdx] as any).table.action({
+          tableId,
+          action: bet.action,
+          params: bet.params,
+        });
+        // Check the max bet is correct
+        const maxBet = snap.seats.reduce(
+          (max, s) => Math.max(max, s.currentBet),
+          0,
+        );
+        expect(maxBet).toBe(bet.expectedMaxBet);
+        betterIdx = (betterIdx + 1) % callers.length;
+      }
 
-      // Should move to FLOP and pot be 100 (raise + call)
+      // Trying to bet again should fail
+      await expect(
+        playerACaller.table.action({
+          tableId,
+          action: "RAISE",
+          params: { amount: 50 },
+        }),
+      ).rejects.toThrowError();
+
+      // Should move to FLOP and pot be 350 (A and C 150 each, B checked at 50)
       expect(snap.game?.state).toBe("DEAL_FLOP");
-      expect(snap.game?.potTotal).toBe(100);
+      expect(snap.game?.potTotal).toBe(350);
 
       const finalSeats = await db.query.seats.findMany({
         where: eq(seats.tableId, tableId),
       });
-      const startBuyIn = 300;
-      const spent = finalSeats.map((s) => startBuyIn - s.buyIn);
+      const spent = finalSeats.map((s) => BUY_IN - s.buyIn);
       // Expect two players spent 50 each, one spent 0
       const spentCount = spent.reduce(
         (acc, v) => ((acc[v] = (acc[v] ?? 0) + 1), acc),
         {} as Record<number, number>,
       );
-      expect(spentCount[50]).toBe(2);
-      expect(spentCount[0]).toBe(1);
+      expect(spentCount[150]).toBe(2);
+      expect(spentCount[50]).toBe(1);
     } finally {
       await cleanup();
     }

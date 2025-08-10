@@ -6,6 +6,7 @@ export default defineConfig({
   test: {
     environment: "node",
     setupFiles: ["dotenv/config", "src/test/setup.ts"],
+    deps: { inline: ["next-auth", "@auth/drizzle-adapter"] },
     include: ["src/**/*.test.ts"],
     testTimeout: 2000000,
     hookTimeout: 2000000,

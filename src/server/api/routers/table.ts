@@ -6,7 +6,11 @@ import { db } from '~/server/db';
 import { games, pokerTables, seats, users } from '~/server/db/schema';
 
 const requireCjs = createRequire(import.meta.url);
-const Hand: any = requireCjs("pokersolver").Hand;
+interface PokerHandStatic {
+  solve(cards: string[]): unknown;
+  winners(hands: unknown[]): unknown[];
+}
+const Hand: PokerHandStatic = requireCjs("pokersolver").Hand as PokerHandStatic;
 
 const ensureDealerRole = (role: string | undefined) => {
   if (role !== "dealer") throw new Error("FORBIDDEN: dealer role required");
@@ -16,26 +20,40 @@ const ensurePlayerRole = (role: string | undefined) => {
   if (role !== "player") throw new Error("FORBIDDEN: player role required");
 };
 
-const summarizeTable = async (client: any, tableId: string) => {
+type DB = typeof db;
+type SeatRow = typeof seats.$inferSelect;
+type GameRow = typeof games.$inferSelect;
+type TableRow = typeof pokerTables.$inferSelect;
+type TableSnapshot = {
+  table: TableRow | null;
+  seats: SeatRow[];
+  game: GameRow | null;
+};
+type TableTransaction = { update: typeof db.update; query: typeof db.query };
+
+const summarizeTable = async (
+  client: DB,
+  tableId: string,
+): Promise<TableSnapshot> => {
   const table = await client.query.pokerTables.findFirst({
     where: eq(pokerTables.id, tableId),
   });
   const tableSeats = await client.query.seats.findMany({
     where: eq(seats.tableId, tableId),
-    orderBy: (s: any, { asc }: any) => [asc(s.seatNumber)],
+    orderBy: (s, { asc }) => [asc(s.seatNumber)],
   });
   const game = await client.query.games.findFirst({
     where: eq(games.tableId, tableId),
-    orderBy: (g: any, { desc }: any) => [desc(g.createdAt)],
+    orderBy: (g, { desc }) => [desc(g.createdAt)],
   });
-  return { table, seats: tableSeats, game };
+  return { table: table ?? null, seats: tableSeats, game: game ?? null };
 };
 
 const pickNextIndex = (currentIndex: number, total: number) =>
   (currentIndex + 1) % total;
 
 const rotateToNextActiveSeatId = (
-  orderedSeats: Array<typeof seats.$inferSelect>,
+  orderedSeats: Array<SeatRow>,
   currentSeatId: string,
 ) => {
   const n = orderedSeats.length;
@@ -50,6 +68,260 @@ const rotateToNextActiveSeatId = (
   }
   return orderedSeats[idx]!.id;
 };
+
+// --- Helper utilities ---
+const fetchOrderedSeats = async (
+  tx: DB,
+  tableId: string,
+): Promise<SeatRow[]> => {
+  return await tx.query.seats.findMany({
+    where: eq(seats.tableId, tableId),
+    orderBy: (s, { asc }) => [asc(s.seatNumber)],
+  });
+};
+
+const allActiveBetsEqual = (orderedSeats: Array<SeatRow>): boolean => {
+  const active = orderedSeats.filter((s) => s.isActive);
+  if (active.length === 0) return true;
+  return active.every((s) => s.currentBet === active[0]!.currentBet);
+};
+
+const activeCountOf = (orderedSeats: Array<SeatRow>): number =>
+  orderedSeats.filter((s) => s.isActive).length;
+
+async function mergeBetsIntoPotGeneric(
+  tx: DB,
+  gameObj: GameRow,
+  orderedSeats: Array<SeatRow>,
+): Promise<GameRow> {
+  const total = orderedSeats.reduce((sum, s) => sum + s.currentBet, 0);
+  await tx
+    .update(games)
+    .set({
+      potTotal: sql`${games.potTotal} + ${total}`,
+      betCount: 0,
+      requiredBetCount: 0,
+    })
+    .where(eq(games.id, gameObj.id));
+  for (const s of orderedSeats) {
+    await tx.update(seats).set({ currentBet: 0 }).where(eq(seats.id, s.id));
+    s.currentBet = 0;
+  }
+  return {
+    ...gameObj,
+    potTotal: gameObj.potTotal + total,
+    betCount: 0,
+    requiredBetCount: 0,
+  };
+}
+
+async function ensureHoleCardsProgression(
+  tx: TableTransaction,
+  tableId: string,
+  gameObj: GameRow,
+  currentSeatId: string,
+  dealerButtonSeatId: string,
+  n: number,
+): Promise<GameRow> {
+  const freshSeats = await fetchOrderedSeats(tx as DB, tableId);
+  const allHaveTwo = freshSeats.every((s: SeatRow) => s.cards.length >= 2);
+  if (!allHaveTwo) {
+    const nextSeatId = rotateToNextActiveSeatId(freshSeats, currentSeatId);
+    await (tx as DB)
+      .update(games)
+      .set({ assignedSeatId: nextSeatId })
+      .where(eq(games.id, gameObj.id));
+    return { ...gameObj, assignedSeatId: nextSeatId };
+  }
+  // Initialize betting round: preflop first actor is left of big blind
+  const dealerIdx = freshSeats.findIndex(
+    (s: SeatRow) => s.id === dealerButtonSeatId,
+  );
+  const bigBlindIdx = (dealerIdx + 2) % n;
+  const firstToAct = freshSeats[(bigBlindIdx + 1) % n]!;
+  const activeCount = activeCountOf(freshSeats);
+  await (tx as DB)
+    .update(games)
+    .set({
+      state: "BETTING",
+      assignedSeatId: firstToAct.id,
+      betCount: 0,
+      requiredBetCount: activeCount,
+    })
+    .where(eq(games.id, gameObj.id));
+  return {
+    ...gameObj,
+    state: "BETTING",
+    assignedSeatId: firstToAct.id,
+    betCount: 0,
+    requiredBetCount: activeCount,
+  };
+}
+
+async function ensurePostflopProgression(
+  tx: TableTransaction,
+  tableId: string,
+  gameObj: GameRow,
+  dealerButtonSeatId: string,
+  n: number,
+): Promise<void> {
+  const freshSeats = await fetchOrderedSeats(tx as DB, tableId);
+  // Postflop: start left of dealer button
+  const dealerIdx = freshSeats.findIndex(
+    (s: SeatRow) => s.id === dealerButtonSeatId,
+  );
+  const firstToAct = freshSeats[(dealerIdx + 1) % n]!;
+  const activeCount = activeCountOf(freshSeats);
+  await (tx as DB)
+    .update(games)
+    .set({
+      state: "BETTING",
+      assignedSeatId: firstToAct.id,
+      betCount: 0,
+      requiredBetCount: activeCount,
+    })
+    .where(eq(games.id, gameObj.id));
+}
+
+async function evaluateBettingTransition(
+  tx: TableTransaction,
+  tableId: string,
+  gameObj: GameRow,
+): Promise<void> {
+  const freshSeats = await fetchOrderedSeats(tx as DB, tableId);
+  const activeSeats = freshSeats.filter((s: SeatRow) => s.isActive);
+  const singleActive = activeSeats.length === 1;
+  const allEqual = allActiveBetsEqual(freshSeats);
+  const finished =
+    (gameObj.betCount >= gameObj.requiredBetCount && allEqual) || singleActive;
+  if (!finished) return;
+
+  // Merge bets into pot
+  const updatedGame = await mergeBetsIntoPotGeneric(
+    tx as DB,
+    gameObj,
+    freshSeats,
+  );
+  const cc = updatedGame.communityCards.length;
+  if (singleActive || cc === 5) {
+    // SHOWDOWN
+    const contenders = freshSeats.filter((s: SeatRow) => s.isActive);
+    const hands = contenders.map((s: SeatRow) =>
+      Hand.solve([...(s.cards as string[]), ...updatedGame.communityCards]),
+    ) as unknown[];
+    const winners = Hand.winners(hands) as unknown[];
+    const winnerSeatIds = winners.map((w) => {
+      const idx = (hands as unknown[]).indexOf(w);
+      return contenders[idx]!.id;
+    });
+    const share = Math.floor(updatedGame.potTotal / winnerSeatIds.length);
+    for (const sid of winnerSeatIds) {
+      await (tx as DB)
+        .update(seats)
+        .set({ buyIn: sql`${seats.buyIn} + ${share}` })
+        .where(eq(seats.id, sid));
+    }
+    await (tx as DB)
+      .update(games)
+      .set({ state: "SHOWDOWN" })
+      .where(eq(games.id, updatedGame.id));
+  }
+  if (cc === 0) {
+    await tx
+      .update(games)
+      .set({ state: "DEAL_FLOP" })
+      .where(eq(games.id, updatedGame.id));
+  }
+  if (cc === 3) {
+    await tx
+      .update(games)
+      .set({ state: "DEAL_TURN" })
+      .where(eq(games.id, updatedGame.id));
+  }
+  if (cc === 4) {
+    await tx
+      .update(games)
+      .set({ state: "DEAL_RIVER" })
+      .where(eq(games.id, updatedGame.id));
+  }
+}
+
+function getBigAndSmallBlindSeats(
+  orderedSeats: Array<SeatRow>,
+  game: GameRow,
+): { smallBlindSeat: SeatRow; bigBlindSeat: SeatRow } {
+  const dealerIdx = orderedSeats.findIndex(
+    (s) => s.id === game.dealerButtonSeatId,
+  );
+  const n = orderedSeats.length;
+  return {
+    smallBlindSeat: orderedSeats[pickNextIndex(dealerIdx, n)]!,
+    bigBlindSeat: orderedSeats[pickNextIndex(dealerIdx + 1, n)]!,
+  };
+}
+
+async function collectBigAndSmallBlind(
+  tx: TableTransaction,
+  table: TableRow,
+  orderedSeats: Array<SeatRow>,
+  game: GameRow,
+): Promise<void> {
+  const { smallBlindSeat, bigBlindSeat } = getBigAndSmallBlindSeats(
+    orderedSeats,
+    game,
+  );
+  // Transfer buy-in into bets for big and small blind
+  await tx
+    .update(seats)
+    .set({
+      currentBet: sql`${table.smallBlind}`,
+      buyIn: sql`${seats.buyIn} - ${table.smallBlind}`,
+    })
+    .where(eq(seats.id, smallBlindSeat.id));
+  await tx
+    .update(seats)
+    .set({
+      currentBet: sql`${table.bigBlind}`,
+      buyIn: sql`${seats.buyIn} - ${table.bigBlind}`,
+    })
+    .where(eq(seats.id, bigBlindSeat.id));
+}
+
+async function createNewGame(
+  tx: TableTransaction,
+  table: TableRow,
+  orderedSeats: Array<SeatRow>,
+  dealerButtonSeatId: string,
+): Promise<void> {
+  // Create a new game object
+  const createdRows = await (tx as DB)
+    .insert(games)
+    .values({
+      tableId: table.id,
+      status: "active",
+      state: "DEAL_HOLE_CARDS",
+      dealerButtonSeatId,
+      communityCards: [],
+      potTotal: 0,
+      betCount: 0,
+      requiredBetCount: 0,
+    })
+    .returning();
+  const game = createdRows?.[0];
+  if (!game) throw new Error("Failed to create game");
+
+  // Collect big and small blind
+  await collectBigAndSmallBlind(tx, table, orderedSeats, game);
+  const { smallBlindSeat } = getBigAndSmallBlindSeats(orderedSeats, game);
+
+  // Small blind gets the first turn
+  await tx
+    .update(games)
+    .set({
+      assignedSeatId: smallBlindSeat.id,
+    })
+    .where(eq(games.id, game.id));
+}
 
 export const tableRouter = createTRPCRouter({
   list: publicProcedure.query(async () => {
@@ -175,9 +447,7 @@ export const tableRouter = createTRPCRouter({
         });
         if (
           active &&
-          !["GAME_START", "RESET_TABLE", "SHOWDOWN"].includes(
-            (active as any).state,
-          )
+          !["RESET_TABLE", "SHOWDOWN"].includes((active as any).state)
         ) {
           throw new Error("Cannot leave during an active hand");
         }
@@ -234,7 +504,7 @@ export const tableRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
-      const result = await db.transaction(async (tx) => {
+      await db.transaction(async (tx) => {
         const table = await tx.query.pokerTables.findFirst({
           where: eq(pokerTables.id, input.tableId),
         });
@@ -259,8 +529,6 @@ export const tableRouter = createTRPCRouter({
 
         const findSeatById = (id: string) =>
           orderedSeats.find((s) => s.id === id)!;
-        const findIndexBySeatId = (id: string) =>
-          orderedSeats.findIndex((s) => s.id === id);
 
         const toCardCode = (rank?: string, suit?: string) => {
           if (!rank || !suit) throw new Error("rank and suit required");
@@ -274,86 +542,11 @@ export const tableRouter = createTRPCRouter({
           return codes;
         };
 
-        const mergeBetsIntoPot = async () => {
-          const total = orderedSeats.reduce((sum, s) => sum + s.currentBet, 0);
-          await tx
-            .update(games)
-            .set({
-              potTotal: sql`${games.potTotal} + ${total}`,
-              betCount: 0,
-              requiredBetCount: 0,
-            })
-            .where(eq(games.id, game!.id));
-          for (const s of orderedSeats) {
-            await tx
-              .update(seats)
-              .set({ currentBet: 0 })
-              .where(eq(seats.id, s.id));
-            s.currentBet = 0;
-          }
-          game = {
-            ...game!,
-            potTotal: game!.potTotal + total,
-            betCount: 0,
-            requiredBetCount: 0,
-          } as any;
-        };
-
         if (input.action === "START_GAME") {
           if (!isDealerCaller) throw new Error("Only dealer can START_GAME");
-          // Complete existing game if present
-          if (game) {
-            await tx
-              .update(games)
-              .set({ status: "completed" })
-              .where(eq(games.id, game.id));
-          }
-
-          // Pick or rotate dealer button
-          let dealerButtonSeatId: string;
-          if (!game?.dealerButtonSeatId) {
-            // Deterministic: default to seatNumber 0
-            dealerButtonSeatId = orderedSeats[0]!.id;
-          } else {
-            const idx = findIndexBySeatId(game.dealerButtonSeatId);
-            dealerButtonSeatId = orderedSeats[pickNextIndex(idx, n)]!.id; // move clockwise by 1
-          }
-
-          const createdRows = await tx
-            .insert(games)
-            .values({
-              tableId: input.tableId,
-              status: "active",
-              state: "GAME_START",
-              dealerButtonSeatId,
-              communityCards: [],
-              potTotal: 0,
-              betCount: 0,
-              requiredBetCount: 0,
-            })
-            .returning();
-
-          const g = createdRows?.[0];
-          if (!g) throw new Error("Failed to create game");
-          game = g;
-
-          // Transition immediately to DEAL_HOLE_CARDS, starting at small blind (1 left of dealer)
-          const dealerIdx = findIndexBySeatId(dealerButtonSeatId);
-          const smallBlindSeat = orderedSeats[pickNextIndex(dealerIdx, n)]!;
-          await tx
-            .update(games)
-            .set({
-              state: "DEAL_HOLE_CARDS",
-              assignedSeatId: smallBlindSeat.id,
-            })
-            .where(eq(games.id, g.id));
-          game = {
-            ...g,
-            state: "DEAL_HOLE_CARDS",
-            assignedSeatId: smallBlindSeat.id,
-          } as any;
-
-          return await summarizeTable(tx, input.tableId);
+          const dealerButtonSeatId = orderedSeats[0]!.id;
+          await createNewGame(tx, table, orderedSeats, dealerButtonSeatId);
+          return { ok: true } as const;
         }
 
         if (!game) throw new Error("No active game");
@@ -370,45 +563,15 @@ export const tableRouter = createTRPCRouter({
               .update(seats)
               .set({ cards: sql`array_append(${seats.cards}, ${code})` })
               .where(eq(seats.id, seat.id));
-            seat.cards.push(code);
-            // Determine next seat or transition to BETTING when all have 2
-            const allHaveTwo = orderedSeats.every((s) => s.cards.length >= 2);
-            if (!allHaveTwo) {
-              const nextSeatId = rotateToNextActiveSeatId(
-                orderedSeats,
-                seat.id,
-              );
-              await tx
-                .update(games)
-                .set({ assignedSeatId: nextSeatId })
-                .where(eq(games.id, game.id));
-              game = { ...game, assignedSeatId: nextSeatId } as any;
-            } else {
-              // Initialize betting round
-              const bigBlindIdx = pickNextIndex(
-                pickNextIndex(findIndexBySeatId(game.dealerButtonSeatId!), n),
-                n,
-              );
-              const firstToAct = orderedSeats[pickNextIndex(bigBlindIdx, n)]!;
-              const activeCount = orderedSeats.filter((s) => s.isActive).length;
-              await tx
-                .update(games)
-                .set({
-                  state: "BETTING",
-                  assignedSeatId: firstToAct.id,
-                  betCount: 0,
-                  requiredBetCount: activeCount,
-                })
-                .where(eq(games.id, game.id));
-              game = {
-                ...game,
-                state: "BETTING",
-                assignedSeatId: firstToAct.id,
-                betCount: 0,
-                requiredBetCount: activeCount,
-              } as any;
-            }
-            return await summarizeTable(tx, input.tableId);
+            game = await ensureHoleCardsProgression(
+              tx,
+              input.tableId,
+              game,
+              seat.id,
+              game.dealerButtonSeatId!,
+              n,
+            );
+            return { ok: true } as const;
           }
 
           if (
@@ -416,41 +579,30 @@ export const tableRouter = createTRPCRouter({
             game.state === "DEAL_TURN" ||
             game.state === "DEAL_RIVER"
           ) {
-            await tx
+            const results = await tx
               .update(games)
               .set({
                 communityCards: sql`array_append(${games.communityCards}, ${code})`,
               })
-              .where(eq(games.id, game.id));
-            game.communityCards.push(code);
+              .where(eq(games.id, game.id))
+              .returning();
+            game = results?.[0];
+            if (!game) throw new Error("Failed to update game");
             const cc = game.communityCards.length;
             if (
               (game.state === "DEAL_FLOP" && cc >= 3) ||
               (game.state === "DEAL_TURN" && cc >= 4) ||
               (game.state === "DEAL_RIVER" && cc >= 5)
             ) {
-              // Start betting round again - postflop: start left of dealer button
-              const dealerIdx = findIndexBySeatId(game.dealerButtonSeatId!);
-              const firstToAct = orderedSeats[pickNextIndex(dealerIdx, n)]!;
-              const activeCount = orderedSeats.filter((s) => s.isActive).length;
-              await tx
-                .update(games)
-                .set({
-                  state: "BETTING",
-                  assignedSeatId: firstToAct.id,
-                  betCount: 0,
-                  requiredBetCount: activeCount,
-                })
-                .where(eq(games.id, game.id));
-              game = {
-                ...game,
-                state: "BETTING",
-                assignedSeatId: firstToAct.id,
-                betCount: 0,
-                requiredBetCount: activeCount,
-              } as any;
+              await ensurePostflopProgression(
+                tx,
+                input.tableId,
+                game,
+                game.dealerButtonSeatId!,
+                n,
+              );
             }
-            return await summarizeTable(tx, input.tableId);
+            return { ok: true } as const;
           }
 
           throw new Error("DEAL_CARD not valid in current state");
@@ -458,6 +610,7 @@ export const tableRouter = createTRPCRouter({
 
         if (input.action === "RESET_TABLE") {
           if (!isDealerCaller) throw new Error("Only dealer can RESET_TABLE");
+          // Reset all seats
           for (const s of orderedSeats) {
             await tx
               .update(seats)
@@ -472,30 +625,19 @@ export const tableRouter = createTRPCRouter({
             s.currentBet = 0;
           }
 
-          // Mark current game complete and create a fresh one in GAME_START with rotated dealer button
+          // Mark current game complete and create a fresh one
           await tx
             .update(games)
             .set({ status: "completed" })
             .where(eq(games.id, game.id));
-          const prevButton = game.dealerButtonSeatId ?? orderedSeats[0]!.id;
+
+          // Create a new game
+          const prevButton = game.dealerButtonSeatId!;
           const prevIdx = orderedSeats.findIndex((s) => s.id === prevButton);
           const nextButtonSeatId =
             orderedSeats[pickNextIndex(prevIdx, orderedSeats.length)]!.id;
-          const [newGame] = await tx
-            .insert(games)
-            .values({
-              tableId: input.tableId,
-              status: "active",
-              state: "GAME_START",
-              dealerButtonSeatId: nextButtonSeatId,
-              communityCards: [],
-              potTotal: 0,
-              betCount: 0,
-              requiredBetCount: 0,
-            })
-            .returning();
-          game = newGame as any;
-          return await summarizeTable(tx, input.tableId);
+          await createNewGame(tx, table, orderedSeats, nextButtonSeatId);
+          return { ok: true } as const;
         }
 
         // Player actions require assigned seat
@@ -513,18 +655,23 @@ export const tableRouter = createTRPCRouter({
 
         if (input.action === "RAISE") {
           const amount = input.params?.amount ?? 0;
-          if (amount <= 0) throw new Error("Invalid raise amount");
-          if (actorSeat.buyIn < amount)
+          // The raised amount has to be greater than the max bet
+          if (amount <= 0 || amount < maxBet)
+            throw new Error(
+              `Invalid raise amount, must be greater than max bet, ${maxBet}`,
+            );
+          const total = amount - actorSeat.currentBet;
+          if (actorSeat.buyIn < total)
             throw new Error("Insufficient chips to raise");
           await tx
             .update(seats)
             .set({
-              buyIn: sql`${seats.buyIn} - ${amount}`,
-              currentBet: sql`${seats.currentBet} + ${amount}`,
+              buyIn: sql`${seats.buyIn} - ${total}`,
+              currentBet: sql`${seats.currentBet} + ${total}`,
             })
             .where(eq(seats.id, actorSeat.id));
-          actorSeat.buyIn -= amount;
-          actorSeat.currentBet += amount;
+          actorSeat.buyIn -= total;
+          actorSeat.currentBet += total;
         } else if (input.action === "CHECK") {
           const need = maxBet - actorSeat.currentBet;
           if (need > 0) {
@@ -559,67 +706,16 @@ export const tableRouter = createTRPCRouter({
           .update(games)
           .set({ assignedSeatId: nextSeatId })
           .where(eq(games.id, game.id));
-        game.assignedSeatId = nextSeatId as any;
+        game.assignedSeatId = nextSeatId;
 
-        // Determine if betting round finished
-        const activeSeats = orderedSeats.filter((s) => s.isActive);
-        const allEqual = activeSeats.every(
-          (s) => s.currentBet === activeSeats[0]!.currentBet,
-        );
-        const singleActive = activeSeats.length === 1;
-        const finished =
-          (game.betCount >= game.requiredBetCount && allEqual) || singleActive;
-
-        if (finished) {
-          await mergeBetsIntoPot();
-          const cc = game.communityCards.length;
-          if (singleActive || cc === 5) {
-            // SHOWDOWN: evaluate winners and award pot
-            const contenders = orderedSeats.filter((s) => s.isActive);
-            const hands = contenders.map((s) =>
-              Hand.solve([...s.cards, ...game!.communityCards]),
-            );
-            const winners = Hand.winners(hands);
-            const winnerSeatIds = winners.map(
-              (w: any) => contenders[hands.findIndex((h: any) => h === w)]!.id,
-            );
-            const share = Math.floor(game!.potTotal / winnerSeatIds.length);
-            for (const sid of winnerSeatIds) {
-              await tx
-                .update(seats)
-                .set({ buyIn: sql`${seats.buyIn} + ${share}` })
-                .where(eq(seats.id, sid));
-            }
-            await tx
-              .update(games)
-              .set({ state: "SHOWDOWN" })
-              .where(eq(games.id, game!.id));
-            game = { ...game!, state: "SHOWDOWN" } as any;
-          } else if (cc === 0) {
-            await tx
-              .update(games)
-              .set({ state: "DEAL_FLOP" })
-              .where(eq(games.id, game!.id));
-            game = { ...game!, state: "DEAL_FLOP" } as any;
-          } else if (cc === 3) {
-            await tx
-              .update(games)
-              .set({ state: "DEAL_TURN" })
-              .where(eq(games.id, game!.id));
-            game = { ...game!, state: "DEAL_TURN" } as any;
-          } else if (cc === 4) {
-            await tx
-              .update(games)
-              .set({ state: "DEAL_RIVER" })
-              .where(eq(games.id, game!.id));
-            game = { ...game!, state: "DEAL_RIVER" } as any;
-          }
-        }
-
-        return await summarizeTable(tx, input.tableId);
+        // Determine if betting round finished using helper
+        await evaluateBettingTransition(tx, input.tableId, game);
+        return { ok: true } as const;
       });
 
-      return result;
+      // transaction complete -> fetch committed snapshot
+      const snapshot = await summarizeTable(db, input.tableId);
+      return snapshot;
     }),
 
   get: protectedProcedure
