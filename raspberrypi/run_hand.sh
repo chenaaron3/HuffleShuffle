@@ -34,7 +34,7 @@ if ! command -v libcamera-vid >/dev/null 2>&1; then
   exit 1
 fi
 
-command -v lk >/dev/null 2>&1 || { echo "Install LiveKit CLI: curl -sSL https://get.livekit.io/cli | bash" >&2; exit 1; }
+command -v lk >/dev/null 2>&1 || { echo "Please Install LiveKit CLI: curl -sSL https://get.livekit.io/cli | bash" >&2; exit 1; }
 
 # Start camera → H.264 TCP
 rm -f "$LOG_FILE"
@@ -62,5 +62,3 @@ exec lk ${LIVEKIT_URL:+--url "$LIVEKIT_URL"} \
        room join --identity "$IDENTITY" \
        --publish "h264://$HOST:$PORT" \
        "$ROOM_NAME"
-
-
