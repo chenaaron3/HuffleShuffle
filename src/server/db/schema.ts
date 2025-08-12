@@ -54,6 +54,7 @@ export const users = createTable(
     image: d.varchar({ length: 255 }),
     role: userRoleEnum("role").notNull().default("player"),
     balance: d.integer().notNull().default(0),
+    publicKey: d.text(),
   }),
   (t) => [check("user_balance_non_negative", sql`${t.balance} >= 0`)],
 );
@@ -171,6 +172,8 @@ export const seats = createTable(
       .notNull()
       .default(sql`ARRAY[]::text[]`),
     isActive: d.boolean().notNull().default(true),
+    encryptedUserNonce: d.text(),
+    encryptedPiNonce: d.text(),
     createdAt: d
       .timestamp({ withTimezone: true })
       .default(sql`CURRENT_TIMESTAMP`)
@@ -290,6 +293,7 @@ export const piDevices = createTable(
       .references(() => pokerTables.id),
     type: piDeviceTypeEnum("type").notNull(),
     seatNumber: d.integer(),
+    publicKey: d.text(),
     lastSeenAt: d
       .timestamp({ withTimezone: true })
       .default(sql`CURRENT_TIMESTAMP`)

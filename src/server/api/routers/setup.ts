@@ -38,6 +38,7 @@ export const setupRouter = createTRPCRouter({
           serial: d.serial,
           type: d.type,
           seatNumber: d.seatNumber,
+          publicKey: d.publicKey ?? null,
         })),
       };
     }),
@@ -47,8 +48,11 @@ export const setupRouter = createTRPCRouter({
       z.object({
         tableId: z.string(),
         dealerSerial: z.string().optional().nullable(),
+        dealerPublicKey: z.string().optional().nullable(),
         scannerSerial: z.string().optional().nullable(),
+        scannerPublicKey: z.string().optional().nullable(),
         handSerials: z.array(z.string()).length(8),
+        handPublicKeys: z.array(z.string().nullable().optional()).length(8),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -75,6 +79,7 @@ export const setupRouter = createTRPCRouter({
           serial: string,
           type: "dealer" | "scanner" | "card" | "button",
           seatNumber: number | null,
+          publicKey?: string | null,
         ): Promise<void> {
           const s = serial.trim();
           if (!s) return;
@@ -84,22 +89,46 @@ export const setupRouter = createTRPCRouter({
           if (existing) {
             await tx
               .update(piDevices)
-              .set({ tableId: input.tableId, type, seatNumber })
+              .set({
+                tableId: input.tableId,
+                type,
+                seatNumber,
+                publicKey: publicKey ?? existing.publicKey,
+              })
               .where(eq(piDevices.serial, s));
           } else {
-            await tx
-              .insert(piDevices)
-              .values({ serial: s, tableId: input.tableId, type, seatNumber });
+            await tx.insert(piDevices).values({
+              serial: s,
+              tableId: input.tableId,
+              type,
+              seatNumber,
+              publicKey: publicKey ?? null,
+            });
           }
         }
 
-        if (desiredDealer) await upsertDevice(desiredDealer, "dealer", null);
-        if (desiredScanner) await upsertDevice(desiredScanner, "scanner", null);
+        if (desiredDealer)
+          await upsertDevice(
+            desiredDealer,
+            "dealer",
+            null,
+            input.dealerPublicKey ?? undefined,
+          );
+        if (desiredScanner)
+          await upsertDevice(
+            desiredScanner,
+            "scanner",
+            null,
+            input.scannerPublicKey ?? undefined,
+          );
 
         for (let i = 0; i < Math.min(8, desiredHand.length); i++) {
           const serial = desiredHand[i] ?? "";
           if (!serial) continue;
-          await upsertDevice(serial, "card", i);
+          const pub = (input.handPublicKeys[i] ?? undefined) as
+            | string
+            | undefined;
+          await upsertDevice(serial, "card", i, pub);
         }
       });
 

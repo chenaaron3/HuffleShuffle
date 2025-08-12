@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useState } from 'react';
 import { api } from '~/utils/api';
+import { generateRsaKeyPairForTable } from '~/utils/crypto';
 
 export default function LobbyPage() {
     const { data: session, status } = useSession();
@@ -47,7 +48,10 @@ export default function LobbyPage() {
                                             </Link>
                                         ) : (
                                             <button
-                                                onClick={() => joinMutation.mutate({ tableId: t.id, buyIn: form.buyIn })}
+                                                onClick={async () => {
+                                                    const { publicKeyPem } = await generateRsaKeyPairForTable(t.id);
+                                                    joinMutation.mutate({ tableId: t.id, buyIn: form.buyIn, userPublicKey: publicKeyPem });
+                                                }}
                                                 className="rounded-md bg-white px-3 py-2 text-sm font-medium text-black hover:bg-zinc-200"
                                             >
                                                 Join

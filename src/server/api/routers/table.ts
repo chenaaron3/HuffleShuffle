@@ -379,7 +379,7 @@ async function createNewGame(
 
 export const tableRouter = createTRPCRouter({
   livekitToken: protectedProcedure
-    .input(z.object({ tableId: z.string() }))
+    .input(z.object({ tableId: z.string(), roomName: z.string().optional() }))
     .query(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
 
@@ -413,7 +413,7 @@ export const tableRouter = createTRPCRouter({
 
       // Create grant for this room (tableId). Participants can publish and subscribe.
       const grant: VideoGrant = {
-        room: input.tableId,
+        room: input.roomName ?? input.tableId,
         canPublish: true,
         canSubscribe: true,
         roomJoin: true,
@@ -472,7 +472,11 @@ export const tableRouter = createTRPCRouter({
 
   join: protectedProcedure
     .input(
-      z.object({ tableId: z.string(), buyIn: z.number().int().positive() }),
+      z.object({
+        tableId: z.string(),
+        buyIn: z.number().int().positive(),
+        userPublicKey: z.string().min(1), // PEM SPKI
+      }),
     )
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
@@ -506,6 +510,12 @@ export const tableRouter = createTRPCRouter({
 
         const seatNumber = existingSeats.length; // contiguous 0..n-1
 
+        // Store/refresh user's public key
+        await tx
+          .update(users)
+          .set({ publicKey: input.userPublicKey })
+          .where(eq(users.id, userId));
+
         // Deduct balance and create seat
         await tx
           .update(users)
@@ -523,9 +533,68 @@ export const tableRouter = createTRPCRouter({
           .returning();
         const seat = seatRows?.[0];
         if (!seat) throw new Error("Failed to create seat");
-        return { seat } as const;
+
+        // Generate ephemeral nonce and encrypt for user + seat's mapped Pi (if any)
+        const nonce = crypto.randomUUID();
+
+        async function importRsaSpkiPem(pem: string): Promise<CryptoKey> {
+          const b64 = pem.replace(/-----[^-]+-----/g, "").replace(/\s+/g, "");
+          const der = Buffer.from(b64, "base64");
+          return await (crypto as any).subtle.importKey(
+            "spki",
+            der,
+            { name: "RSA-OAEP", hash: "SHA-256" },
+            true,
+            ["encrypt"],
+          );
+        }
+        async function rsaEncryptB64(
+          publicPem: string,
+          data: string,
+        ): Promise<string> {
+          const key = await importRsaSpkiPem(publicPem);
+          const enc = new TextEncoder();
+          const ct = await (crypto as any).subtle.encrypt(
+            { name: "RSA-OAEP" },
+            key,
+            enc.encode(data),
+          );
+          return Buffer.from(new Uint8Array(ct)).toString("base64");
+        }
+
+        const encUser = await rsaEncryptB64(input.userPublicKey, nonce);
+
+        // Find seat-mapped Pi (type 'card' with matching seatNumber)
+        const pi = await tx.query.piDevices.findFirst({
+          where: and(
+            eq(piDevices.tableId, input.tableId),
+            eq(piDevices.type, "card"),
+            eq(piDevices.seatNumber, seat.seatNumber),
+          ),
+        });
+        let encPi: string | null = null;
+        if (pi?.publicKey) {
+          try {
+            encPi = await rsaEncryptB64(pi.publicKey, nonce);
+          } catch {
+            encPi = null;
+          }
+        }
+        const updatedSeatRows = await tx
+          .update(seats)
+          .set({ encryptedUserNonce: encUser, encryptedPiNonce: encPi })
+          .where(eq(seats.id, seat.id))
+          .returning();
+        if (!updatedSeatRows || updatedSeatRows.length === 0)
+          throw new Error("Failed to update seat");
+        const updatedSeat = updatedSeatRows[0]!;
+        return { seat: updatedSeat } as const;
       });
-      return { tableId: input.tableId, seatId: result.seat.id };
+      return {
+        tableId: input.tableId,
+        seatId: result.seat.id,
+        encryptedUserNonce: result.seat.encryptedUserNonce,
+      };
     }),
 
   leave: protectedProcedure

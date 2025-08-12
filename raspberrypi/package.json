@@ -4,7 +4,8 @@
     "type": "module",
     "scripts": {
         "start": "node --env-file=.env build/dealer-daemon.js",
-        "dev": "tsx dealer-daemon.ts",
+        "dealer": "tsx dealer-daemon.ts",
+        "hand": "tsx hand-daemon.ts",
         "build": "tsc -p tsconfig.json"
     },
     "dependencies": {},

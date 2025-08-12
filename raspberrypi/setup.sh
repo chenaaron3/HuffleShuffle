@@ -35,12 +35,14 @@ npm i -g pm2 >/dev/null 2>&1 || true
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$SCRIPT_DIR"
 
-echo "[setup] Installing local Node dependencies"
+echo "[setup] Installing local Node dependencies (dealer + hand)"
 npm install --no-audit --no-fund || true
 
-echo "[setup] Launching dealer daemon with PM2 (tsx runtime)"
-pm2 start npm --name huffle-dealer -- run dev
-pm2 save
+# echo "[setup] Launching dealer daemon with PM2 (tsx runtime)"
+# pm2 start npm --name huffle-dealer -- run dealer
+# echo "[setup] Launching hand daemon with PM2 (tsx runtime)"
+# pm2 start npm --name huffle-hand -- run hand
+# pm2 save
 
-echo "[setup] Setup complete. Use 'pm2 logs huffle-dealer' to view logs."
+# echo "[setup] Setup complete. Use 'pm2 logs huffle-dealer' to view logs."
 

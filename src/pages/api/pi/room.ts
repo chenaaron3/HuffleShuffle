@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { eq, sql } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import { db } from '~/server/db';
-import { piDevices } from '~/server/db/schema';
+import { piDevices, seats } from '~/server/db/schema';
 
 export default async function handler(
   req: NextApiRequest,
@@ -22,9 +22,20 @@ export default async function handler(
     .update(piDevices)
     .set({ lastSeenAt: sql`CURRENT_TIMESTAMP` })
     .where(eq(piDevices.serial, serial));
+  let encNonce: string | null = null;
+  if (device.type === "card" && device.seatNumber != null) {
+    const seat = await db.query.seats.findFirst({
+      where: and(
+        eq(seats.tableId, device.tableId),
+        eq(seats.seatNumber, device.seatNumber),
+      ),
+    });
+    encNonce = seat?.encryptedPiNonce ?? null;
+  }
   return res.status(200).json({
     tableId: device.tableId,
     type: device.type,
     seatNumber: device.seatNumber,
+    encNonce,
   });
 }

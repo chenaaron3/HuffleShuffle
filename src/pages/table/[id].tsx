@@ -10,13 +10,15 @@ import { CardImage } from '~/components/ui/card-img';
 import { GlowingEffect } from '~/components/ui/glowing-effect';
 import { SeatCard as SeatCardUI } from '~/components/ui/seat-card';
 import { api } from '~/utils/api';
+import { rsaDecryptBase64 } from '~/utils/crypto';
 
 import {
     LiveKitRoom, ParticipantTile, RoomAudioRenderer, StartAudio, TrackToggle, useLocalParticipant,
-    useParticipantTracks
+    useParticipantTracks, useRoomContext, useTracks, VideoTrack
 } from '@livekit/components-react';
 
 import type { SeatWithPlayer } from '~/server/api/routers/table';
+import { useEffect, useState } from 'react';
 export default function TableView() {
     const router = useRouter();
     const { id } = router.query as { id?: string };
@@ -25,8 +27,6 @@ export default function TableView() {
 
     const tableQuery = api.table.get.useQuery({ tableId: id ?? '' }, { enabled: !!id, });
     const action = api.table.action.useMutation({ onSuccess: () => tableQuery.refetch() });
-
-    console.log('tableQuery', tableQuery.data);
 
     const [dealRank, setDealRank] = React.useState<string>('A');
     const [dealSuit, setDealSuit] = React.useState<string>('s');
@@ -39,6 +39,20 @@ export default function TableView() {
     const bettingActorSeatId = state === 'BETTING' ? (snapshot?.game?.assignedSeatId ?? null) : null;
     const currentUserSeatId = seats.find((s: any) => s.playerId === session?.user?.id)?.id ?? null;
     const highlightedSeatId = dealSeatId ?? bettingActorSeatId;
+
+    const currentSeat = seats.find((s: any) => s.playerId === session?.user?.id) as any | undefined;
+    const [handRoomName, setHandRoomName] = useState<string | null>(null);
+    useEffect(() => {
+        (async () => {
+            if (!id || !currentSeat?.encryptedUserNonce) return;
+            try {
+                const roomName = await rsaDecryptBase64(id, currentSeat.encryptedUserNonce);
+                setHandRoomName(roomName);
+            } catch (e) {
+                console.error('Error decrypting hand room name', e);
+            }
+        })();
+    }, [id, currentSeat?.encryptedUserNonce]);
 
     const dealerSeatId = snapshot?.game?.dealerButtonSeatId ?? null;
     const dealerIdx = dealerSeatId ? seats.findIndex((s: any) => s.id === dealerSeatId) : -1;
@@ -93,12 +107,6 @@ export default function TableView() {
                         <RoomAudioRenderer />
                         <div className="mx-auto mt-4 flex max-w-7xl items-center gap-3 px-4">
                             <StartAudio label="Enable Audio" />
-                            <TrackToggle source={Track.Source.Camera} initialState className="rounded-md bg-white px-3 py-2 text-sm font-medium text-black hover:bg-zinc-200">
-                                Toggle Camera
-                            </TrackToggle>
-                            <TrackToggle source={Track.Source.Microphone} initialState className="rounded-md bg-white px-3 py-2 text-sm font-medium text-black hover:bg-zinc-200">
-                                Toggle Mic
-                            </TrackToggle>
                             {session?.user?.role === 'dealer' && (
                                 <button
                                     onClick={() => setShowSetup(true)}
@@ -126,6 +134,12 @@ export default function TableView() {
 
                             {/* Center stage */}
                             <section className="order-1 md:order-2 md:col-span-2">
+                                <DealerCenterVideo />
+                                {handRoomName && (
+                                    <div className="mb-3">
+                                        <HandCameraView tableId={tableIdStr} roomName={handRoomName} />
+                                    </div>
+                                )}
                                 <div className="relative mt-3 flex items-center justify-between rounded-lg border border-white/10 bg-zinc-900/50 px-5 py-4">
                                     <GlowingEffect disabled={false} blur={4} proximity={80} spread={24} className="rounded-lg" />
                                     <div className="flex items-center gap-4">
@@ -220,6 +234,9 @@ export default function TableView() {
                                     />
                                 ))}
                             </aside>
+                            {session?.user?.role === 'dealer' && (
+                                <DealerSignalSender tableId={tableIdStr} />
+                            )}
                         </div>
                     </LiveKitRoom>
                 ) : (
@@ -282,4 +299,63 @@ function GameStatusBanner({ isDealer, state, seats, activeSeatId, bettingActorSe
             <span className="text-sm">{bannerText}</span>
         </div>
     );
+}
+
+function DealerCenterVideo() {
+    const tracks = useTracks([Track.Source.Camera]);
+    const dealerRef = tracks.find((t) => t.participant.identity === 'dealer-camera');
+    if (!dealerRef) return null;
+    return (
+        <div className="mb-3 w-full overflow-hidden rounded-lg bg-black aspect-video">
+            <ParticipantTile trackRef={dealerRef}>
+                <VideoTrack trackRef={dealerRef} />
+            </ParticipantTile>
+        </div>
+    );
+}
+
+function HandCameraView({ tableId, roomName }: { tableId: string; roomName: string }) {
+    // Get token for the hand camera room using roomName override
+    const tokenQuery = api.table.livekitToken.useQuery({ tableId, roomName }, { enabled: !!tableId && !!roomName });
+    if (!tokenQuery.data) return null;
+    return (
+        <div className="w-full overflow-hidden rounded-lg border border-white/10 bg-black aspect-video">
+            <LiveKitRoom token={tokenQuery.data.token} serverUrl={tokenQuery.data.serverUrl} connectOptions={{ autoSubscribe: true }}>
+                {/* simple viewer; VideoConference is heavy; show all camera tracks */}
+                {/* We could add a TrackLoop here if needed */}
+                <RoomAudioRenderer />
+            </LiveKitRoom>
+        </div>
+    );
+}
+
+function DealerSignalSender({ tableId }: { tableId: string }) {
+    // Sends piSerial + encrypted nonce to the room via data channel for each seated hand camera
+    // We use the table room context; local participant must be connected (dealer)
+    const room = useRoomContext();
+    const table = api.table.get.useQuery({ tableId }, { refetchOnWindowFocus: false });
+    const setup = api.setup.get.useQuery({ tableId }, { refetchOnWindowFocus: false });
+    useEffect(() => {
+        if (!room || room.state !== 'connected' || !room.localParticipant || !table.data || !setup.data) return;
+        try {
+            const seats = table.data.seats as any[];
+            const devices = (setup.data.available ?? []) as any[];
+            const payloads: any[] = seats
+                .map((s) => ({
+                    seatNumber: s.seatNumber,
+                    encPiNonce: s.encryptedPiNonce,
+                    piSerial: devices.find((d) => d.type === 'card' && d.seatNumber === s.seatNumber)?.serial,
+                }))
+                .filter((p) => !!p.encPiNonce);
+            // For now we broadcast encPiNonce with seatNumber; hand-daemon can map seat->serial if needed,
+            // or we extend API to return pi serial mapping in the table snapshot.
+            payloads.forEach((p) => {
+                const msg = JSON.stringify({ type: 'hand-room', seatNumber: p.seatNumber, piSerial: p.piSerial, encNonce: p.encPiNonce });
+                room.localParticipant.publishData(new TextEncoder().encode(msg), { reliable: true, topic: 'hand-room' });
+            });
+        } catch (e) {
+            console.error('DealerSignalSender error', e);
+        }
+    }, [room, table.data, setup.data]);
+    return null;
 }
