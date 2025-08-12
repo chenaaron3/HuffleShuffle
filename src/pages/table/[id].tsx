@@ -4,7 +4,8 @@ import { Track } from 'livekit-client';
 import { useSession } from 'next-auth/react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
-import { useState } from 'react';
+import * as React from 'react';
+import { TableSetupModal } from '~/components/TableSetupModal';
 import { CardImage } from '~/components/ui/card-img';
 import { GlowingEffect } from '~/components/ui/glowing-effect';
 import { SeatCard as SeatCardUI } from '~/components/ui/seat-card';
@@ -19,6 +20,7 @@ import type { SeatWithPlayer } from '~/server/api/routers/table';
 export default function TableView() {
     const router = useRouter();
     const { id } = router.query as { id?: string };
+    const tableIdStr = id ?? '';
     const { data: session } = useSession();
 
     const tableQuery = api.table.get.useQuery({ tableId: id ?? '' }, { enabled: !!id, });
@@ -26,8 +28,9 @@ export default function TableView() {
 
     console.log('tableQuery', tableQuery.data);
 
-    const [dealRank, setDealRank] = useState<string>('A');
-    const [dealSuit, setDealSuit] = useState<string>('s');
+    const [dealRank, setDealRank] = React.useState<string>('A');
+    const [dealSuit, setDealSuit] = React.useState<string>('s');
+    const [showSetup, setShowSetup] = React.useState<boolean>(false);
 
     const snapshot = tableQuery.data;
     const seats = snapshot?.seats ?? [];
@@ -96,6 +99,14 @@ export default function TableView() {
                             <TrackToggle source={Track.Source.Microphone} initialState className="rounded-md bg-white px-3 py-2 text-sm font-medium text-black hover:bg-zinc-200">
                                 Toggle Mic
                             </TrackToggle>
+                            {session?.user?.role === 'dealer' && (
+                                <button
+                                    onClick={() => setShowSetup(true)}
+                                    className="ml-auto rounded-md bg-white px-3 py-2 text-sm font-medium text-black hover:bg-zinc-200"
+                                >
+                                    Settings
+                                </button>
+                            )}
                         </div>
                         <div className="mx-auto grid max-w-7xl grid-cols-1 gap-6 px-4 py-6 md:grid-cols-4">
                             {/* Wrap middle and side rails in LiveKitRoom so SeatCard can access participants */}
@@ -217,6 +228,9 @@ export default function TableView() {
                     </div>
                 )}
             </main>
+            {session?.user?.role === 'dealer' && (
+                <TableSetupModal tableId={tableIdStr} open={showSetup} onClose={() => setShowSetup(false)} />
+            )}
         </>
     );
 }
@@ -269,4 +283,3 @@ function GameStatusBanner({ isDealer, state, seats, activeSeatId, bettingActorSe
         </div>
     );
 }
-
