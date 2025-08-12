@@ -9,8 +9,9 @@ if [[ -f "$SCRIPT_DIR/.env" ]]; then
 fi
 
 # Config
-ROOM_NAME="huffle-shuffle"
-IDENTITY="rover-camera"
+# Allow ROOM_NAME from environment; default to huffle-shuffle if not provided
+ROOM_NAME="${ROOM_NAME:-huffle-shuffle}"
+IDENTITY="Your Hand"
 HOST="127.0.0.1"
 PORT="5000"
 LOG_FILE="$SCRIPT_DIR/camera.log"

@@ -47,6 +47,7 @@ export default function TableView() {
             if (!id || !currentSeat?.encryptedUserNonce) return;
             try {
                 const roomName = await rsaDecryptBase64(id, currentSeat.encryptedUserNonce);
+                console.log('roomName', roomName);
                 setHandRoomName(roomName);
             } catch (e) {
                 console.error('Error decrypting hand room name', e);
@@ -135,11 +136,7 @@ export default function TableView() {
                             {/* Center stage */}
                             <section className="order-1 md:order-2 md:col-span-2">
                                 <DealerCenterVideo />
-                                {handRoomName && (
-                                    <div className="mb-3">
-                                        <HandCameraView tableId={tableIdStr} roomName={handRoomName} />
-                                    </div>
-                                )}
+                                {/* Hand camera moved to floating bottom-right */}
                                 <div className="relative mt-3 flex items-center justify-between rounded-lg border border-white/10 bg-zinc-900/50 px-5 py-4">
                                     <GlowingEffect disabled={false} blur={4} proximity={80} spread={24} className="rounded-lg" />
                                     <div className="flex items-center gap-4">
@@ -234,14 +231,16 @@ export default function TableView() {
                                     />
                                 ))}
                             </aside>
-                            {session?.user?.role === 'dealer' && (
-                                <DealerSignalSender tableId={tableIdStr} />
-                            )}
                         </div>
                     </LiveKitRoom>
                 ) : (
                     <div className="flex min-h-screen items-center justify-center">
                         <div className="text-zinc-400">Connecting to table audio/video…</div>
+                    </div>
+                )}
+                {handRoomName && (
+                    <div className="fixed bottom-4 right-4 z-40 w-[360px] max-w-[40vw]">
+                        <HandCameraView tableId={tableIdStr} roomName={handRoomName} />
                     </div>
                 )}
             </main>
@@ -319,43 +318,30 @@ function HandCameraView({ tableId, roomName }: { tableId: string; roomName: stri
     const tokenQuery = api.table.livekitToken.useQuery({ tableId, roomName }, { enabled: !!tableId && !!roomName });
     if (!tokenQuery.data) return null;
     return (
-        <div className="w-full overflow-hidden rounded-lg border border-white/10 bg-black aspect-video">
+        <div className="w-full max-w-2xl mx-auto overflow-hidden rounded-lg border border-white/10 bg-black">
             <LiveKitRoom token={tokenQuery.data.token} serverUrl={tokenQuery.data.serverUrl} connectOptions={{ autoSubscribe: true }}>
-                {/* simple viewer; VideoConference is heavy; show all camera tracks */}
-                {/* We could add a TrackLoop here if needed */}
                 <RoomAudioRenderer />
+                <HandCameraVideoContent />
             </LiveKitRoom>
         </div>
     );
 }
 
-function DealerSignalSender({ tableId }: { tableId: string }) {
-    // Sends piSerial + encrypted nonce to the room via data channel for each seated hand camera
-    // We use the table room context; local participant must be connected (dealer)
-    const room = useRoomContext();
-    const table = api.table.get.useQuery({ tableId }, { refetchOnWindowFocus: false });
-    const setup = api.setup.get.useQuery({ tableId }, { refetchOnWindowFocus: false });
-    useEffect(() => {
-        if (!room || room.state !== 'connected' || !room.localParticipant || !table.data || !setup.data) return;
-        try {
-            const seats = table.data.seats as any[];
-            const devices = (setup.data.available ?? []) as any[];
-            const payloads: any[] = seats
-                .map((s) => ({
-                    seatNumber: s.seatNumber,
-                    encPiNonce: s.encryptedPiNonce,
-                    piSerial: devices.find((d) => d.type === 'card' && d.seatNumber === s.seatNumber)?.serial,
-                }))
-                .filter((p) => !!p.encPiNonce);
-            // For now we broadcast encPiNonce with seatNumber; hand-daemon can map seat->serial if needed,
-            // or we extend API to return pi serial mapping in the table snapshot.
-            payloads.forEach((p) => {
-                const msg = JSON.stringify({ type: 'hand-room', seatNumber: p.seatNumber, piSerial: p.piSerial, encNonce: p.encPiNonce });
-                room.localParticipant.publishData(new TextEncoder().encode(msg), { reliable: true, topic: 'hand-room' });
-            });
-        } catch (e) {
-            console.error('DealerSignalSender error', e);
-        }
-    }, [room, table.data, setup.data]);
-    return null;
+function HandCameraVideoContent() {
+    const tracks = useTracks([Track.Source.Camera]);
+    const cameraTrack = tracks[0];
+    if (!cameraTrack) {
+        return (
+            <div className="aspect-video flex items-center justify-center text-xs text-zinc-400">
+                Waiting for hand camera...
+            </div>
+        );
+    }
+    return (
+        <div className="aspect-video">
+            <ParticipantTile trackRef={cameraTrack}>
+                <VideoTrack trackRef={cameraTrack} />
+            </ParticipantTile>
+        </div>
+    );
 }

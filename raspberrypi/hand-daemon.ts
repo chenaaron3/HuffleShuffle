@@ -100,7 +100,6 @@ async function main() {
   const env = {
     ...process.env,
     ROOM_NAME: roomName!,
-    IDENTITY: serial,
   } as NodeJS.ProcessEnv;
   const child = spawn("bash", ["-lc", `${JSON.stringify(script)} | cat`], {
     stdio: "inherit",
