@@ -4,7 +4,7 @@ import { createRequire } from 'node:module';
 import { z } from 'zod';
 import { createTRPCRouter, protectedProcedure, publicProcedure } from '~/server/api/trpc';
 import { db } from '~/server/db';
-import { games, pokerTables, seats, users } from '~/server/db/schema';
+import { games, piDevices, pokerTables, seats, users } from '~/server/db/schema';
 
 import type { VideoGrant } from "livekit-server-sdk";
 const requireCjs = createRequire(import.meta.url);

@@ -270,3 +270,30 @@ export const gamesRelations = relations(games, ({ one }) => ({
     references: [seats.id],
   }),
 }));
+
+// Pi device type enum
+export const piDeviceTypeEnum = pgEnum("pi_device_type", [
+  "scanner",
+  "dealer",
+  "card",
+  "button",
+]);
+
+// Raspberry Pi device registry
+export const piDevices = createTable(
+  "pi_device",
+  (d) => ({
+    serial: d.varchar({ length: 128 }).primaryKey(),
+    tableId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => pokerTables.id),
+    type: piDeviceTypeEnum("type").notNull(),
+    seatNumber: d.integer(),
+    lastSeenAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  }),
+  (t) => [index("pi_device_table_id_idx").on(t.tableId)],
+);
