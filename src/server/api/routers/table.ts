@@ -1,10 +1,12 @@
 import { and, asc, count, desc, eq, inArray, isNotNull, sql } from 'drizzle-orm';
+import { AccessToken } from 'livekit-server-sdk';
 import { createRequire } from 'node:module';
 import { z } from 'zod';
 import { createTRPCRouter, protectedProcedure, publicProcedure } from '~/server/api/trpc';
 import { db } from '~/server/db';
 import { games, pokerTables, seats, users } from '~/server/db/schema';
 
+import type { VideoGrant } from "livekit-server-sdk";
 const requireCjs = createRequire(import.meta.url);
 interface PokerHandStatic {
   solve(cards: string[]): unknown;
@@ -376,6 +378,55 @@ async function createNewGame(
 }
 
 export const tableRouter = createTRPCRouter({
+  livekitToken: protectedProcedure
+    .input(z.object({ tableId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+
+      // Verify table exists
+      const table = await db.query.pokerTables.findFirst({
+        where: eq(pokerTables.id, input.tableId),
+      });
+      if (!table) throw new Error("Table not found");
+
+      // Authorization: dealer of this table OR seated player at this table
+      let authorized = false;
+      if (ctx.session.user.role === "dealer" && table.dealerId === userId) {
+        authorized = true;
+      } else if (ctx.session.user.role === "player") {
+        const seat = await db.query.seats.findFirst({
+          where: and(
+            eq(seats.tableId, input.tableId),
+            eq(seats.playerId, userId),
+          ),
+        });
+        authorized = !!seat;
+      }
+      if (!authorized) throw new Error("FORBIDDEN: not part of this table");
+
+      const apiKey = process.env.LIVEKIT_API_KEY;
+      const apiSecret = process.env.LIVEKIT_API_SECRET;
+      const serverUrl = process.env.LIVEKIT_URL;
+      if (!apiKey || !apiSecret || !serverUrl) {
+        throw new Error("LiveKit env vars are not configured");
+      }
+
+      // Create grant for this room (tableId). Participants can publish and subscribe.
+      const grant: VideoGrant = {
+        room: input.tableId,
+        canPublish: true,
+        canSubscribe: true,
+        roomJoin: true,
+      } as VideoGrant;
+
+      const at = new AccessToken(apiKey, apiSecret, {
+        identity: userId,
+        ttl: "1h",
+      });
+      at.addGrant(grant);
+      const token = await at.toJwt();
+      return { token, serverUrl };
+    }),
   list: publicProcedure.query(async () => {
     const rows = await db.query.pokerTables.findMany({
       orderBy: (t, { asc }) => [asc(t.createdAt)],
