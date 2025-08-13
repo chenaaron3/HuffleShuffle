@@ -10,7 +10,7 @@ export default function Home() {
     <>
       <Head>
         <title>HuffleShuffle</title>
-        <meta name="description" content="Play online poker with a real dealer" />
+        <meta name="description" content="Play online poker with a live dealer" />
       </Head>
       <main className="relative min-h-screen overflow-hidden bg-gradient-to-b from-[#0b0f14] via-[#0a0d12] to-black text-white">
         {/* Decorative gold images */}
@@ -50,10 +50,10 @@ export default function Home() {
           </div>
 
           <h1 className="bg-gradient-to-r from-[#FFD700] via-[#F2C14E] to-[#D4AF37] bg-clip-text text-6xl font-extrabold tracking-tight text-transparent md:text-7xl">
-            Real‑Dealer Online Poker
+            Live‑Dealer Online Poker
           </h1>
           <p className="max-w-2xl text-lg text-zinc-300">
-            Join a table and play Texas Hold’em streamed live with a real dealer. Simple, fast, and social.
+            Join a table and play Texas Hold’em streamed live with a live dealer. Simple, fast, and social.
           </p>
           <div className="flex gap-4">
             {session ? (
@@ -76,7 +76,7 @@ export default function Home() {
         {/* Value props */}
         <section className="mx-auto grid max-w-6xl grid-cols-1 gap-4 px-6 pb-20 md:grid-cols-3">
           {[
-            { title: 'Real Dealers', desc: 'Professionally hosted streams — feel the casino vibe from home.' },
+            { title: 'Live Dealers', desc: 'Professionally hosted streams — feel the casino vibe from home.' },
             { title: 'Instant Seats', desc: 'Jump into active tables with one click. No downloads.' },
             { title: 'Real Decks', desc: 'Every card is dealt from a real deck by a live dealer on camera — no RNG, no scripts.' },
           ].map((f) => (
@@ -99,7 +99,7 @@ export default function Home() {
               { n: 1, t: 'Sign in', d: 'Create your account and wallet.' },
               { n: 2, t: 'Enter Lobby', d: 'Browse live tables and pick your stakes.' },
               { n: 3, t: 'Buy‑in', d: 'Join a seat and set your buy‑in instantly.' },
-              { n: 4, t: 'Play Live', d: 'Chat, bet, and enjoy the show with real dealers.' },
+              { n: 4, t: 'Play Live', d: 'Chat, bet, and enjoy the show with live dealers.' },
             ].map((s) => (
               <li key={s.n} className="relative rounded-xl border border-white/10 bg-zinc-900/40 p-5">
                 <GlowingEffect disabled={false} blur={3} proximity={50} spread={18} className="rounded-xl" />
