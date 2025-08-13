@@ -1,14 +1,13 @@
-import { spawn } from 'node:child_process';
+import { ChildProcess, spawn } from 'node:child_process';
 import { webcrypto as crypto } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import Pusher from 'pusher-js/node';
 
-import { getSerialNumber, loadEnv } from './daemon-util';
+import { getSerialNumber, loadEnv, resolveTable } from './daemon-util';
 
 // Minimal .env loader
 loadEnv();
-
-const API_BASE = process.env.API_BASE_URL ?? "http://localhost:3000";
 
 async function ensurePiKeys(
   serial: string,
@@ -74,38 +73,80 @@ async function main() {
   console.log(
     "[hand-daemon] Public key (SPKI) stored; add to admin UI if not set:",
   );
-  console.log(
-    join(
-      process.env.HOME || "/home/pi",
-      ".huffle",
-      "keys",
-      `${serial}.spki.pem`,
-    ),
-  );
+  console.log(join("/home/pi", ".huffle", "keys", `${serial}.spki.pem`));
 
   const priv = await importPkcs8Pem(privatePemPath);
-  const resp = await fetch(
-    `${API_BASE}/api/pi/room?serial=${encodeURIComponent(serial)}`,
-  );
-  if (!resp.ok) throw new Error(`room fetch failed: ${resp.status}`);
-  const data = (await resp.json()) as {
-    tableId?: string;
-    encNonce?: string | null;
+  let current: ChildProcess | null = null;
+  const startStream = async (encNonce: string) => {
+    const roomName = await decryptBase64(priv, encNonce);
+    console.log("[hand-daemon] Starting stream to hand room:", roomName);
+    const script = join(process.cwd(), "run_hand.sh");
+    const env = {
+      ...process.env,
+      ROOM_NAME: roomName!,
+      IDENTITY: serial,
+    } as NodeJS.ProcessEnv;
+    if (current) {
+      try {
+        // kill entire process group so grandchildren (lk, libcamera-vid) die too
+        try {
+          process.kill(-current!.pid, "SIGINT");
+        } catch {}
+        setTimeout(() => {
+          try {
+            process.kill(-current!.pid, "SIGKILL");
+          } catch {}
+        }, 3000);
+      } catch {}
+    }
+    const child = spawn(script, { stdio: "inherit", env, detached: true });
+    current = child;
+    child.on("exit", (code) => {
+      console.log("[hand-daemon] stream exited", code);
+      if (current === child) current = null;
+    });
   };
-  if (!data?.encNonce) throw new Error("No encNonce available for this device");
-  const roomName = await decryptBase64(priv, data.encNonce);
 
-  console.log("[hand-daemon] Starting stream to hand room:", roomName);
-  const script = join(process.cwd(), "run_hand.sh");
-  const env = {
-    ...process.env,
-    ROOM_NAME: roomName!,
-  } as NodeJS.ProcessEnv;
-  const child = spawn("bash", ["-lc", `${JSON.stringify(script)} | cat`], {
-    stdio: "inherit",
-    env,
+  // Subscribe to device channel via Pusher
+  const key = process.env.PUSHER_KEY;
+  const cluster = process.env.PUSHER_CLUSTER;
+  if (!key || !cluster) throw new Error("Missing PUSHER_KEY or PUSHER_CLUSTER");
+  const pusher = new Pusher(key, { cluster, forceTLS: true });
+  const channel = pusher.subscribe(`device-${serial}`);
+  channel.bind("hand-room", async (data: { encNonce?: string }) => {
+    try {
+      if (!data?.encNonce) return;
+      await startStream(data.encNonce);
+    } catch (e) {
+      console.error("[hand-daemon] pusher event error", e);
+    }
   });
-  await new Promise<void>((resolve) => child.on("exit", () => resolve()));
+  channel.bind("stop-stream", () => {
+    try {
+      if (current) {
+        console.log("[hand-daemon] stopping stream");
+        // Kill entire process group to ensure all descendants terminate
+        try {
+          process.kill(-current!.pid, "SIGINT");
+        } catch {}
+        setTimeout(() => {
+          try {
+            process.kill(-current!.pid, "SIGKILL");
+          } catch {}
+        }, 3000);
+        current = null;
+      }
+    } catch (e) {
+      console.error("[hand-daemon] stop error", e);
+    }
+  });
+  console.log("[hand-daemon] started");
+
+  // Also perform a one-shot fetch in case event already existed
+  try {
+    const initial = await resolveTable(serial);
+    if (initial?.encNonce) await startStream(initial.encNonce);
+  } catch {}
 }
 
 main().catch((e) => {

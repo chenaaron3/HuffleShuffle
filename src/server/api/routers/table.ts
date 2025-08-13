@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { createTRPCRouter, protectedProcedure, publicProcedure } from '~/server/api/trpc';
 import { db } from '~/server/db';
 import { games, piDevices, pokerTables, seats, users } from '~/server/db/schema';
+import { pusher } from '~/server/pusher';
 
 import type { VideoGrant } from "livekit-server-sdk";
 const requireCjs = createRequire(import.meta.url);
@@ -588,6 +589,18 @@ export const tableRouter = createTRPCRouter({
         if (!updatedSeatRows || updatedSeatRows.length === 0)
           throw new Error("Failed to update seat");
         const updatedSeat = updatedSeatRows[0]!;
+        // Fire pusher events: table and device channel
+        try {
+          if (pusher) {
+            if (pi?.serial && encPi) {
+              await pusher.trigger(`device-${pi.serial}`, "hand-room", {
+                tableId: input.tableId,
+                seatNumber,
+                encNonce: encPi,
+              });
+            }
+          }
+        } catch {}
         return { seat: updatedSeat } as const;
       });
       return {

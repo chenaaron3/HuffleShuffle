@@ -22,6 +22,17 @@ export function loadEnv(): void {
       if (!(k in process.env)) (process.env as any)[k] = v;
     });
   } catch {}
+
+  const API_BASE = process.env.API_BASE_URL ?? "http://localhost:3000";
+  const LIVEKIT_URL = process.env.LIVEKIT_URL; // e.g. wss://your.livekit.server
+  const LIVEKIT_API_KEY = process.env.LIVEKIT_API_KEY;
+  const LIVEKIT_API_SECRET = process.env.LIVEKIT_API_SECRET;
+
+  if (!LIVEKIT_API_KEY || !LIVEKIT_API_SECRET || !LIVEKIT_URL || !API_BASE) {
+    throw new Error(
+      "Missing LIVEKIT_API_KEY or LIVEKIT_API_SECRET or LIVEKIT_URL or API_BASE",
+    );
+  }
 }
 
 export function lastNonEmptyLine(text: string): string {
@@ -75,12 +86,27 @@ export function ensureLivekitCLI(): void {
 export const API_BASE = () =>
   process.env.API_BASE_URL ?? "http://localhost:3000";
 
-export async function resolveTableId(serial: string): Promise<string> {
+export async function resolveTable(serial: string): Promise<{
+  tableId: string;
+  encNonce: string | null;
+  seatNumber: number | null;
+  type: "card" | "dealer" | "scanner" | "button";
+}> {
   const resp = await fetch(
     `${API_BASE()}/api/pi/room?serial=${encodeURIComponent(serial)}`,
   );
-  if (!resp.ok) throw new Error(`resolveTableId failed: ${resp.status}`);
-  const data = (await resp.json()) as { tableId: string };
-  if (!data?.tableId) throw new Error("resolveTableId invalid response");
-  return data.tableId;
+  if (!resp.ok) throw new Error(`resolveTable failed: ${resp.status}`);
+  const data = (await resp.json()) as {
+    tableId?: string;
+    encNonce?: string | null;
+    seatNumber?: number | null;
+    type?: "card" | "dealer" | "scanner" | "button";
+  };
+  if (!data.tableId) throw new Error("resolveTable invalid response");
+  return {
+    tableId: data.tableId,
+    encNonce: data.encNonce ?? null,
+    seatNumber: data.seatNumber ?? null,
+    type: data.type!,
+  };
 }

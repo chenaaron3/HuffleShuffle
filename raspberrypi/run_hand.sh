@@ -56,10 +56,19 @@ for _ in $(seq 1 100); do
   sleep 0.1
 done
 
-# Join and publish
-exec lk ${LIVEKIT_URL:+--url "$LIVEKIT_URL"} \
-       ${LIVEKIT_API_KEY:+--api-key "$LIVEKIT_API_KEY"} \
-       ${LIVEKIT_API_SECRET:+--api-secret "$LIVEKIT_API_SECRET"} \
-       room join --identity "$IDENTITY" \
-       --publish "h264://$HOST:$PORT" \
-       "$ROOM_NAME"
+# Join and publish (run in background so trap can clean up both processes)
+lk ${LIVEKIT_URL:+--url "$LIVEKIT_URL"} \
+   ${LIVEKIT_API_KEY:+--api-key "$LIVEKIT_API_KEY"} \
+   ${LIVEKIT_API_SECRET:+--api-secret "$LIVEKIT_API_SECRET"} \
+   room join --identity "$IDENTITY" \
+   --publish "h264://$HOST:$PORT" \
+   "$ROOM_NAME" &
+LK_PID=$!
+
+cleanup() {
+  kill "$LK_PID" >/dev/null 2>&1 || true
+  kill "$VID_PID" >/dev/null 2>&1 || true
+}
+trap cleanup EXIT INT TERM
+
+wait "$LK_PID"
