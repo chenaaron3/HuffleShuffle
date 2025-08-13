@@ -1,6 +1,5 @@
 import { execSync, spawn } from 'node:child_process';
 import { join } from 'node:path';
-import room from '~/pages/api/pi/room';
 
 import { getSerialNumber, loadEnv, resolveTable } from './daemon-util';
 
