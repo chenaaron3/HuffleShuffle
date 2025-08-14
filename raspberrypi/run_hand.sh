@@ -65,6 +65,22 @@ lk ${LIVEKIT_URL:+--url "$LIVEKIT_URL"} \
    "$ROOM_NAME" &
 LK_PID=$!
 
+# Ensure we become our own process group leader to receive group signals
+if [ $$ -ne 1 ]; then
+  setsid bash -c "echo -n" >/dev/null 2>&1 || true
+fi
+
+# Watch parent PID and self-terminate if it disappears (double-fork safety)
+PARENT_PID=${PARENT_PID:-}
+if [ -n "$PARENT_PID" ]; then
+  (
+    while kill -0 "$PARENT_PID" >/dev/null 2>&1; do sleep 1; done
+    kill "$LK_PID" >/dev/null 2>&1 || true
+    kill "$VID_PID" >/dev/null 2>&1 || true
+    exit 0
+  ) &
+fi
+
 cleanup() {
   kill "$LK_PID" >/dev/null 2>&1 || true
   kill "$VID_PID" >/dev/null 2>&1 || true

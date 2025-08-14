@@ -2,12 +2,31 @@ import { ChildProcess, spawn } from 'node:child_process';
 import { webcrypto as crypto } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import Pusher from 'pusher-js/node';
 
 import { getSerialNumber, loadEnv, resolveTable } from './daemon-util';
 
 // Minimal .env loader
 loadEnv();
+
+function getProcessGroupIdFromChild(
+  child: ChildProcess | null,
+): number | undefined {
+  if (!child || typeof child.pid !== "number") return undefined;
+  return -child.pid;
+}
+
+function terminateProcessGroup(pgid: number, graceMs = 3000): void {
+  try {
+    process.kill(pgid, "SIGINT");
+  } catch {}
+  setTimeout(() => {
+    try {
+      process.kill(pgid, "SIGKILL");
+    } catch {}
+  }, graceMs);
+}
 
 async function ensurePiKeys(
   serial: string,
@@ -67,7 +86,7 @@ async function decryptBase64(priv: CryptoKey, b64: string): Promise<string> {
   return new TextDecoder().decode(pt);
 }
 
-async function main() {
+export async function runHandDaemon(): Promise<void> {
   const serial = getSerialNumber();
   const { publicPem, privatePemPath } = await ensurePiKeys(serial);
   console.log(
@@ -77,6 +96,13 @@ async function main() {
 
   const priv = await importPkcs8Pem(privatePemPath);
   let current: ChildProcess | null = null;
+  const killCurrentGroup = () => {
+    try {
+      const pgid = getProcessGroupIdFromChild(current);
+      if (!pgid) return;
+      terminateProcessGroup(pgid);
+    } catch {}
+  };
   const startStream = async (encNonce: string) => {
     const roomName = await decryptBase64(priv, encNonce);
     console.log("[hand-daemon] Starting stream to hand room:", roomName);
@@ -85,26 +111,12 @@ async function main() {
       ...process.env,
       ROOM_NAME: roomName!,
       IDENTITY: serial,
+      PARENT_PID: String(process.pid),
     } as NodeJS.ProcessEnv;
     if (current) {
       try {
-        // kill entire process group so grandchildren (lk, libcamera-vid) die too
-        try {
-          const pid =
-            current && typeof current.pid === "number"
-              ? -current.pid
-              : undefined;
-          if (pid) process.kill(pid, "SIGINT");
-        } catch {}
-        setTimeout(() => {
-          try {
-            const pid =
-              current && typeof current.pid === "number"
-                ? -current.pid
-                : undefined;
-            if (pid) process.kill(pid, "SIGKILL");
-          } catch {}
-        }, 3000);
+        const targetPgid = getProcessGroupIdFromChild(current);
+        if (targetPgid) terminateProcessGroup(targetPgid);
       } catch {}
     }
     const child = spawn(script, { stdio: "inherit", env, detached: true });
@@ -133,23 +145,8 @@ async function main() {
     try {
       if (current) {
         console.log("[hand-daemon] stopping stream");
-        // Kill entire process group to ensure all descendants terminate
-        try {
-          const pid =
-            current && typeof current.pid === "number"
-              ? -current.pid
-              : undefined;
-          if (pid) process.kill(pid, "SIGINT");
-        } catch {}
-        setTimeout(() => {
-          try {
-            const pid =
-              current && typeof current.pid === "number"
-                ? -current.pid
-                : undefined;
-            if (pid) process.kill(pid, "SIGKILL");
-          } catch {}
-        }, 3000);
+        const targetPgid = getProcessGroupIdFromChild(current);
+        if (targetPgid) terminateProcessGroup(targetPgid);
         current = null;
       }
     } catch (e) {
@@ -158,6 +155,17 @@ async function main() {
   });
   console.log("[hand-daemon] started");
 
+  // Ensure child group is killed if daemon exits
+  process.on("SIGINT", () => {
+    killCurrentGroup();
+    process.exit(0);
+  });
+  process.on("SIGTERM", () => {
+    killCurrentGroup();
+    process.exit(0);
+  });
+  process.on("exit", killCurrentGroup);
+
   // Also perform a one-shot fetch in case event already existed
   try {
     const initial = await resolveTable(serial);
@@ -165,7 +173,15 @@ async function main() {
   } catch {}
 }
 
-main().catch((e) => {
-  console.error(e);
-  process.exit(1);
-});
+// Run only when executed directly, not when imported
+try {
+  const isDirect =
+    import.meta &&
+    (import.meta as any).url === pathToFileURL(process.argv[1] || "").href;
+  if (isDirect) {
+    runHandDaemon().catch((e) => {
+      console.error(e);
+      process.exit(1);
+    });
+  }
+} catch {}

@@ -1,7 +1,8 @@
-import { spawn } from 'node:child_process';
 import { join } from 'node:path';
 
 import { getSerialNumber, loadEnv, resolveTable } from './daemon-util';
+import { runDealerDaemon } from './dealer-daemon';
+import { runHandDaemon } from './hand-daemon';
 
 async function main() {
   loadEnv();
@@ -19,22 +20,15 @@ async function main() {
   }
   if (!info?.type) throw new Error("Unable to resolve device type for this Pi");
 
-  let script: string;
   if (info.type === "dealer") {
-    script = join(process.cwd(), "dealer-daemon.ts");
     console.log("[generic-daemon] launching dealer daemon");
+    await runDealerDaemon();
   } else if (info.type === "card") {
-    script = join(process.cwd(), "hand-daemon.ts");
     console.log("[generic-daemon] launching hand daemon");
+    await runHandDaemon();
   } else {
     throw new Error(`[generic-daemon] unsupported device type: ${info.type}`);
   }
-
-  const child = spawn("npx", ["-y", "tsx", script], {
-    stdio: "inherit",
-    env: process.env,
-  });
-  await new Promise<void>((resolve) => child.on("exit", () => resolve()));
 }
 
 main().catch((e) => {

@@ -333,7 +333,7 @@ function HandCameraVideoContent() {
     if (!cameraTrack) {
         return (
             <div className="aspect-video flex items-center justify-center text-xs text-zinc-400">
-                Waiting for hand camera...
+                Waiting to see your hand...
             </div>
         );
     }

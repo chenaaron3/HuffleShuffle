@@ -52,7 +52,6 @@ echo "Using V4L2 device: $DEV" >&2
 v4l2-ctl -d "$DEV" --set-fmt-video=width=1920,height=1080,pixelformat=YUYV || true
 v4l2-ctl -d "$DEV" --set-parm=30 || true
 
-# Start GStreamer H.264 over TCP
 rm -f "$LOG_FILE"
 
 PIPELINE="v4l2src device=$DEV ! \
@@ -68,7 +67,11 @@ echo "Starting GStreamer pipeline..." >&2
 sh -c "gst-launch-1.0 -v $PIPELINE" >"$LOG_FILE" 2>&1 &
 GST_PID=$!
 
-cleanup() { kill "$GST_PID" >/dev/null 2>&1 || true; }
+LK_PID=""
+cleanup() {
+  if [ -n "$LK_PID" ]; then kill "$LK_PID" >/dev/null 2>&1 || true; fi
+  if [ -n "$GST_PID" ]; then kill "$GST_PID" >/dev/null 2>&1 || true; fi
+}
 trap cleanup EXIT INT TERM
 
 # Wait for listener (up to ~15s)
@@ -78,12 +81,14 @@ for _ in $(seq 1 150); do
   sleep 0.1
 done
 
-# Join and publish
-exec lk ${LIVEKIT_URL:+--url "$LIVEKIT_URL"} \
-       ${LIVEKIT_API_KEY:+--api-key "$LIVEKIT_API_KEY"} \
-       ${LIVEKIT_API_SECRET:+--api-secret "$LIVEKIT_API_SECRET"} \
-       room join --identity "$IDENTITY" \
-       --publish "h264://$HOST:$PORT" \
-       "$ROOM_NAME"
+# Join and publish (foreground so traps work)
+lk ${LIVEKIT_URL:+--url "$LIVEKIT_URL"} \
+   ${LIVEKIT_API_KEY:+--api-key "$LIVEKIT_API_KEY"} \
+   ${LIVEKIT_API_SECRET:+--api-secret "$LIVEKIT_API_SECRET"} \
+   room join --identity "$IDENTITY" \
+   --publish "h264://$HOST:$PORT" \
+   "$ROOM_NAME" &
+LK_PID=$!
+wait "$LK_PID"
 
 
