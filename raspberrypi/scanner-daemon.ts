@@ -118,6 +118,7 @@ export async function runScannerDaemon(): Promise<void> {
   console.log(`[scanner-daemon] started for table ${info.tableId}`);
 
   const API = API_BASE();
+  console.log(`[scanner-daemon] API base: ${API}`);
   let lastDealtAt = 0;
 
   const handleScan = async (rawCode: string) => {
@@ -147,23 +148,30 @@ export async function runScannerDaemon(): Promise<void> {
         console.log("[scanner-daemon] local verify passed");
       }
     } catch {}
-    console.error("[scanner-daemon] sending scan request", canonical);
+    console.log("[scanner-daemon] sending scan request", canonical);
     try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 4000);
+      const started = Date.now();
       const resp = await fetch(`${API}/api/pi/scan`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ serial, barcode, ts, signature }),
+        signal: controller.signal,
       });
+      clearTimeout(timeout);
+      const ms = Date.now() - started;
       if (!resp.ok) {
-        console.error("[scanner-daemon] deal rejected", await resp.text());
-        // Try system beep if available
+        const text = await resp.text();
+        console.error(`
+[scanner-daemon] deal rejected (status=${resp.status}, ${ms}ms): ${text}`);
         try {
           process.stdout.write("\u0007");
         } catch {}
         return;
       }
       lastDealtAt = now;
-      console.log("[scanner-daemon] dealt", barcode);
+      console.log(`[scanner-daemon] dealt ${barcode} (${ms}ms)`);
     } catch (e) {
       console.error("[scanner-daemon] request failed", e);
       try {

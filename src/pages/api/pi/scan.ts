@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { and, desc, eq, sql } from 'drizzle-orm';
-import { createVerify } from 'node:crypto';
+import { createHash, createVerify } from 'node:crypto';
 import { z } from 'zod';
 import { db } from '~/server/db';
 import { games, piDevices, seats } from '~/server/db/schema';
@@ -64,6 +64,9 @@ export default async function handler(
   const now = Math.floor(Date.now() / 1000);
   const tsNum = parseInt(body.ts, 10);
   if (!Number.isFinite(tsNum) || Math.abs(now - tsNum) > 30) {
+    console.error(
+      `[pi/scan] stale timestamp: serial=${body.serial} skew=${now - tsNum}s ts=${body.ts}`,
+    );
     return res.status(401).json({ error: "stale timestamp" });
   }
 
@@ -78,6 +81,15 @@ export default async function handler(
     return res.status(403).json({ error: "Device key missing" });
 
   const canonical = `${body.serial}|${body.barcode}|${body.ts}`;
+  const canonicalSha = createHash("sha256")
+    .update(canonical)
+    .digest("hex")
+    .slice(0, 16);
+  const pkIsPem = device.publicKey.includes("BEGIN PUBLIC KEY");
+  const pkFingerprint = createHash("sha256")
+    .update(device.publicKey.replace(/\s+/g, ""))
+    .digest("hex")
+    .slice(0, 16);
   const verify = createVerify("RSA-SHA256");
   verify.update(canonical);
   verify.end();
@@ -85,7 +97,12 @@ export default async function handler(
     device.publicKey,
     Buffer.from(body.signature, "base64"),
   );
-  if (!ok) return res.status(401).json({ error: "signature invalid" });
+  if (!ok) {
+    console.error(
+      `[pi/scan] signature invalid: serial=${body.serial} pkFingerprint=${pkFingerprint} pkIsPem=${pkIsPem} canonicalSha=${canonicalSha} sigLen=${body.signature.length}`,
+    );
+    return res.status(401).json({ error: "signature invalid" });
+  }
 
   // Update last seen
   await db
