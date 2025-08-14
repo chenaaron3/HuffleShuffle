@@ -67,6 +67,21 @@ export default async function handler(
           encNonce: seat.encryptedPiNonce,
         });
       }
+
+      // Also signal dealer to start if not already streaming
+      const dealer = await db.query.piDevices.findFirst({
+        where: and(
+          eq(piDevices.tableId, tableId),
+          eq(piDevices.type, "dealer"),
+        ),
+      });
+      if (dealer?.serial && client) {
+        await client.trigger(
+          `device-${dealer.serial}`,
+          "dealer-start-stream",
+          {},
+        );
+      }
       return res.status(200).json({ ok: true });
     }
 
