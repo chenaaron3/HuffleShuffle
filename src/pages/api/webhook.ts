@@ -6,20 +6,10 @@ import { db } from '~/server/db';
 import { piDevices, seats } from '~/server/db/schema';
 import { pusher } from '~/server/pusher';
 
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
-
-async function readRawBody(req: NextApiRequest): Promise<string> {
-  const chunks: Buffer[] = [];
-  const iterable = req as unknown as AsyncIterable<Buffer | string>;
-  for await (const chunk of iterable) {
-    chunks.push(typeof chunk === "string" ? Buffer.from(chunk) : chunk);
-  }
-  return Buffer.concat(chunks).toString("utf8");
-}
+const receiver = new WebhookReceiver(
+  env.LIVEKIT_API_KEY,
+  env.LIVEKIT_API_SECRET,
+);
 
 export default async function handler(
   req: NextApiRequest,
@@ -30,30 +20,14 @@ export default async function handler(
     return res.status(405).end("Method Not Allowed");
   }
 
-  // Enforce expected content type from LiveKit
-  const contentType =
-    req.headers["content-type"] || req.headers["Content-Type"];
-  if (
-    typeof contentType !== "string" ||
-    !contentType.startsWith("application/webhook+json")
-  ) {
-    return res.status(415).end("Unsupported Media Type");
-  }
-
-  const receiver = new WebhookReceiver(
-    env.LIVEKIT_API_KEY,
-    env.LIVEKIT_API_SECRET,
-  );
-  const authHeader = req.headers["authorization"] as string | undefined;
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    return res.status(401).json({ ok: false });
-  }
-
   let event: Awaited<ReturnType<typeof receiver.receive>>;
   try {
-    const raw = await readRawBody(req);
-    // Allow minor clock skew (in ms)
-    event = await receiver.receive(raw, authHeader, false, 60_000);
+    event = await receiver.receive(
+      req.body,
+      req.headers.authorization,
+      false,
+      60_000,
+    );
   } catch (e) {
     return res.status(401).json({ ok: false });
   }
@@ -116,8 +90,27 @@ export default async function handler(
       return res.status(200).json({ ok: true });
     }
 
-    // Stop all streams if room ended/finished
-    if (type === "room_finished" || type === "room_ended") {
+    // Start dealer camera when room starts
+    if (type === "room_started") {
+      const device = await db.query.piDevices.findFirst({
+        where: and(
+          eq(piDevices.tableId, tableId),
+          eq(piDevices.type, "dealer"),
+        ),
+      });
+      const client = pusher;
+      if (client && device?.serial) {
+        await client.trigger(
+          `device-${device.serial}`,
+          "dealer-start-stream",
+          {},
+        );
+      }
+      return res.status(200).json({ ok: true });
+    }
+
+    // Stop all streams if room finished
+    if (type === "room_finished") {
       const devices = await db.query.piDevices.findMany({
         where: and(eq(piDevices.tableId, tableId), eq(piDevices.type, "card")),
       });
@@ -129,6 +122,22 @@ export default async function handler(
               ? client.trigger(`device-${d.serial}`, "stop-stream", {})
               : Promise.resolve(),
           ),
+        );
+      }
+
+      // Also stop dealer camera(s)
+      const dealer = await db.query.piDevices.findFirst({
+        where: and(
+          eq(piDevices.tableId, tableId),
+          eq(piDevices.type, "dealer"),
+        ),
+      });
+      const dealerClient = pusher;
+      if (dealerClient && dealer?.serial) {
+        await dealerClient.trigger(
+          `device-${dealer.serial}`,
+          "dealer-stop-stream",
+          {},
         );
       }
       return res.status(200).json({ ok: true });

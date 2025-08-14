@@ -11,5 +11,11 @@
     "types": ["node"],
     "verbatimModuleSyntax": true
   },
-  "include": ["dealer-daemon.ts"]
+  "include": [
+    "dealer-daemon.ts",
+    "hand-daemon.ts",
+    "generic-daemon.ts",
+    "daemon-util.ts",
+    "types/**/*.d.ts"
+  ]
 }

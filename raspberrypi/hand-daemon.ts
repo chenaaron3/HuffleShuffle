@@ -90,11 +90,19 @@ async function main() {
       try {
         // kill entire process group so grandchildren (lk, libcamera-vid) die too
         try {
-          process.kill(-current!.pid, "SIGINT");
+          const pid =
+            current && typeof current.pid === "number"
+              ? -current.pid
+              : undefined;
+          if (pid) process.kill(pid, "SIGINT");
         } catch {}
         setTimeout(() => {
           try {
-            process.kill(-current!.pid, "SIGKILL");
+            const pid =
+              current && typeof current.pid === "number"
+                ? -current.pid
+                : undefined;
+            if (pid) process.kill(pid, "SIGKILL");
           } catch {}
         }, 3000);
       } catch {}
@@ -127,11 +135,19 @@ async function main() {
         console.log("[hand-daemon] stopping stream");
         // Kill entire process group to ensure all descendants terminate
         try {
-          process.kill(-current!.pid, "SIGINT");
+          const pid =
+            current && typeof current.pid === "number"
+              ? -current.pid
+              : undefined;
+          if (pid) process.kill(pid, "SIGINT");
         } catch {}
         setTimeout(() => {
           try {
-            process.kill(-current!.pid, "SIGKILL");
+            const pid =
+              current && typeof current.pid === "number"
+                ? -current.pid
+                : undefined;
+            if (pid) process.kill(pid, "SIGKILL");
           } catch {}
         }, 3000);
         current = null;
