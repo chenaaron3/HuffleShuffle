@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { getSerialNumber, loadEnv, resolveTable } from './daemon-util';
 import { runDealerDaemon } from './dealer-daemon';
 import { runHandDaemon } from './hand-daemon';
+import { runScannerDaemon } from './scanner-daemon';
 
 async function main() {
   loadEnv();
@@ -26,6 +27,9 @@ async function main() {
   } else if (info.type === "card") {
     console.log("[generic-daemon] launching hand daemon");
     await runHandDaemon();
+  } else if (info.type === "scanner") {
+    console.log("[generic-daemon] launching scanner daemon");
+    await runScannerDaemon();
   } else {
     throw new Error(`[generic-daemon] unsupported device type: ${info.type}`);
   }

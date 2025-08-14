@@ -1,5 +1,6 @@
 import { execSync } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
+import { webcrypto as crypto } from 'node:crypto';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 export function loadEnv(): void {
@@ -109,4 +110,74 @@ export async function resolveTable(serial: string): Promise<{
     seatNumber: data.seatNumber ?? null,
     type: data.type!,
   };
+}
+
+// --- Shared key utilities for Pi daemons ---
+export async function ensurePiKeys(
+  serial: string,
+): Promise<{ publicPem: string; privatePemPath: string }> {
+  const home = process.env.HOME || "/home/pi";
+  const dir = join(home, ".huffle", "keys");
+  if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+  const privPath = join(dir, `${serial}.pk8.pem`);
+  const pubPath = join(dir, `${serial}.spki.pem`);
+  if (existsSync(pubPath) && existsSync(privPath)) {
+    return {
+      publicPem: readFileSync(pubPath, "utf8"),
+      privatePemPath: privPath,
+    };
+  }
+  const kp = await crypto.subtle.generateKey(
+    {
+      name: "RSA-OAEP",
+      modulusLength: 2048,
+      publicExponent: new Uint8Array([1, 0, 1]),
+      hash: "SHA-256",
+    },
+    true,
+    ["encrypt", "decrypt"],
+  );
+  const spki = await crypto.subtle.exportKey("spki", kp.publicKey);
+  const pkcs8 = await crypto.subtle.exportKey("pkcs8", kp.privateKey);
+  const toPem = (label: string, der: ArrayBuffer) => {
+    const b64 = Buffer.from(new Uint8Array(der)).toString("base64");
+    const wrapped = b64.replace(/.{1,64}/g, "$&\n");
+    return `-----BEGIN ${label}-----\n${wrapped}-----END ${label}-----\n`;
+  };
+  const pubPem = toPem("PUBLIC KEY", spki);
+  const privPem = toPem("PRIVATE KEY", pkcs8);
+  writeFileSync(pubPath, pubPem, "utf8");
+  writeFileSync(privPath, privPem, "utf8");
+  return { publicPem: pubPem, privatePemPath: privPath };
+}
+
+export function signMessage(privatePem: string, message: string): string {
+  const { createSign } = require("node:crypto");
+  const sign = createSign("RSA-SHA256");
+  sign.update(message);
+  sign.end();
+  const sig = sign.sign(privatePem);
+  return sig.toString("base64");
+}
+
+export function importPkcs8Pem(privatePemPath: string): Promise<CryptoKey> {
+  const pem = readFileSync(privatePemPath, "utf8");
+  const b64 = pem.replace(/-----[^-]+-----/g, "").replace(/\s+/g, "");
+  const der = Buffer.from(b64, "base64");
+  return crypto.subtle.importKey(
+    "pkcs8",
+    der,
+    { name: "RSA-OAEP", hash: "SHA-256" },
+    false,
+    ["decrypt"],
+  );
+}
+
+export async function decryptBase64(
+  priv: CryptoKey,
+  b64: string,
+): Promise<string> {
+  const bin = Buffer.from(b64, "base64");
+  const pt = await crypto.subtle.decrypt({ name: "RSA-OAEP" }, priv, bin);
+  return new TextDecoder().decode(pt);
 }

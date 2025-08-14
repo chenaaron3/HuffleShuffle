@@ -1,11 +1,11 @@
 import { ChildProcess, spawn } from 'node:child_process';
 import { webcrypto as crypto } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import Pusher from 'pusher-js/node';
 
-import { getSerialNumber, loadEnv, resolveTable } from './daemon-util';
+import { decryptBase64, ensurePiKeys, getSerialNumber, loadEnv, resolveTable } from './daemon-util';
 
 // Minimal .env loader
 loadEnv();
@@ -28,45 +28,6 @@ function terminateProcessGroup(pgid: number, graceMs = 3000): void {
   }, graceMs);
 }
 
-async function ensurePiKeys(
-  serial: string,
-): Promise<{ publicPem: string; privatePemPath: string }> {
-  const home = process.env.HOME || "/home/pi";
-  const dir = join(home, ".huffle", "keys");
-  if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-  const privPath = join(dir, `${serial}.pk8.pem`);
-  const pubPath = join(dir, `${serial}.spki.pem`);
-  if (existsSync(pubPath) && existsSync(privPath)) {
-    return {
-      publicPem: readFileSync(pubPath, "utf8"),
-      privatePemPath: privPath,
-    };
-  }
-  // Generate with WebCrypto
-  const kp = await crypto.subtle.generateKey(
-    {
-      name: "RSA-OAEP",
-      modulusLength: 2048,
-      publicExponent: new Uint8Array([1, 0, 1]),
-      hash: "SHA-256",
-    },
-    true,
-    ["encrypt", "decrypt"],
-  );
-  const spki = await crypto.subtle.exportKey("spki", kp.publicKey);
-  const pkcs8 = await crypto.subtle.exportKey("pkcs8", kp.privateKey);
-  const toPem = (label: string, der: ArrayBuffer) => {
-    const b64 = Buffer.from(new Uint8Array(der)).toString("base64");
-    const wrapped = b64.replace(/.{1,64}/g, "$&\n");
-    return `-----BEGIN ${label}-----\n${wrapped}-----END ${label}-----\n`;
-  };
-  const pubPem = toPem("PUBLIC KEY", spki);
-  const privPem = toPem("PRIVATE KEY", pkcs8);
-  writeFileSync(pubPath, pubPem, "utf8");
-  writeFileSync(privPath, privPem, "utf8");
-  return { publicPem: pubPem, privatePemPath: privPath };
-}
-
 function importPkcs8Pem(privatePemPath: string): Promise<CryptoKey> {
   const pem = readFileSync(privatePemPath, "utf8");
   const b64 = pem.replace(/-----[^-]+-----/g, "").replace(/\s+/g, "");
@@ -78,12 +39,6 @@ function importPkcs8Pem(privatePemPath: string): Promise<CryptoKey> {
     false,
     ["decrypt"],
   );
-}
-
-async function decryptBase64(priv: CryptoKey, b64: string): Promise<string> {
-  const bin = Buffer.from(b64, "base64");
-  const pt = await crypto.subtle.decrypt({ name: "RSA-OAEP" }, priv, bin);
-  return new TextDecoder().decode(pt);
 }
 
 export async function runHandDaemon(): Promise<void> {

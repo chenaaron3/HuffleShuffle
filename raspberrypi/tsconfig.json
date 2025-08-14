@@ -12,10 +12,12 @@
     "verbatimModuleSyntax": true
   },
   "include": [
+    "generic-daemon.ts",
     "dealer-daemon.ts",
     "hand-daemon.ts",
-    "generic-daemon.ts",
+    "scanner-daemon.ts",
     "daemon-util.ts",
+    "daemon-info.ts",
     "types/**/*.d.ts"
   ]
 }

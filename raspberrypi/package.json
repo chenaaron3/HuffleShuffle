@@ -5,6 +5,7 @@
     "scripts": {
         "dealer": "tsx dealer-daemon.ts",
         "hand": "tsx hand-daemon.ts",
+        "info": "tsx daemon-info.ts",
         "build": "tsc -p tsconfig.json",
         "start": "tsx generic-daemon.ts"
     },

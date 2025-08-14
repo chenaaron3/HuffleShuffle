@@ -11,8 +11,8 @@ fi
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -y || true
 
-echo "[setup] Installing system dependencies (curl, libcamera-apps, gstreamer, nodejs)"
-apt-get install -y curl ca-certificates gnupg || true
+echo "[setup] Installing system dependencies (curl, jq, libcamera-apps, nodejs)"
+apt-get install -y curl ca-certificates gnupg jq || true
 
 if ! command -v libcamera-vid >/dev/null 2>&1; then
   apt-get install -y libcamera-apps || true

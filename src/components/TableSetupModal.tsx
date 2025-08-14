@@ -58,6 +58,13 @@ export function TableSetupModal({ tableId, open, onClose }: { tableId: string; o
                             <div>
                                 <div className="mb-1 text-sm text-zinc-300">Scanner</div>
                                 <input value={scannerSerial} onChange={(e) => setScannerSerial(e.target.value)} className="w-full rounded-md border border-white/10 bg-black/50 px-3 py-2 outline-none" placeholder="Scanner Pi serial" />
+                                <textarea
+                                    placeholder="Scanner Public Key (PEM)"
+                                    value={scannerPublicKey ?? ''}
+                                    onChange={(e) => setScannerPublicKey(e.target.value)}
+                                    className="w-full rounded-md border border-white/10 bg-black/50 px-3 py-2 text-xs outline-none min-h-[80px]"
+                                    rows={3}
+                                />
                             </div>
                         </section>
                         <section>
