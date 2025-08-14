@@ -1,6 +1,7 @@
-import { webcrypto as crypto } from 'node:crypto';
+import { createVerify } from 'node:crypto';
 import { closeSync, openSync, readFileSync, readSync } from 'node:fs';
 import { join } from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 import {
     API_BASE, ensurePiKeys, getSerialNumber, loadEnv, resolveTable, signMessage
@@ -9,20 +10,8 @@ import {
 // Minimal .env loader
 loadEnv();
 
-// Try to read from a HID device if SCANNER_DEVICE is set; otherwise, read newline-delimited input from stdin.
+// Read from a HID device (SCANNER_DEVICE, defaults to /dev/hidraw0)
 type ScanHandler = (code: string) => void;
-
-function startStdInReader(onScan: ScanHandler): void {
-  const readline = require("node:readline");
-  const rl = readline.createInterface({
-    input: process.stdin,
-    crlfDelay: Infinity,
-  });
-  rl.on("line", (line: string) => {
-    const code = line.trim();
-    if (code) onScan(code);
-  });
-}
 
 function startHidReader(devicePath: string, onScan: ScanHandler): void {
   const HID_BREAK_LINE_CODE = 0x28;
@@ -117,20 +106,10 @@ function startHidReader(devicePath: string, onScan: ScanHandler): void {
   });
 }
 
-function pause(ms: number) {
-  return new Promise((r) => setTimeout(r, ms));
-}
-
 export async function runScannerDaemon(): Promise<void> {
   const serial = getSerialNumber();
-  await ensurePiKeys(serial); // ensures key files exist
-  const privPath = join(
-    process.env.HOME || "/home/pi",
-    ".huffle",
-    "keys",
-    `${serial}.pk8.pem`,
-  );
-  const privatePem = readFileSync(privPath, "utf8");
+  const { publicPem, privatePemPath } = await ensurePiKeys(serial); // ensures key files exist
+  const privatePem = readFileSync(privatePemPath, "utf8");
 
   // Resolve table (also verifies device registration and returns type)
   const info = await resolveTable(serial);
@@ -156,6 +135,19 @@ export async function runScannerDaemon(): Promise<void> {
     const ts = Math.floor(Date.now() / 1000).toString();
     const canonical = `${serial}|${barcode}|${ts}`;
     const signature = signMessage(privatePem, canonical);
+    // Local sanity check against our own public key
+    try {
+      const v = createVerify("RSA-SHA256");
+      v.update(canonical);
+      v.end();
+      const ok = v.verify(publicPem, Buffer.from(signature, "base64"));
+      if (!ok) {
+        console.error("[scanner-daemon] local verify failed; check key files");
+      } else {
+        console.log("[scanner-daemon] local verify passed");
+      }
+    } catch {}
+    console.error("[scanner-daemon] sending scan request", canonical);
     try {
       const resp = await fetch(`${API}/api/pi/scan`, {
         method: "POST",
@@ -180,24 +172,11 @@ export async function runScannerDaemon(): Promise<void> {
     }
   };
 
-  const device = process.env.SCANNER_DEVICE;
-  if (device) {
-    console.log(`[scanner-daemon] reading from HID device ${device}`);
-    startHidReader(device, (code) => {
-      void handleScan(code);
-    });
-  } else {
-    console.log("[scanner-daemon] reading from stdin (keyboard-wedge mode)");
-    if (process.stdin.isTTY) {
-      try {
-        process.stdin.setRawMode(false as any);
-      } catch {}
-    }
-    process.stdin.resume();
-    startStdInReader((code) => {
-      void handleScan(code);
-    });
-  }
+  const device = process.env.SCANNER_DEVICE || "/dev/hidraw0";
+  console.log(`[scanner-daemon] reading from HID device ${device}`);
+  startHidReader(device, (code) => {
+    void handleScan(code);
+  });
 
   // Keep process alive
   // eslint-disable-next-line @typescript-eslint/no-empty-function
@@ -206,7 +185,6 @@ export async function runScannerDaemon(): Promise<void> {
 
 // Run only when executed directly, not when imported
 try {
-  const { pathToFileURL } = require("node:url");
   const isDirect =
     import.meta &&
     (import.meta as any).url === pathToFileURL(process.argv[1] || "").href;

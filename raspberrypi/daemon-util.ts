@@ -1,5 +1,5 @@
 import { execSync } from 'node:child_process';
-import { webcrypto as crypto } from 'node:crypto';
+import { createSign, webcrypto as crypto } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -152,7 +152,6 @@ export async function ensurePiKeys(
 }
 
 export function signMessage(privatePem: string, message: string): string {
-  const { createSign } = require("node:crypto");
   const sign = createSign("RSA-SHA256");
   sign.update(message);
   sign.end();
