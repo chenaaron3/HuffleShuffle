@@ -1,4 +1,4 @@
-import { createVerify } from 'node:crypto';
+import { createHash, createVerify } from 'node:crypto';
 import { closeSync, openSync, readFileSync, readSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -110,6 +110,11 @@ export async function runScannerDaemon(): Promise<void> {
   const serial = getSerialNumber();
   const { publicPem, privatePemPath } = await ensurePiKeys(serial); // ensures key files exist
   const privatePem = readFileSync(privatePemPath, "utf8");
+  const pubFingerprint = createHash("sha256")
+    .update(publicPem.replace(/\s+/g, ""))
+    .digest("hex")
+    .slice(0, 16);
+  console.log(`[scanner-daemon] publicKey fingerprint: ${pubFingerprint}`);
 
   // Resolve table (also verifies device registration and returns type)
   const info = await resolveTable(serial);
@@ -148,7 +153,14 @@ export async function runScannerDaemon(): Promise<void> {
         console.log("[scanner-daemon] local verify passed");
       }
     } catch {}
+    const canonicalSha = createHash("sha256")
+      .update(canonical)
+      .digest("hex")
+      .slice(0, 16);
     console.log("[scanner-daemon] sending scan request", canonical);
+    console.log(
+      `[scanner-daemon] canonicalSha=${canonicalSha} sigLen=${signature.length}`,
+    );
     try {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 4000);

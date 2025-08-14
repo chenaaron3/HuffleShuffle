@@ -90,6 +90,9 @@ export default async function handler(
     .update(device.publicKey.replace(/\s+/g, ""))
     .digest("hex")
     .slice(0, 16);
+  console.log(
+    `[pi/scan] verify input: serial=${body.serial} canonicalSha=${canonicalSha} pkFingerprint=${pkFingerprint} pkIsPem=${pkIsPem} sigLen=${body.signature.length}`,
+  );
   const verify = createVerify("RSA-SHA256");
   verify.update(canonical);
   verify.end();
