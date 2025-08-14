@@ -162,16 +162,13 @@ export async function runScannerDaemon(): Promise<void> {
       `[scanner-daemon] canonicalSha=${canonicalSha} sigLen=${signature.length}`,
     );
     try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 4000);
       const started = Date.now();
       const resp = await fetch(`${API}/api/pi/scan`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ serial, barcode, ts, signature }),
-        signal: controller.signal,
       });
-      clearTimeout(timeout);
+      console.log("[scanner-daemon] response", resp);
       const ms = Date.now() - started;
       if (!resp.ok) {
         const text = await resp.text();

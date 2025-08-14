@@ -41,6 +41,7 @@ function parseBarcodeToRankSuit(barcode: string): {
   };
   const suit = suitMap[suitCode];
   const rank = rankMap[rankCode];
+  console.log(`[pi/scan] barcode=${barcode} rank=${rank} suit=${suit}`);
   if (!suit || !rank) throw new Error("Invalid barcode");
   return { rank, suit };
 }
@@ -106,12 +107,6 @@ export default async function handler(
     );
     return res.status(401).json({ error: "signature invalid" });
   }
-
-  // Update last seen
-  await db
-    .update(piDevices)
-    .set({ lastSeenAt: sql`CURRENT_TIMESTAMP` })
-    .where(eq(piDevices.serial, body.serial));
 
   // Parse barcode to rank/suit
   let rank: string, suit: string;

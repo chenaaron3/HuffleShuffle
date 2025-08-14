@@ -116,7 +116,7 @@ export async function resolveTable(serial: string): Promise<{
 export async function ensurePiKeys(
   serial: string,
 ): Promise<{ publicPem: string; privatePemPath: string }> {
-  const home = process.env.HOME || "/home/pi";
+  const home = "/home/pi";
   const dir = join(home, ".huffle", "keys");
   if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
   const privPath = join(dir, `${serial}.pk8.pem`);

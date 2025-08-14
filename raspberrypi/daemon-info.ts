@@ -8,7 +8,7 @@ async function main() {
   const { publicPem, privatePemPath } = await ensurePiKeys(serial);
   const pubPath = privatePemPath.replace(/\.pk8\.pem$/i, ".spki.pem");
 
-  const home = process.env.HOME || "/home/pi";
+  const home = "/home/pi";
   const defaultPubPath = join(home, ".huffle", "keys", `${serial}.spki.pem`);
   const resolvedPubPath = existsSync(pubPath) ? pubPath : defaultPubPath;
 
