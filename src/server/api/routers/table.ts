@@ -589,18 +589,6 @@ export const tableRouter = createTRPCRouter({
         if (!updatedSeatRows || updatedSeatRows.length === 0)
           throw new Error("Failed to update seat");
         const updatedSeat = updatedSeatRows[0]!;
-        // Fire pusher events: table and device channel
-        try {
-          if (pusher) {
-            if (pi?.serial && encPi) {
-              await pusher.trigger(`device-${pi.serial}`, "hand-room", {
-                tableId: input.tableId,
-                seatNumber,
-                encNonce: encPi,
-              });
-            }
-          }
-        } catch {}
         return { seat: updatedSeat } as const;
       });
       return {

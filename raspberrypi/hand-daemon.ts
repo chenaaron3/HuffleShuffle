@@ -113,7 +113,7 @@ async function main() {
   if (!key || !cluster) throw new Error("Missing PUSHER_KEY or PUSHER_CLUSTER");
   const pusher = new Pusher(key, { cluster, forceTLS: true });
   const channel = pusher.subscribe(`device-${serial}`);
-  channel.bind("hand-room", async (data: { encNonce?: string }) => {
+  channel.bind("start-stream", async (data: { encNonce?: string }) => {
     try {
       if (!data?.encNonce) return;
       await startStream(data.encNonce);
