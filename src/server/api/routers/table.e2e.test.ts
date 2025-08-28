@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import { and, eq, isNotNull, sql } from 'drizzle-orm';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { createCaller } from '~/server/api/root';
@@ -8,6 +9,16 @@ describe("table e2e flow", () => {
   const dealerId = "dealer-vitest";
   const playerAId = "playerA-vitest";
   const playerBId = "playerB-vitest";
+  // Generate a fake public key for testing
+  const publicKey = `-----BEGIN PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAyVsuzIuAr7TYmbOtLrAp
+r6rmZBQrgMiXF0apTg7rvvSwa8JfUrZ0wXBHLx5VgpyHWNq0vFUwah7FgkpdGFQ0
+wWqRiwYWU6DG3S0sxWSYwfOiRTTLnnLPcUN3SzJjbJ5gnh7V7ukx5mpsm0dPHSiB
+REg4PNvbOo9suK4eIFKmRCgRdwNskA0pgaBi3PMfOLY+FbyTzlbs4xaQom2RMPt+
+1yD6mEACuOKzHQQP8Ve4ikkR4TdcYrnApUbfGa44xloA4fv500ez1hlBfRZ2ekow
+pynGBufiP7koxSK4Nt8TRAVvuS8zZYrtGyboIZvObx6mm2YS6j7T9n0pEACpO2rT
+rwIDAQAB
+-----END PUBLIC KEY-----`;
 
   const dealerCaller = createCaller({
     session: {
@@ -128,8 +139,16 @@ describe("table e2e flow", () => {
       tableId = res.tableId;
       expect(tableId).toBeTypeOf("string");
 
-      await playerACaller.table.join({ tableId, buyIn: 200 });
-      await playerBCaller.table.join({ tableId, buyIn: 200 });
+      await playerACaller.table.join({
+        tableId,
+        buyIn: 200,
+        userPublicKey: publicKey,
+      });
+      await playerBCaller.table.join({
+        tableId,
+        buyIn: 200,
+        userPublicKey: publicKey,
+      });
 
       let snap = await dealerCaller.table.action({
         tableId,
@@ -258,14 +277,17 @@ describe("table e2e flow", () => {
       const playerASeat = await playerACaller.table.join({
         tableId,
         buyIn: BUY_IN,
+        userPublicKey: publicKey,
       });
       const playerBSeat = await playerBCaller.table.join({
         tableId,
         buyIn: BUY_IN,
+        userPublicKey: publicKey,
       });
       const playerCSeat = await playerCCaller.table.join({
         tableId,
         buyIn: BUY_IN,
+        userPublicKey: publicKey,
       });
 
       // Dealer starts the game, expects the dealer button to be the first player

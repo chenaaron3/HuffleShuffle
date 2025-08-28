@@ -7,9 +7,12 @@
         "hand": "tsx hand-daemon.ts",
         "info": "tsx daemon-info.ts",
         "build": "tsc -p tsconfig.json",
-        "start": "tsx generic-daemon.ts"
+        "start": "tsx generic-daemon.ts",
+        "scanner": "tsx scanner-daemon.ts --test"
     },
     "dependencies": {
+        "@aws-sdk/client-sqs": "^3.875.0",
+        "amqplib": "^0.10.4",
         "pusher-js": "^8.4.0"
     },
     "devDependencies": {

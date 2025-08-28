@@ -7,6 +7,10 @@ import { db } from '~/server/db';
 import { games, piDevices, pokerTables, seats, users } from '~/server/db/schema';
 import { pusher } from '~/server/pusher';
 
+import {
+    activeCountOf, dealCard, evaluateBettingTransition, pickNextIndex, rotateToNextActiveSeatId
+} from '../game-logic';
+
 import type { VideoGrant } from "livekit-server-sdk";
 const requireCjs = createRequire(import.meta.url);
 interface PokerHandStatic {
@@ -74,203 +78,6 @@ function redactSnapshotForUser(
     return { ...s, cards: Array(hiddenCount).fill("FD") } as SeatWithPlayer;
   });
   return { ...snapshot, seats: redactedSeats };
-}
-
-const pickNextIndex = (currentIndex: number, total: number) =>
-  (currentIndex + 1) % total;
-
-const rotateToNextActiveSeatId = (
-  orderedSeats: Array<SeatRow>,
-  currentSeatId: string,
-) => {
-  const n = orderedSeats.length;
-  const mapIndex: Record<string, number> = {};
-  orderedSeats.forEach((s, i) => {
-    mapIndex[s.id] = i;
-  });
-  let idx = mapIndex[currentSeatId] ?? 0;
-  for (let i = 0; i < n; i++) {
-    idx = pickNextIndex(idx, n);
-    if (orderedSeats[idx]!.isActive) return orderedSeats[idx]!.id;
-  }
-  return orderedSeats[idx]!.id;
-};
-
-// --- Helper utilities ---
-const fetchOrderedSeats = async (
-  tx: DB,
-  tableId: string,
-): Promise<SeatRow[]> => {
-  return await tx.query.seats.findMany({
-    where: eq(seats.tableId, tableId),
-    orderBy: (s, { asc }) => [asc(s.seatNumber)],
-  });
-};
-
-const allActiveBetsEqual = (orderedSeats: Array<SeatRow>): boolean => {
-  const active = orderedSeats.filter((s) => s.isActive);
-  if (active.length === 0) return true;
-  return active.every((s) => s.currentBet === active[0]!.currentBet);
-};
-
-const activeCountOf = (orderedSeats: Array<SeatRow>): number =>
-  orderedSeats.filter((s) => s.isActive).length;
-
-async function mergeBetsIntoPotGeneric(
-  tx: DB,
-  gameObj: GameRow,
-  orderedSeats: Array<SeatRow>,
-): Promise<GameRow> {
-  const total = orderedSeats.reduce((sum, s) => sum + s.currentBet, 0);
-  await tx
-    .update(games)
-    .set({
-      potTotal: sql`${games.potTotal} + ${total}`,
-      betCount: 0,
-      requiredBetCount: 0,
-    })
-    .where(eq(games.id, gameObj.id));
-  for (const s of orderedSeats) {
-    await tx.update(seats).set({ currentBet: 0 }).where(eq(seats.id, s.id));
-    s.currentBet = 0;
-  }
-  return {
-    ...gameObj,
-    potTotal: gameObj.potTotal + total,
-    betCount: 0,
-    requiredBetCount: 0,
-  };
-}
-
-async function ensureHoleCardsProgression(
-  tx: TableTransaction,
-  tableId: string,
-  gameObj: GameRow,
-  currentSeatId: string,
-  dealerButtonSeatId: string,
-  n: number,
-): Promise<GameRow> {
-  const freshSeats = await fetchOrderedSeats(tx as DB, tableId);
-  const allHaveTwo = freshSeats.every((s: SeatRow) => s.cards.length >= 2);
-  if (!allHaveTwo) {
-    const nextSeatId = rotateToNextActiveSeatId(freshSeats, currentSeatId);
-    await (tx as DB)
-      .update(games)
-      .set({ assignedSeatId: nextSeatId })
-      .where(eq(games.id, gameObj.id));
-    return { ...gameObj, assignedSeatId: nextSeatId };
-  }
-  // Initialize betting round: preflop first actor is left of big blind
-  const dealerIdx = freshSeats.findIndex(
-    (s: SeatRow) => s.id === dealerButtonSeatId,
-  );
-  const bigBlindIdx = (dealerIdx + 2) % n;
-  const firstToAct = freshSeats[(bigBlindIdx + 1) % n]!;
-  const activeCount = activeCountOf(freshSeats);
-  await (tx as DB)
-    .update(games)
-    .set({
-      state: "BETTING",
-      assignedSeatId: firstToAct.id,
-      betCount: 0,
-      requiredBetCount: activeCount,
-    })
-    .where(eq(games.id, gameObj.id));
-  return {
-    ...gameObj,
-    state: "BETTING",
-    assignedSeatId: firstToAct.id,
-    betCount: 0,
-    requiredBetCount: activeCount,
-  };
-}
-
-async function ensurePostflopProgression(
-  tx: TableTransaction,
-  tableId: string,
-  gameObj: GameRow,
-  dealerButtonSeatId: string,
-  n: number,
-): Promise<void> {
-  const freshSeats = await fetchOrderedSeats(tx as DB, tableId);
-  // Postflop: start left of dealer button
-  const dealerIdx = freshSeats.findIndex(
-    (s: SeatRow) => s.id === dealerButtonSeatId,
-  );
-  const firstToAct = freshSeats[(dealerIdx + 1) % n]!;
-  const activeCount = activeCountOf(freshSeats);
-  await (tx as DB)
-    .update(games)
-    .set({
-      state: "BETTING",
-      assignedSeatId: firstToAct.id,
-      betCount: 0,
-      requiredBetCount: activeCount,
-    })
-    .where(eq(games.id, gameObj.id));
-}
-
-async function evaluateBettingTransition(
-  tx: TableTransaction,
-  tableId: string,
-  gameObj: GameRow,
-): Promise<void> {
-  const freshSeats = await fetchOrderedSeats(tx as DB, tableId);
-  const activeSeats = freshSeats.filter((s: SeatRow) => s.isActive);
-  const singleActive = activeSeats.length === 1;
-  const allEqual = allActiveBetsEqual(freshSeats);
-  const finished =
-    (gameObj.betCount >= gameObj.requiredBetCount && allEqual) || singleActive;
-  if (!finished) return;
-
-  // Merge bets into pot
-  const updatedGame = await mergeBetsIntoPotGeneric(
-    tx as DB,
-    gameObj,
-    freshSeats,
-  );
-  const cc = updatedGame.communityCards.length;
-  if (singleActive || cc === 5) {
-    // SHOWDOWN
-    const contenders = freshSeats.filter((s: SeatRow) => s.isActive);
-    const hands = contenders.map((s: SeatRow) =>
-      Hand.solve([...(s.cards as string[]), ...updatedGame.communityCards]),
-    ) as unknown[];
-    const winners = Hand.winners(hands) as unknown[];
-    const winnerSeatIds = winners.map((w) => {
-      const idx = (hands as unknown[]).indexOf(w);
-      return contenders[idx]!.id;
-    });
-    const share = Math.floor(updatedGame.potTotal / winnerSeatIds.length);
-    for (const sid of winnerSeatIds) {
-      await (tx as DB)
-        .update(seats)
-        .set({ buyIn: sql`${seats.buyIn} + ${share}` })
-        .where(eq(seats.id, sid));
-    }
-    await (tx as DB)
-      .update(games)
-      .set({ state: "SHOWDOWN" })
-      .where(eq(games.id, updatedGame.id));
-  }
-  if (cc === 0) {
-    await tx
-      .update(games)
-      .set({ state: "DEAL_FLOP" })
-      .where(eq(games.id, updatedGame.id));
-  }
-  if (cc === 3) {
-    await tx
-      .update(games)
-      .set({ state: "DEAL_TURN" })
-      .where(eq(games.id, updatedGame.id));
-  }
-  if (cc === 4) {
-    await tx
-      .update(games)
-      .set({ state: "DEAL_RIVER" })
-      .where(eq(games.id, updatedGame.id));
-  }
 }
 
 function getBigAndSmallBlindSeats(
@@ -708,13 +515,6 @@ export const tableRouter = createTRPCRouter({
           return `${rank}${suit}`;
         };
 
-        const allCardCodes = () => {
-          const codes = new Set<string>();
-          orderedSeats.forEach((s) => s.cards.forEach((c) => codes.add(c)));
-          game?.communityCards.forEach((c) => codes.add(c));
-          return codes;
-        };
-
         if (input.action === "START_GAME" || input.action === "RESET_TABLE") {
           if (!isDealerCaller)
             throw new Error("Only dealer can START_GAME or RESET_TABLE");
@@ -737,58 +537,10 @@ export const tableRouter = createTRPCRouter({
         if (input.action === "DEAL_CARD") {
           if (!isDealerCaller) throw new Error("Only dealer can DEAL_CARD");
           const code = toCardCode(input.params?.rank, input.params?.suit);
-          const seen = allCardCodes();
-          if (seen.has(code)) throw new Error("Card already dealt");
 
-          if (game.state === "DEAL_HOLE_CARDS") {
-            const seat = findSeatById(game.assignedSeatId!);
-            await tx
-              .update(seats)
-              .set({ cards: sql`array_append(${seats.cards}, ${code})` })
-              .where(eq(seats.id, seat.id));
-            game = await ensureHoleCardsProgression(
-              tx,
-              input.tableId,
-              game,
-              seat.id,
-              game.dealerButtonSeatId!,
-              n,
-            );
-            return { ok: true } as const;
-          }
-
-          if (
-            game.state === "DEAL_FLOP" ||
-            game.state === "DEAL_TURN" ||
-            game.state === "DEAL_RIVER"
-          ) {
-            const results = await tx
-              .update(games)
-              .set({
-                communityCards: sql`array_append(${games.communityCards}, ${code})`,
-              })
-              .where(eq(games.id, game.id))
-              .returning();
-            game = results?.[0];
-            if (!game) throw new Error("Failed to update game");
-            const cc = game.communityCards.length;
-            if (
-              (game.state === "DEAL_FLOP" && cc >= 3) ||
-              (game.state === "DEAL_TURN" && cc >= 4) ||
-              (game.state === "DEAL_RIVER" && cc >= 5)
-            ) {
-              await ensurePostflopProgression(
-                tx,
-                input.tableId,
-                game,
-                game.dealerButtonSeatId!,
-                n,
-              );
-            }
-            return { ok: true } as const;
-          }
-
-          throw new Error("DEAL_CARD not valid in current state");
+          // Use shared game logic instead of duplicating code
+          await dealCard(tx, input.tableId, game, code);
+          return { ok: true } as const;
         }
 
         // Player actions require assigned seat

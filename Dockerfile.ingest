@@ -1,0 +1,20 @@
+FROM node:20-slim
+
+WORKDIR /app
+
+# Install OS deps if needed (e.g., openssl/libssl)
+RUN apt-get update -y && apt-get install -y --no-install-recommends ca-certificates && rm -rf /var/lib/apt/lists/*
+
+# Copy package manifests and install deps (include dev deps for tsx)
+COPY package*.json ./
+COPY tsconfig.json ./
+RUN npm ci
+
+# Copy source code
+COPY . .
+
+ENV NODE_ENV=production
+
+CMD ["npm", "run", "ingest:worker"]
+
+

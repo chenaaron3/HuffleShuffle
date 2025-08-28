@@ -18,10 +18,12 @@
     "preview": "next build && next start",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "ingest:worker": "SKIP_ENV_VALIDATION=true tsx src/server/ingest/consumer.ts"
   },
   "dependencies": {
     "@auth/drizzle-adapter": "^1.7.2",
+    "@aws-sdk/client-sqs": "^3.875.0",
     "@livekit/components-react": "^2.9.14",
     "@livekit/components-styles": "^1.1.6",
     "@t3-oss/env-nextjs": "^0.12.0",
@@ -30,6 +32,7 @@
     "@trpc/next": "^11.0.0",
     "@trpc/react-query": "^11.0.0",
     "@trpc/server": "^11.0.0",
+    "amqplib": "^0.10.8",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "drizzle-orm": "^0.41.0",
@@ -53,6 +56,7 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.1",
     "@tailwindcss/postcss": "^4.0.15",
+    "@types/amqplib": "^0.10.7",
     "@types/node": "^20.14.10",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",

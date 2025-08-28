@@ -24,6 +24,8 @@ export const env = createEnv({
     PUSHER_KEY: z.string(),
     PUSHER_SECRET: z.string(),
     PUSHER_CLUSTER: z.string(),
+    SQS_QUEUE_URL: z.string().url(),
+    AWS_REGION: z.string().optional(),
   },
 
   /**
@@ -52,6 +54,8 @@ export const env = createEnv({
     PUSHER_KEY: process.env.PUSHER_KEY,
     PUSHER_SECRET: process.env.PUSHER_SECRET,
     PUSHER_CLUSTER: process.env.PUSHER_CLUSTER,
+    SQS_QUEUE_URL: process.env.SQS_QUEUE_URL,
+    AWS_REGION: process.env.AWS_REGION,
   },
   /**
    * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially

@@ -1,11 +1,11 @@
-import { createHash, createVerify } from 'node:crypto';
+import { createHash } from 'node:crypto';
 import { closeSync, openSync, readFileSync, readSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-import {
-    API_BASE, ensurePiKeys, getSerialNumber, loadEnv, resolveTable, signMessage
-} from './daemon-util';
+import { SendMessageCommand, SQSClient } from '@aws-sdk/client-sqs';
+
+import { ensurePiKeys, getSerialNumber, loadEnv, resolveTable } from './daemon-util';
 
 // Minimal .env loader
 loadEnv();
@@ -106,29 +106,166 @@ function startHidReader(devicePath: string, onScan: ScanHandler): void {
   });
 }
 
-export async function runScannerDaemon(): Promise<void> {
-  const serial = getSerialNumber();
-  const { publicPem, privatePemPath } = await ensurePiKeys(serial); // ensures key files exist
-  const privatePem = readFileSync(privatePemPath, "utf8");
-  const pubFingerprint = createHash("sha256")
-    .update(publicPem.replace(/\s+/g, ""))
-    .digest("hex")
-    .slice(0, 16);
-  console.log(`[scanner-daemon] publicKey fingerprint: ${pubFingerprint}`);
+// Test mode: manually send fake card scans
+function startTestMode(onScan: ScanHandler): void {
+  console.log("[scanner-daemon] TEST MODE ENABLED");
+  console.log("[scanner-daemon] Available commands:");
+  console.log("  ace-spades, ace-hearts, ace-clubs, ace-diamonds");
+  console.log("  king-spades, king-hearts, king-clubs, king-diamonds");
+  console.log("  queen-spades, queen-hearts, queen-clubs, queen-diamonds");
+  console.log("  jack-spades, jack-hearts, jack-clubs, jack-diamonds");
+  console.log("  10-spades, 10-hearts, 10-clubs, 10-diamonds");
+  console.log("  9-spades, 9-hearts, 9-clubs, 9-diamonds");
+  console.log("  8-spades, 8-hearts, 8-clubs, 8-diamonds");
+  console.log("  7-spades, 7-hearts, 7-clubs, 7-diamonds");
+  console.log("  6-spades, 6-hearts, 6-clubs, 6-diamonds");
+  console.log("  5-spades, 5-hearts, 5-clubs, 5-diamonds");
+  console.log("  4-spades, 4-hearts, 4-clubs, 4-diamonds");
+  console.log("  3-spades, 3-hearts, 3-clubs, 3-diamonds");
+  console.log("  2-spades, 2-hearts, 2-clubs, 2-diamonds");
+  console.log("  random - sends a random card");
+  console.log("  quit - exits the program");
+  console.log("");
 
+  // Card mapping for test mode
+  const cardMap: Record<string, string> = {
+    "ace-spades": "1010",
+    "ace-hearts": "2010",
+    "ace-clubs": "3010",
+    "ace-diamonds": "4010",
+    "king-spades": "1130",
+    "king-hearts": "2130",
+    "king-clubs": "3130",
+    "king-diamonds": "4130",
+    "queen-spades": "1120",
+    "queen-hearts": "2120",
+    "queen-clubs": "3120",
+    "queen-diamonds": "4120",
+    "jack-spades": "1110",
+    "jack-hearts": "2110",
+    "jack-clubs": "3110",
+    "jack-diamonds": "4110",
+    "10-spades": "1100",
+    "10-hearts": "2100",
+    "10-clubs": "3100",
+    "10-diamonds": "4100",
+    "9-spades": "1090",
+    "9-hearts": "2090",
+    "9-clubs": "3090",
+    "9-diamonds": "4090",
+    "8-spades": "1080",
+    "8-hearts": "2080",
+    "8-clubs": "3080",
+    "8-diamonds": "4080",
+    "7-spades": "1070",
+    "7-hearts": "2070",
+    "7-clubs": "3070",
+    "7-diamonds": "4070",
+    "6-spades": "1060",
+    "6-hearts": "2060",
+    "6-clubs": "3060",
+    "6-diamonds": "4060",
+    "5-spades": "1050",
+    "5-hearts": "2050",
+    "5-clubs": "3050",
+    "5-diamonds": "4050",
+    "4-spades": "1040",
+    "4-hearts": "2040",
+    "4-clubs": "3040",
+    "4-diamonds": "4040",
+    "3-spades": "1030",
+    "3-hearts": "2030",
+    "3-clubs": "3030",
+    "3-diamonds": "4030",
+    "2-spades": "1020",
+    "2-hearts": "2020",
+    "2-clubs": "3020",
+    "2-diamonds": "4020",
+  };
+
+  const cards = Object.keys(cardMap);
+
+  // Set up stdin for test mode
+  process.stdin.setRawMode(true);
+  process.stdin.resume();
+  process.stdin.setEncoding("utf8");
+
+  let input = "";
+
+  process.stdin.on("data", (key) => {
+    const keyStr = key.toString();
+    if (keyStr === "\u0003") {
+      // Ctrl+C
+      console.log("\n[scanner-daemon] exiting...");
+      process.exit(0);
+    } else if (keyStr === "\r" || keyStr === "\n") {
+      // Enter key
+      const command = input.trim().toLowerCase();
+      input = "";
+
+      if (command === "quit") {
+        console.log("[scanner-daemon] exiting...");
+        process.exit(0);
+      } else if (command === "random") {
+        const randomCard = cards[Math.floor(Math.random() * cards.length)];
+        const barcode = cardMap[randomCard];
+        console.log(
+          `[scanner-daemon] sending random card: ${randomCard} (${barcode})`,
+        );
+        onScan(barcode);
+      } else if (cardMap[command]) {
+        const barcode = cardMap[command];
+        console.log(`[scanner-daemon] sending card: ${command} (${barcode})`);
+        onScan(barcode);
+      } else if (command) {
+        console.log(`[scanner-daemon] unknown command: ${command}`);
+        console.log('[scanner-daemon] type a card name or "random" or "quit"');
+      }
+
+      process.stdout.write("\n> ");
+    } else if (keyStr === "\u007f") {
+      // Backspace
+      if (input.length > 0) {
+        input = input.slice(0, -1);
+        process.stdout.write("\b \b");
+      }
+    } else {
+      // Regular character
+      input += keyStr;
+      process.stdout.write(keyStr);
+    }
+  });
+
+  process.stdout.write("> ");
+}
+
+export async function runScannerDaemon(): Promise<void> {
+  const serial = getSerialNumber() || "10000000672a9ed2";
   // Resolve table (also verifies device registration and returns type)
   const info = await resolveTable(serial);
   if (info.type !== "scanner")
     throw new Error(`[scanner-daemon] wrong device type: ${info.type}`);
   console.log(`[scanner-daemon] started for table ${info.tableId}`);
 
-  const API = API_BASE();
-  console.log(`[scanner-daemon] API base: ${API}`);
+  // SQS configuration
+  const region = process.env.AWS_REGION || "us-east-1";
+  const queueUrl = process.env.SQS_QUEUE_URL;
+
+  if (!queueUrl) {
+    console.error("[scanner-daemon] Missing SQS_QUEUE_URL");
+    process.exit(1);
+  }
+
+  console.log("[scanner-daemon] using SQS FIFO queue");
+
+  const sqs = new SQSClient({ region });
   let lastDealtAt = 0;
 
   const handleScan = async (rawCode: string) => {
+    console.log(`[scanner-daemon] received scan: ${rawCode}`);
     const now = Date.now();
     if (now - lastDealtAt < 500) return; // throttle 500ms
+
     // Basic sanitization; server will validate strictly
     const barcode = rawCode.trim();
     if (!/^[0-9]{4}$/.test(barcode)) {
@@ -138,62 +275,54 @@ export async function runScannerDaemon(): Promise<void> {
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       void 0;
     }
-    const ts = Math.floor(Date.now() / 1000).toString();
-    const canonical = `${serial}|${barcode}|${ts}`;
-    const signature = signMessage(privatePem, canonical);
-    // Local sanity check against our own public key
-    try {
-      const v = createVerify("RSA-SHA256");
-      v.update(canonical);
-      v.end();
-      const ok = v.verify(publicPem, Buffer.from(signature, "base64"));
-      if (!ok) {
-        console.error("[scanner-daemon] local verify failed; check key files");
-      } else {
-        console.log("[scanner-daemon] local verify passed");
-      }
-    } catch {}
-    const canonicalSha = createHash("sha256")
-      .update(canonical)
-      .digest("hex")
-      .slice(0, 16);
-    console.log("[scanner-daemon] sending scan request", canonical);
-    console.log(
-      `[scanner-daemon] canonicalSha=${canonicalSha} sigLen=${signature.length}`,
-    );
+
+    const ts = Math.floor(Date.now() / 1000);
     try {
       const started = Date.now();
-      const resp = await fetch(`${API}/api/pi/scan`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ serial, barcode, ts, signature }),
-      });
-      console.log("[scanner-daemon] response", resp);
-      const ms = Date.now() - started;
-      if (!resp.ok) {
-        const text = await resp.text();
-        console.error(`
-[scanner-daemon] deal rejected (status=${resp.status}, ${ms}ms): ${text}`);
-        try {
-          process.stdout.write("\u0007");
-        } catch {}
-        return;
-      }
+      console.log(`[scanner-daemon] publishing scan: ${barcode}`);
+
+      // Send message to SQS FIFO queue
+      await sqs.send(
+        new SendMessageCommand({
+          QueueUrl: queueUrl,
+          MessageBody: JSON.stringify({
+            serial,
+            barcode,
+            ts,
+          }),
+          MessageGroupId: info.tableId, // Ensures FIFO ordering per table
+          MessageDeduplicationId: `${info.tableId}-${barcode}-${ts}`, // Prevents duplicates
+        }),
+      );
+
       lastDealtAt = now;
-      console.log(`[scanner-daemon] dealt ${barcode} (${ms}ms)`);
+      console.log(
+        `[scanner-daemon] published ${barcode} to SQS (${Date.now() - started}ms)`,
+      );
     } catch (e) {
-      console.error("[scanner-daemon] request failed", e);
+      console.error("[scanner-daemon] publish failed", e);
       try {
         process.stdout.write("\u0007");
       } catch {}
     }
   };
 
-  const device = process.env.SCANNER_DEVICE || "/dev/hidraw0";
-  console.log(`[scanner-daemon] reading from HID device ${device}`);
-  startHidReader(device, (code) => {
-    void handleScan(code);
-  });
+  // Check if test mode is enabled
+  const isTestMode =
+    process.argv.includes("--test") || process.argv.includes("-t");
+
+  if (isTestMode) {
+    startTestMode(async (code) => {
+      await handleScan(code);
+    });
+  } else {
+    const device = process.env.SCANNER_DEVICE || "/dev/hidraw0";
+    console.log(`[scanner-daemon] reading from HID device ${device}`);
+
+    startHidReader(device, async (code) => {
+      await handleScan(code);
+    });
+  }
 
   // Keep process alive
   // eslint-disable-next-line @typescript-eslint/no-empty-function
