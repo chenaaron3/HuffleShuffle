@@ -1,0 +1,49 @@
+service: huffle-shuffle-ingest
+
+frameworkVersion: "3"
+
+plugins:
+  - serverless-esbuild
+
+provider:
+  name: aws
+  runtime: nodejs18.x
+  region: us-east-1
+  environment:
+    DATABASE_URL: ${env:DATABASE_URL}
+    SQS_QUEUE_URL: ${env:SQS_QUEUE_URL}
+    SQS_QUEUE_ARN: ${env:SQS_QUEUE_ARN}
+    NODE_ENV: ${env:NODE_ENV, 'production'}
+    SKIP_ENV_VALIDATION: "true"
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - sqs:DeleteMessage
+            - sqs:GetQueueAttributes
+            - sqs:ReceiveMessage
+          Resource: ${env:SQS_QUEUE_ARN}
+
+functions:
+  ingest:
+    handler: dist/consumer.handler
+    events:
+      - sqs:
+          arn: ${env:SQS_QUEUE_ARN}
+          batchSize: 5
+    timeout: 30
+    memorySize: 512
+    reservedConcurrency: 10
+
+custom:
+  esbuild:
+    bundle: true
+    minify: false
+    sourcemap: true
+    exclude:
+      - "aws-sdk"
+    target: "node18"
+    platform: "node"
+    concurrency: 10
+    format: "cjs"

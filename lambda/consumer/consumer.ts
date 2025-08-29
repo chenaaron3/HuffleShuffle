@@ -3,11 +3,10 @@ import { config } from 'dotenv';
 import { eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
+import { dealCard } from '~/server/api/game-logic';
 import * as schema from '~/server/db/schema';
 
 import { DeleteMessageCommand, SQSClient } from '@aws-sdk/client-sqs';
-
-import { dealCard } from '../api/game-logic';
 
 import type {
   SQSEvent,
@@ -92,9 +91,11 @@ async function handleScan(msg: ScanMessage): Promise<void> {
 
   await database.transaction(async (tx) => {
     const tableId = device.tableId;
+    if (!tableId) throw new Error("Device not assigned to a table");
+
     const game = await tx.query.games.findFirst({
       where: eq(schema.games.tableId, tableId),
-      orderBy: (g, { desc }) => [desc(g.createdAt)],
+      orderBy: (games, { desc }) => [desc(games.createdAt)],
     });
     if (!game) throw new Error("No active game");
 
@@ -147,27 +148,29 @@ export const handler = async (
 ): Promise<SQSBatchResponse> => {
   console.log(`[lambda] received ${event.Records.length} messages`);
 
-  const results = await Promise.allSettled(
-    event.Records.map((record: SQSRecord) => processRecord(record)),
-  );
+  // Process records sequentially to maintain FIFO ordering (critical for poker)
+  const results = [];
+  for (const record of event.Records) {
+    try {
+      const result = await processRecord(record);
+      results.push({ success: true, messageId: record.messageId, result });
+    } catch (error) {
+      console.error(
+        `[lambda] failed to process message ${record.messageId}:`,
+        error,
+      );
+      results.push({
+        success: false,
+        messageId: record.messageId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
 
   const batchItemFailures: { itemIdentifier: string }[] = [];
-
-  results.forEach((result, index) => {
-    if (result.status === "fulfilled") {
-      if (!result.value.success) {
-        // Add to batch failures for retry
-        const record = event.Records[index];
-        if (record) {
-          batchItemFailures.push({ itemIdentifier: record.messageId });
-        }
-      }
-    } else {
-      // Promise was rejected, add to batch failures
-      const record = event.Records[index];
-      if (record) {
-        batchItemFailures.push({ itemIdentifier: record.messageId });
-      }
+  results.forEach((result) => {
+    if (!result.success) {
+      batchItemFailures.push({ itemIdentifier: result.messageId });
     }
   });
 
