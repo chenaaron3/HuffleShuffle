@@ -88,6 +88,10 @@ Required environment variables:
 - `DATABASE_URL` - PostgreSQL connection string (external database)
 - `SQS_QUEUE_URL` - SQS queue URL
 - `SQS_QUEUE_ARN` - SQS queue ARN
+- `PUSHER_APP_ID` - Pusher application ID for real-time updates
+- `PUSHER_KEY` - Pusher public key
+- `PUSHER_SECRET` - Pusher secret key
+- `PUSHER_CLUSTER` - Pusher cluster identifier
 
 ### Lambda Settings
 
@@ -110,8 +114,9 @@ The Lambda function:
 2. Processes each message (card scan)
 3. Updates device status in database
 4. Deals cards using game logic
-5. Deletes successfully processed messages
-6. Returns failed message IDs for retry
+5. Sends real-time updates via Pusher
+6. Deletes successfully processed messages
+7. Returns failed message IDs for retry
 
 ## Dependencies
 
@@ -120,6 +125,7 @@ The Lambda function:
 - `@aws-sdk/client-sqs` - AWS SQS client
 - `drizzle-orm` - Database ORM
 - `postgres` - PostgreSQL driver
+- `pusher` - Real-time messaging service
 - `dotenv` - Environment variable loading
 
 ### Development Dependencies
