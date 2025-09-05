@@ -1,7 +1,7 @@
 import { Track } from 'livekit-client';
 import { CardImage } from '~/components/ui/card-img';
 
-import { ParticipantTile, useTracks, VideoTrack } from '@livekit/components-react';
+import { ParticipantTile, TrackToggle, useTracks, VideoTrack } from '@livekit/components-react';
 
 import type { SeatWithPlayer } from "~/server/api/routers/table";
 
@@ -22,24 +22,44 @@ export function SeatSection({
     myUserId,
     side
 }: SeatSectionProps) {
-    // Create array of 4 seats, filling empty slots with null
-    const displaySeats = Array.from({ length: 4 }, (_, index) => {
-        return seats[index] || null;
-    });
+    // Create array of 4 seats with proper numbering
+    let displaySeats: (any | null)[] = [];
+
+    if (side === 'left') {
+        // Left side: seats 1-4 from bottom to top
+        // seats[0] = seat 1 (bottom), seats[1] = seat 2, seats[2] = seat 3, seats[3] = seat 4 (top)
+        displaySeats = Array.from({ length: 4 }, (_, index) => {
+            return seats[3 - index] || null; // Reverse the order: 3,2,1,0
+        });
+    } else {
+        // Right side: seats 5-8 from top to bottom
+        // seats[4] = seat 5, seats[5] = seat 6, seats[6] = seat 7, seats[7] = seat 8
+        displaySeats = Array.from({ length: 4 }, (_, index) => {
+            return seats[index + 4] || null;
+        });
+    }
 
     return (
         <div className={`flex flex-col gap-2 ${side === 'left' ? 'pr-2' : 'pl-2'}`}>
-            {displaySeats.map((seat, index) => (
-                <SeatCard
-                    key={seat?.id || `empty-${side}-${index}`}
-                    seat={seat}
-                    index={index}
-                    small={index === smallBlindIdx}
-                    big={index === bigBlindIdx}
-                    active={!!highlightedSeatId && seat?.id === highlightedSeatId}
-                    myUserId={myUserId}
-                />
-            ))}
+            {displaySeats.map((seat, index) => {
+                // Calculate the actual seat number for display (1-based)
+                const seatNumber = side === 'left' ? (4 - index) : (index + 5);
+                // Calculate the actual seat index for blind checking
+                const actualSeatIndex = side === 'left' ? (3 - index) : (index + 4);
+
+                return (
+                    <SeatCard
+                        key={seat?.id || `empty-${side}-${index}`}
+                        seat={seat}
+                        index={index} // Use the display index directly
+                        seatNumber={seatNumber} // Pass the actual seat number
+                        small={actualSeatIndex === smallBlindIdx}
+                        big={actualSeatIndex === bigBlindIdx}
+                        active={!!highlightedSeatId && seat?.id === highlightedSeatId}
+                        myUserId={myUserId}
+                    />
+                );
+            })}
         </div>
     );
 }
@@ -47,6 +67,7 @@ export function SeatSection({
 function SeatCard({
     seat,
     index,
+    seatNumber,
     small,
     big,
     active,
@@ -54,6 +75,7 @@ function SeatCard({
 }: {
     seat: SeatWithPlayer | null;
     index: number;
+    seatNumber: number;
     small: boolean;
     big: boolean;
     active?: boolean;
@@ -79,11 +101,8 @@ function SeatCard({
                 {/* Empty Player Info and Cards Row */}
                 <div className="flex items-center justify-between">
                     <div className="flex flex-col gap-1">
-                        <div className="text-sm font-medium text-zinc-500">
-                            Seat {index + 1}
-                        </div>
-                        <div className="text-xs text-zinc-600">
-                            Available
+                        <div className="rounded-full bg-zinc-600/20 px-2 py-1 text-xs font-medium text-zinc-500 border border-zinc-500/30 w-fit">
+                            Seat {seatNumber}
                         </div>
                     </div>
 
@@ -105,12 +124,28 @@ function SeatCard({
             }}
         >
             {/* Video Feed - Scaled Down with Aspect Ratio */}
-            <div className="relative h-full aspect-[4/3] overflow-hidden rounded-md bg-black mb-2">
+            <div className="group relative h-full aspect-[4/3] overflow-hidden rounded-md bg-black mb-2">
                 {videoTrackRef ? (
                     isSelf ? (
                         <>
                             <VideoTrack trackRef={videoTrackRef} />
                             <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
+                            <div className="pointer-events-auto absolute bottom-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                                <TrackToggle
+                                    source={Track.Source.Camera}
+                                    showIcon
+                                    className="rounded-md bg-white/90 text-xs font-medium text-black hover:bg-white"
+                                    aria-label="Toggle camera"
+                                    title="Toggle camera"
+                                />
+                                <TrackToggle
+                                    source={Track.Source.Microphone}
+                                    showIcon
+                                    className="rounded-md bg-white/90 text-xs font-medium text-black hover:bg-white"
+                                    aria-label="Toggle microphone"
+                                    title="Toggle microphone"
+                                />
+                            </div>
                         </>
                     ) : (
                         <ParticipantTile trackRef={videoTrackRef}>
@@ -139,12 +174,13 @@ function SeatCard({
             {/* Player Info and Cards Row */}
             <div className="flex items-center justify-between">
                 <div className="flex flex-col gap-1 min-w-0 flex-1">
-                    <div className="truncate text-sm font-medium text-white">
-                        {seat.player?.name ?? "Player"}
-                    </div>
-                    <div className="flex gap-4 text-xs text-zinc-400">
-                        <span>Chips: {seat.buyIn}</span>
-                        <span>Wager: {seat.currentBet}</span>
+                    <div className="flex gap-2">
+                        <div className="rounded-full bg-green-600/20 px-2 py-1 text-xs font-medium text-green-400 border border-green-500/30">
+                            {seat.buyIn} chips
+                        </div>
+                        <div className="rounded-full bg-blue-600/20 px-2 py-1 text-xs font-medium text-blue-400 border border-blue-500/30">
+                            {seat.currentBet} wager
+                        </div>
                     </div>
                 </div>
 
@@ -158,12 +194,10 @@ function SeatCard({
                 )}
             </div>
 
-            {/* Active Indicator */}
-            {active && (
-                <div className="absolute -top-1 -right-1 rounded-full bg-yellow-500 px-2 py-1 text-xs font-semibold text-black">
-                    Next
-                </div>
-            )}
+            {/* Player Name - Top Right */}
+            <div className="absolute top-2 right-2 rounded-lg bg-black/70 px-2 py-1 text-xs font-medium text-white backdrop-blur-sm">
+                {seat.player?.name ?? "Player"}
+            </div>
         </div>
     );
 }

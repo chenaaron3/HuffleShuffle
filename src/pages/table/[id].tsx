@@ -7,22 +7,17 @@ import { useRouter } from 'next/router';
 import * as React from 'react';
 import { TableSetupModal } from '~/components/TableSetupModal';
 import { ActionButtons } from '~/components/ui/action-buttons';
-import { CardImage } from '~/components/ui/card-img';
 import { DealerCamera } from '~/components/ui/dealer-camera';
-import { GlowingEffect } from '~/components/ui/glowing-effect';
 import { HandCamera } from '~/components/ui/hand-camera';
-import { SeatCard as SeatCardUI } from '~/components/ui/seat-card';
 import { SeatSection } from '~/components/ui/seat-section';
 import { api } from '~/utils/api';
 import { rsaDecryptBase64 } from '~/utils/crypto';
 import { disconnectPusherClient, getPusherClient } from '~/utils/pusher-client';
 
 import {
-    LiveKitRoom, ParticipantTile, RoomAudioRenderer, StartAudio, TrackToggle, useLocalParticipant,
-    useParticipantTracks, useRoomContext, useTracks, VideoTrack
+    LiveKitRoom, ParticipantTile, RoomAudioRenderer, StartAudio, useTracks, VideoTrack
 } from '@livekit/components-react';
 
-import type { SeatWithPlayer } from '~/server/api/routers/table';
 export default function TableView() {
     const router = useRouter();
     const { id } = router.query as { id?: string };
@@ -30,13 +25,29 @@ export default function TableView() {
     const { data: session } = useSession();
 
     const tableQuery = api.table.get.useQuery({ tableId: id ?? '' }, { enabled: !!id });
-    const action = api.table.action.useMutation();
+    const [snapshot, setSnapshot] = React.useState(tableQuery.data);
 
-    const [dealRank, setDealRank] = React.useState<string>('A');
-    const [dealSuit, setDealSuit] = React.useState<string>('s');
+    // Update snapshot when tableQuery data changes
+    React.useEffect(() => {
+        if (tableQuery.data) {
+            setSnapshot(tableQuery.data);
+        }
+    }, [tableQuery.data]);
+
+    const action = api.table.action.useMutation({
+        onSuccess: (data) => {
+            // Update snapshot directly with returned gameplay state
+            if (data) {
+                setSnapshot(data);
+            }
+        },
+        onError: (error) => {
+            console.error('Action failed:', error);
+            // Could add toast notification here
+        }
+    });
+
     const [showSetup, setShowSetup] = React.useState<boolean>(false);
-
-    const snapshot = tableQuery.data;
     const seats = snapshot?.seats ?? [];
     const state: string | undefined = snapshot?.game?.state as any;
     const dealSeatId = state === 'DEAL_HOLE_CARDS' ? (snapshot?.game?.assignedSeatId ?? null) : null;
@@ -165,9 +176,9 @@ export default function TableView() {
                                 {/* Dealer Camera with Community Cards Overlay */}
                                 <DealerCamera
                                     communityCards={snapshot?.game?.communityCards ?? []}
-                                    potTotal={snapshot?.game?.potTotal ?? 0}
+                                    potTotal={(snapshot?.game?.potTotal ?? 0) + (seats.reduce((sum, seat) => sum + (seat.currentBet ?? 0), 0))}
                                     gameStatus={state}
-                                    activePlayerName={state === 'BETTING' ? seats.find((s: any) => s.id === bettingActorSeatId)?.player?.name : undefined}
+                                    activePlayerName={state === 'BETTING' ? seats.find((s: any) => s.id === bettingActorSeatId)?.player?.name ?? undefined : undefined}
                                 />
 
                                 {/* Hand Camera and Action Buttons Row */}
@@ -184,8 +195,13 @@ export default function TableView() {
                                         state={state}
                                         currentUserSeatId={currentUserSeatId}
                                         bettingActorSeatId={bettingActorSeatId}
-                                        onAction={(actionType, params) => action.mutate({ tableId: id!, action: actionType as any, params })}
-                                        onDealCard={(rank, suit) => action.mutate({ tableId: id!, action: 'DEAL_CARD', params: { rank, suit } })}
+                                        isLoading={action.isPending}
+                                        onAction={(actionType, params) => {
+                                            action.mutate({ tableId: id!, action: actionType as any, params });
+                                        }}
+                                        onDealCard={(rank, suit) => {
+                                            action.mutate({ tableId: id!, action: 'DEAL_CARD', params: { rank, suit } });
+                                        }}
                                         onRandomCard={() => {
                                             const code = pickRandomUndealt();
                                             if (!code) return;

@@ -7,6 +7,7 @@ interface ActionButtonsProps {
     state?: string;
     currentUserSeatId?: string | null;
     bettingActorSeatId?: string | null;
+    isLoading?: boolean;
     onAction: (action: GameAction, params?: any) => void;
     onDealCard?: (rank: string, suit: string) => void;
     onRandomCard?: () => void;
@@ -17,6 +18,7 @@ export function ActionButtons({
     state,
     currentUserSeatId,
     bettingActorSeatId,
+    isLoading = false,
     onAction,
     onDealCard,
     onRandomCard
@@ -64,6 +66,7 @@ export function ActionButtons({
                 {/* Game Control Buttons */}
                 <ActionButton
                     onClick={() => onAction('START_GAME')}
+                    isLoading={isLoading}
                     className="bg-green-600 hover:bg-green-700"
                 >
                     Start Game
@@ -72,6 +75,7 @@ export function ActionButtons({
                 {onDealCard && (
                     <ActionButton
                         onClick={() => onDealCard(dealRank, dealSuit)}
+                        isLoading={isLoading}
                         className="bg-blue-600 hover:bg-blue-700"
                     >
                         Deal Card
@@ -81,6 +85,7 @@ export function ActionButtons({
                 {onRandomCard && (
                     <ActionButton
                         onClick={onRandomCard}
+                        isLoading={isLoading}
                         className="bg-purple-600 hover:bg-purple-700"
                     >
                         Random
@@ -95,6 +100,7 @@ export function ActionButtons({
         <div className="flex items-center justify-center gap-4">
             <ActionButton
                 disabled={!isPlayerTurn}
+                isLoading={isLoading}
                 onClick={() => onAction('CHECK')}
                 className="bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
@@ -103,6 +109,7 @@ export function ActionButtons({
 
             <ActionButton
                 disabled={!isPlayerTurn}
+                isLoading={isLoading}
                 onClick={() => onAction('RAISE', { amount: 20 })}
                 className="bg-orange-600 hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
@@ -111,6 +118,7 @@ export function ActionButtons({
 
             <ActionButton
                 disabled={!isPlayerTurn}
+                isLoading={isLoading}
                 onClick={() => onAction('FOLD')}
                 className="bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
@@ -124,20 +132,22 @@ function ActionButton({
     onClick,
     children,
     disabled,
+    isLoading = false,
     className = ""
 }: {
     onClick: () => void;
     children: React.ReactNode;
     disabled?: boolean;
+    isLoading?: boolean;
     className?: string;
 }) {
     return (
         <button
             onClick={onClick}
-            disabled={disabled}
-            className={`rounded-md px-4 py-2 text-sm font-medium text-white transition-colors ${className}`}
+            disabled={disabled || isLoading}
+            className={`rounded-md px-4 py-2 text-sm font-medium text-white transition-colors ${className} ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
         >
-            {children}
+            {isLoading ? 'Loading...' : children}
         </button>
     );
 }
