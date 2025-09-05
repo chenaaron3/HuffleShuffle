@@ -162,20 +162,12 @@ export default function TableView() {
 
                             {/* Center area with dealer cam and controls */}
                             <div className="flex flex-1 flex-col items-center gap-4">
-                                {/* Game Status Banner - Above Dealer */}
-                                <GameStatusBanner
-                                    isDealer={session?.user?.role === 'dealer'}
-                                    state={state}
-                                    seats={seats}
-                                    activeSeatId={highlightedSeatId}
-                                    bettingActorSeatId={bettingActorSeatId}
-                                    currentUserSeatId={currentUserSeatId}
-                                />
-
                                 {/* Dealer Camera with Community Cards Overlay */}
                                 <DealerCamera
                                     communityCards={snapshot?.game?.communityCards ?? []}
                                     potTotal={snapshot?.game?.potTotal ?? 0}
+                                    gameStatus={state}
+                                    activePlayerName={state === 'BETTING' ? seats.find((s: any) => s.id === bettingActorSeatId)?.player?.name : undefined}
                                 />
 
                                 {/* Hand Camera and Action Buttons Row */}
@@ -219,11 +211,6 @@ export default function TableView() {
                         <div className="text-zinc-400">Connecting to table audio/video…</div>
                     </div>
                 )}
-                {handRoomName && (
-                    <div className="fixed bottom-4 right-4 z-40 w-[360px] max-w-[40vw]">
-                        <HandCameraView tableId={tableIdStr} roomName={handRoomName} />
-                    </div>
-                )}
             </main>
             {session?.user?.role === 'dealer' && (
                 <TableSetupModal tableId={tableIdStr} open={showSetup} onClose={() => setShowSetup(false)} />
@@ -241,45 +228,6 @@ function ActionBtn({ onClick, children, disabled }: { onClick: () => void; child
 }
 
 
-function GameStatusBanner({ isDealer, state, seats, activeSeatId, bettingActorSeatId, currentUserSeatId }: { isDealer: boolean; state?: string; seats: SeatWithPlayer[]; activeSeatId: string | null; bettingActorSeatId?: string | null; currentUserSeatId?: string | null }) {
-    if (!state) return null;
-    const dealing = ['DEAL_HOLE_CARDS', 'DEAL_FLOP', 'DEAL_TURN', 'DEAL_RIVER'].includes(state);
-    const betting = state === 'BETTING';
-    if (!dealing && !betting) return null;
-
-    let label = '' as string;
-    if (state === 'DEAL_HOLE_CARDS') {
-        const seat = seats.find((s: any) => s.id === activeSeatId);
-        const seatIdx = seats.findIndex((s: any) => s.id === activeSeatId);
-        label = seat ? `Deal next hole card to ${seat.player?.name ?? 'a player'} at seat ${seatIdx + 0}` : 'Deal next hole card';
-    } else if (state === 'DEAL_FLOP') {
-        label = 'Deal the flop';
-    } else if (state === 'DEAL_TURN') {
-        label = 'Deal the turn';
-    } else if (state === 'DEAL_RIVER') {
-        label = 'Deal the river';
-    } else if (betting) {
-        const seat = seats.find((s: any) => s.id === bettingActorSeatId);
-        const who = seat ? `${seat.player?.name ?? 'a player'}` : 'a player';
-        const yourTurn = currentUserSeatId && bettingActorSeatId && currentUserSeatId === bettingActorSeatId;
-        label = yourTurn ? 'Your turn to act' : `${who}'s turn to act`;
-    }
-
-    const isDealerBanner = dealing;
-    const bannerText = isDealerBanner
-        ? (isDealer ? `Your action: ${label}` : `Waiting for dealer: ${label}`)
-        : label;
-    const bannerClass = dealing
-        ? 'border-yellow-500/30 bg-yellow-500/10 text-yellow-200'
-        : 'border-sky-500/30 bg-sky-500/10 text-sky-200';
-
-    return (
-        <div className={`mt-3 flex items-center gap-3 rounded-lg border px-4 py-2 ${bannerClass}`}>
-            <span className={`h-2 w-2 animate-pulse rounded-full ${dealing ? 'bg-yellow-400' : 'bg-sky-400'}`} />
-            <span className="text-sm">{bannerText}</span>
-        </div>
-    );
-}
 
 function DealerCenterVideo() {
     const tracks = useTracks([Track.Source.Camera]);
@@ -294,35 +242,3 @@ function DealerCenterVideo() {
     );
 }
 
-function HandCameraView({ tableId, roomName }: { tableId: string; roomName: string }) {
-    // Get token for the hand camera room using roomName override
-    const tokenQuery = api.table.livekitToken.useQuery({ tableId, roomName }, { enabled: !!tableId && !!roomName });
-    if (!tokenQuery.data) return null;
-    return (
-        <div className="w-full max-w-2xl mx-auto overflow-hidden rounded-lg border border-white/10 bg-black">
-            <LiveKitRoom token={tokenQuery.data.token} serverUrl={tokenQuery.data.serverUrl} connectOptions={{ autoSubscribe: true }}>
-                <RoomAudioRenderer />
-                <HandCameraVideoContent />
-            </LiveKitRoom>
-        </div>
-    );
-}
-
-function HandCameraVideoContent() {
-    const tracks = useTracks([Track.Source.Camera]);
-    const cameraTrack = tracks[0];
-    if (!cameraTrack) {
-        return (
-            <div className="aspect-video flex items-center justify-center text-xs text-zinc-400">
-                Waiting to see your hand...
-            </div>
-        );
-    }
-    return (
-        <div className="aspect-video">
-            <ParticipantTile trackRef={cameraTrack}>
-                <VideoTrack trackRef={cameraTrack} />
-            </ParticipantTile>
-        </div>
-    );
-}

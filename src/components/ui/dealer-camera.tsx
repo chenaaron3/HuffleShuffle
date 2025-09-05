@@ -6,28 +6,26 @@ import { ParticipantTile, useTracks, VideoTrack } from '@livekit/components-reac
 interface DealerCameraProps {
     communityCards: string[];
     potTotal: number;
+    gameStatus?: string;
+    activePlayerName?: string;
 }
 
-export function DealerCamera({ communityCards, potTotal }: DealerCameraProps) {
+export function DealerCamera({ communityCards, potTotal, gameStatus, activePlayerName }: DealerCameraProps) {
     const tracks = useTracks([Track.Source.Camera]);
     const dealerRef = tracks.find((t) => t.participant.identity === 'dealer-camera');
-
-    if (!dealerRef) {
-        return (
-            <div className="relative w-full overflow-hidden rounded-lg bg-black aspect-video">
-                <div className="flex h-full items-center justify-center text-zinc-400">
-                    Waiting for dealer camera...
-                </div>
-            </div>
-        );
-    }
 
     return (
         <div className="relative w-full overflow-hidden rounded-lg bg-black aspect-video">
             {/* Main Dealer Video */}
-            <ParticipantTile trackRef={dealerRef}>
-                <VideoTrack trackRef={dealerRef} />
-            </ParticipantTile>
+            {dealerRef ? (
+                <ParticipantTile trackRef={dealerRef}>
+                    <VideoTrack trackRef={dealerRef} />
+                </ParticipantTile>
+            ) : (
+                <div className="flex h-full items-center justify-center text-zinc-400">
+                    Waiting for dealer camera...
+                </div>
+            )}
 
             {/* Community Cards Overlay - Top Left */}
             {communityCards.length > 0 && (
@@ -49,6 +47,18 @@ export function DealerCamera({ communityCards, potTotal }: DealerCameraProps) {
                     Pot: ${potTotal.toFixed(2)}
                 </div>
             </div>
+
+            {/* Game Status Overlay - Top Center */}
+            {gameStatus && activePlayerName && (
+                <div className="absolute top-4 left-1/2 transform -translate-x-1/2 rounded-lg bg-sky-500/90 px-4 py-2 backdrop-blur-sm">
+                    <div className="flex items-center gap-2">
+                        <span className="h-2 w-2 animate-pulse rounded-full bg-sky-200" />
+                        <span className="text-sm font-semibold text-white">
+                            {activePlayerName}'s turn to act
+                        </span>
+                    </div>
+                </div>
+            )}
 
             {/* Subtle gradient overlay for better text readability */}
             <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-black/10 pointer-events-none" />
