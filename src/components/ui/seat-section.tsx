@@ -68,9 +68,9 @@ function SeatCard({
     // Empty seat placeholder
     if (!seat) {
         return (
-            <div className="relative flex w-full flex-col rounded-lg border border-dashed border-zinc-600/50 bg-zinc-900/20 p-2">
-                {/* Empty Video Feed - Scaled Down with Aspect Ratio */}
-                <div className="relative w-3/4 aspect-[4/3] overflow-hidden rounded-md bg-zinc-800/50 border border-zinc-600/30 mb-2">
+            <div className="relative flex h-[22vh] flex-col rounded-lg border border-dashed border-zinc-600/50 bg-zinc-900/20 p-2">
+                {/* Empty Video Feed - Match Occupied Seat Dimensions */}
+                <div className="relative h-full aspect-[4/3] overflow-hidden rounded-md bg-zinc-800/50 border border-zinc-600/30 mb-2">
                     <div className="flex h-full items-center justify-center text-xs text-zinc-500">
                         Empty Seat
                     </div>
@@ -99,13 +99,13 @@ function SeatCard({
 
     return (
         <div
-            className="relative flex w-full flex-col rounded-lg border bg-zinc-900/50 p-2"
+            className="relative flex h-[22vh] flex-col rounded-lg border bg-zinc-900/50 p-2"
             style={{
                 borderColor: active ? "rgb(234 179 8 / 0.5)" : "rgb(255 255 255 / 0.1)",
             }}
         >
             {/* Video Feed - Scaled Down with Aspect Ratio */}
-            <div className="relative w-3/4 aspect-[4/3] overflow-hidden rounded-md bg-black mb-2">
+            <div className="relative h-full aspect-[4/3] overflow-hidden rounded-md bg-black mb-2">
                 {videoTrackRef ? (
                     isSelf ? (
                         <>
