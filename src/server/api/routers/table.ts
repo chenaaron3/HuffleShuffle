@@ -8,7 +8,8 @@ import { games, piDevices, pokerTables, seats, users } from '~/server/db/schema'
 import { pusher } from '~/server/pusher';
 
 import {
-    activeCountOf, dealCard, evaluateBettingTransition, pickNextIndex, rotateToNextActiveSeatId
+    activeCountOf, dealCard, evaluateBettingTransition, notifyTableUpdate, pickNextIndex,
+    rotateToNextActiveSeatId
 } from '../game-logic';
 
 import type { VideoGrant } from "livekit-server-sdk";
@@ -615,6 +616,9 @@ export const tableRouter = createTRPCRouter({
         await evaluateBettingTransition(tx, input.tableId, game);
         return { ok: true } as const;
       });
+
+      // Notify clients of table update after successful transaction
+      await notifyTableUpdate(input.tableId);
 
       // transaction complete -> fetch committed snapshot
       const snapshot = await summarizeTable(db, input.tableId);

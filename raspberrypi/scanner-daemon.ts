@@ -65,7 +65,10 @@ function startHidReader(devicePath: string, onScan: ScanHandler): void {
     0x37: ".",
     0x38: "/",
   };
+
   let fd: number | null = null;
+  let isProcessing = false; // Flag to prevent overlapping processing
+
   try {
     fd = openSync(devicePath, "r");
   } catch (e) {
@@ -75,30 +78,49 @@ function startHidReader(devicePath: string, onScan: ScanHandler): void {
     );
     return;
   }
+
   const buf = Buffer.alloc(8);
   let acc = "";
+
   const loop = () => {
     if (fd == null) return;
+
     try {
       const bytes = readSync(fd, buf, 0, buf.length, null);
+
       for (let i = 0; i < bytes; i++) {
         const b = buf[i]!;
         if (b === HID_BREAK_LINE_CODE) {
           const code = acc.trim();
           acc = "";
-          if (code) onScan(code);
+          if (code && !isProcessing) {
+            isProcessing = true;
+            // Process this scan and wait for it to complete before processing the next
+            Promise.resolve(onScan(code)).finally(() => {
+              isProcessing = false;
+            });
+          } else if (code && isProcessing) {
+            console.log(
+              `[scanner-daemon] scan ${code} queued (previous scan still processing)`,
+            );
+          }
           continue;
         }
         const ch = HidToCharMap[b];
         if (ch) acc += ch;
       }
     } catch (e) {
-      // Swallow EAGAIN/timeouts; HID readers may block
-    } finally {
-      setImmediate(loop);
+      console.error("[scanner-daemon] HID read error:", e);
+      setTimeout(loop, 100);
+      return;
     }
+
+    // Use setTimeout with a shorter delay to be more responsive
+    setTimeout(loop, 5);
   };
+
   loop();
+
   process.on("exit", () => {
     try {
       if (fd != null) closeSync(fd);
@@ -282,7 +304,7 @@ export async function runScannerDaemon(): Promise<void> {
       console.log(`[scanner-daemon] publishing scan: ${barcode}`);
 
       // Send message to SQS FIFO queue
-      await sqs.send(
+      sqs.send(
         new SendMessageCommand({
           QueueUrl: queueUrl,
           MessageBody: JSON.stringify({
@@ -291,7 +313,7 @@ export async function runScannerDaemon(): Promise<void> {
             ts,
           }),
           MessageGroupId: info.tableId, // Ensures FIFO ordering per table
-          MessageDeduplicationId: `${info.tableId}-${barcode}-${ts}`, // Prevents duplicates
+          MessageDeduplicationId: `${info.tableId}-${barcode}`, // Prevents duplicates
         }),
       );
 
@@ -320,7 +342,9 @@ export async function runScannerDaemon(): Promise<void> {
     console.log(`[scanner-daemon] reading from HID device ${device}`);
 
     startHidReader(device, async (code) => {
+      console.log(`[scanner-daemon] HID received scan: ${code}`);
       await handleScan(code);
+      console.log(`[scanner-daemon] HID processed scan: ${code}`);
     });
   }
 

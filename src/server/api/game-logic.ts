@@ -2,6 +2,7 @@ import { and, eq, sql } from 'drizzle-orm';
 import { evaluate } from 'poker-hand-evaluator';
 import { db } from '~/server/db';
 import { games, seats } from '~/server/db/schema';
+import { pusher } from '~/server/pusher';
 
 // Use the new poker-hand-evaluator library instead of pokersolver
 interface PokerHandStatic {
@@ -290,4 +291,22 @@ export async function dealCard(
   }
 
   throw new Error("DEAL_CARD not valid in current state");
+}
+
+// Shared function to notify clients of table state changes
+export async function notifyTableUpdate(tableId: string): Promise<void> {
+  if (!pusher) {
+    console.warn("Pusher not configured, skipping table update notification");
+    return;
+  }
+
+  try {
+    await pusher.trigger(tableId, "table-updated", {
+      tableId,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error("Failed to send table update notification:", error);
+    // Don't throw - this is a notification, not critical to the main flow
+  }
 }

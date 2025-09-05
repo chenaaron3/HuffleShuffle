@@ -11,6 +11,7 @@ import { GlowingEffect } from '~/components/ui/glowing-effect';
 import { SeatCard as SeatCardUI } from '~/components/ui/seat-card';
 import { api } from '~/utils/api';
 import { rsaDecryptBase64 } from '~/utils/crypto';
+import { disconnectPusherClient, getPusherClient } from '~/utils/pusher-client';
 
 import {
     LiveKitRoom, ParticipantTile, RoomAudioRenderer, StartAudio, TrackToggle, useLocalParticipant,
@@ -18,15 +19,14 @@ import {
 } from '@livekit/components-react';
 
 import type { SeatWithPlayer } from '~/server/api/routers/table';
-import { useEffect, useState } from 'react';
 export default function TableView() {
     const router = useRouter();
     const { id } = router.query as { id?: string };
     const tableIdStr = id ?? '';
     const { data: session } = useSession();
 
-    const tableQuery = api.table.get.useQuery({ tableId: id ?? '' }, { enabled: !!id, });
-    const action = api.table.action.useMutation({ onSuccess: () => tableQuery.refetch() });
+    const tableQuery = api.table.get.useQuery({ tableId: id ?? '' }, { enabled: !!id });
+    const action = api.table.action.useMutation();
 
     const [dealRank, setDealRank] = React.useState<string>('A');
     const [dealSuit, setDealSuit] = React.useState<string>('s');
@@ -41,8 +41,8 @@ export default function TableView() {
     const highlightedSeatId = dealSeatId ?? bettingActorSeatId;
 
     const currentSeat = seats.find((s: any) => s.playerId === session?.user?.id) as any | undefined;
-    const [handRoomName, setHandRoomName] = useState<string | null>(null);
-    useEffect(() => {
+    const [handRoomName, setHandRoomName] = React.useState<string | null>(null);
+    React.useEffect(() => {
         (async () => {
             if (!id || !currentSeat?.encryptedUserNonce) return;
             try {
@@ -54,6 +54,33 @@ export default function TableView() {
             }
         })();
     }, [id, currentSeat?.encryptedUserNonce]);
+
+    // Pusher subscription for real-time table updates
+    React.useEffect(() => {
+        if (!id) return;
+
+        const pusher = getPusherClient();
+        if (!pusher) return;
+
+        const channel = pusher.subscribe(id);
+
+        channel.bind('table-updated', () => {
+            console.log('Table update received, refetching data...');
+            void tableQuery.refetch();
+        });
+
+        return () => {
+            channel.unbind_all();
+            pusher.unsubscribe(id);
+        };
+    }, [id, tableQuery]);
+
+    // Cleanup Pusher connection on unmount
+    React.useEffect(() => {
+        return () => {
+            disconnectPusherClient();
+        };
+    }, []);
 
     const dealerSeatId = snapshot?.game?.dealerButtonSeatId ?? null;
     const dealerIdx = dealerSeatId ? seats.findIndex((s: any) => s.id === dealerSeatId) : -1;

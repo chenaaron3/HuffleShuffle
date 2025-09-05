@@ -20,11 +20,7 @@
       "~/*": ["src/*"]
     }
   },
-  "include": [
-    "consumer.ts",
-    "../../src/server/db/schema.ts",
-    "../../src/server/api/game-logic.ts"
-  ],
+  "include": ["consumer.ts", "link/schema.ts", "link/game-logic.ts"],
   "exclude": [
     "node_modules",
     "dist",

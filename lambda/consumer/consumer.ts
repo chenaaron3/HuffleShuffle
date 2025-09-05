@@ -1,12 +1,13 @@
 // Load environment variables from .env file
 import { config } from 'dotenv';
 import { eq, sql } from 'drizzle-orm';
-import { drizzle } from 'drizzle-orm/postgres-js';
+import { drizzle, PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
-import { dealCard } from '~/server/api/game-logic';
-import * as schema from '~/server/db/schema';
 
 import { DeleteMessageCommand, SQSClient } from '@aws-sdk/client-sqs';
+
+import { dealCard, notifyTableUpdate } from './link/game-logic';
+import * as schema from './link/schema';
 
 import type {
   SQSEvent,
@@ -16,9 +17,10 @@ import type {
 } from "aws-lambda";
 
 config();
-
+let db: PostgresJsDatabase<typeof schema> & {
+  $client: postgres.Sql<{}>;
+};
 // Initialize database connection outside handler for connection reuse
-let db: ReturnType<typeof drizzle<typeof schema>>;
 let sqs: SQSClient;
 
 function getDb() {
@@ -101,6 +103,7 @@ async function handleScan(msg: ScanMessage): Promise<void> {
 
     // Use shared game logic instead of duplicating code
     await dealCard(tx, tableId, game, code);
+    await notifyTableUpdate(tableId);
   });
 }
 
@@ -182,9 +185,3 @@ export const handler = async (
     batchItemFailures,
   };
 };
-
-// For local testing (optional)
-if (process.env.NODE_ENV === "development") {
-  console.log("[lambda] running in development mode");
-  // You can add local testing logic here if needed
-}
