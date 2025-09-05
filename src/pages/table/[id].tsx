@@ -6,9 +6,13 @@ import Head from 'next/head';
 import { useRouter } from 'next/router';
 import * as React from 'react';
 import { TableSetupModal } from '~/components/TableSetupModal';
+import { ActionButtons } from '~/components/ui/action-buttons';
 import { CardImage } from '~/components/ui/card-img';
+import { DealerCamera } from '~/components/ui/dealer-camera';
 import { GlowingEffect } from '~/components/ui/glowing-effect';
+import { HandCamera } from '~/components/ui/hand-camera';
 import { SeatCard as SeatCardUI } from '~/components/ui/seat-card';
+import { SeatSection } from '~/components/ui/seat-section';
 import { api } from '~/utils/api';
 import { rsaDecryptBase64 } from '~/utils/crypto';
 import { disconnectPusherClient, getPusherClient } from '~/utils/pusher-client';
@@ -123,7 +127,7 @@ export default function TableView() {
             <Head>
                 <title>Table - HuffleShuffle</title>
             </Head>
-            <main className="min-h-screen bg-black text-white">
+            <main className="h-screen bg-black text-white overflow-hidden">
                 {canRenderLivekit ? (
                     <LiveKitRoom
                         token={livekit.data!.token}
@@ -144,36 +148,21 @@ export default function TableView() {
                                 </button>
                             )}
                         </div>
-                        <div className="mx-auto grid max-w-7xl grid-cols-1 gap-6 px-4 py-6 md:grid-cols-4">
-                            {/* Wrap middle and side rails in LiveKitRoom so SeatCard can access participants */}
-                            <aside className="order-2 flex flex-col gap-3 md:order-1">
-                                {seats.slice(0, Math.ceil(seats.length / 2)).map((s: any, i: number) => (
-                                    <SeatCardUI
-                                        key={s.id}
-                                        seat={s}
-                                        index={i}
-                                        small={i === smallBlindIdx}
-                                        big={i === bigBlindIdx}
-                                        active={!!highlightedSeatId && s.id === highlightedSeatId}
-                                        myUserId={session?.user?.id ?? null}
-                                    />
-                                ))}
-                            </aside>
+                        {/* New 8-seat rectangular layout */}
+                        <div className="flex h-full gap-4 px-4 py-4">
+                            {/* Left side seats (4, 3, 2, 1) */}
+                            <SeatSection
+                                seats={seats.slice(0, 4)}
+                                highlightedSeatId={highlightedSeatId}
+                                smallBlindIdx={smallBlindIdx}
+                                bigBlindIdx={bigBlindIdx}
+                                myUserId={session?.user?.id ?? null}
+                                side="left"
+                            />
 
-                            {/* Center stage */}
-                            <section className="order-1 md:order-2 md:col-span-2">
-                                <DealerCenterVideo />
-                                {/* Hand camera moved to floating bottom-right */}
-                                <div className="relative mt-3 flex items-center justify-between rounded-lg border border-white/10 bg-zinc-900/50 px-5 py-4">
-                                    <GlowingEffect disabled={false} blur={4} proximity={80} spread={24} className="rounded-lg" />
-                                    <div className="flex items-center gap-4">
-                                        {(snapshot?.game?.communityCards ?? []).map((c: string) => (
-                                            <CardImage key={c} code={c} size={120} />
-                                        ))}
-                                    </div>
-                                    <div className="text-base text-zinc-200">Pot: {snapshot?.game?.potTotal ?? 0}</div>
-                                </div>
-
+                            {/* Center area with dealer cam and controls */}
+                            <div className="flex flex-1 flex-col items-center gap-4">
+                                {/* Game Status Banner - Above Dealer */}
                                 <GameStatusBanner
                                     isDealer={session?.user?.role === 'dealer'}
                                     state={state}
@@ -183,81 +172,46 @@ export default function TableView() {
                                     currentUserSeatId={currentUserSeatId}
                                 />
 
-                                {/* LiveKit room wraps the whole table layout so SeatCards can access participants */}
+                                {/* Dealer Camera with Community Cards Overlay */}
+                                <DealerCamera
+                                    communityCards={snapshot?.game?.communityCards ?? []}
+                                    potTotal={snapshot?.game?.potTotal ?? 0}
+                                />
 
-                                <div className="mt-4 grid grid-cols-5 gap-3">
-                                    {session?.user?.role === 'dealer' ? (
-                                        <>
-                                            <select
-                                                aria-label="Rank"
-                                                value={dealRank}
-                                                onChange={(e) => setDealRank(e.target.value)}
-                                                className="rounded-md bg-white px-2 py-2 text-sm font-medium text-black hover:bg-zinc-200"
-                                            >
-                                                {['2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K', 'A'].map((r) => (
-                                                    <option key={r} value={r}>{r}</option>
-                                                ))}
-                                            </select>
-                                            <select
-                                                aria-label="Suit"
-                                                value={dealSuit}
-                                                onChange={(e) => setDealSuit(e.target.value)}
-                                                className="rounded-md bg-white px-2 py-2 text-sm font-medium text-black hover:bg-zinc-200"
-                                            >
-                                                {[
-                                                    { value: 's', label: 'Spades (s)' },
-                                                    { value: 'h', label: 'Hearts (h)' },
-                                                    { value: 'd', label: 'Diamonds (d)' },
-                                                    { value: 'c', label: 'Clubs (c)' },
-                                                ].map((s) => (
-                                                    <option key={s.value} value={s.value}>{s.label}</option>
-                                                ))}
-                                            </select>
-                                            <ActionBtn onClick={() => action.mutate({ tableId: id!, action: 'START_GAME' })}>Start Game</ActionBtn>
-                                            <ActionBtn onClick={() => action.mutate({ tableId: id!, action: 'DEAL_CARD', params: { rank: dealRank, suit: dealSuit } })}>Deal</ActionBtn>
-                                            <ActionBtn onClick={() => {
-                                                const code = pickRandomUndealt();
-                                                console.log('code', code);
-                                                if (!code) return;
-                                                action.mutate({ tableId: id!, action: 'DEAL_CARD', params: { rank: code[0], suit: code[1] } });
-                                            }}>Random</ActionBtn>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <ActionBtn disabled={state !== 'BETTING' || currentUserSeatId !== bettingActorSeatId} onClick={() => action.mutate({ tableId: id!, action: 'CHECK' })}>Check</ActionBtn>
-                                            <ActionBtn
-                                                disabled={state !== 'BETTING' || currentUserSeatId !== bettingActorSeatId}
-                                                onClick={() => {
-                                                    const activeSeats = (seats as any[]).filter((s: any) => s.isActive);
-                                                    const maxBet = activeSeats.length ? Math.max(...activeSeats.map((s: any) => s.currentBet ?? 0)) : 0;
-                                                    const amount = maxBet + 20;
-                                                    action.mutate({ tableId: id!, action: 'RAISE', params: { amount } });
-                                                }}
-                                            >
-                                                Raise +20
-                                            </ActionBtn>
-                                            <ActionBtn disabled={state !== 'BETTING' || currentUserSeatId !== bettingActorSeatId} onClick={() => action.mutate({ tableId: id!, action: 'FOLD' })}>Fold</ActionBtn>
-                                        </>
-                                    )}
-                                </div>
-
-                                {/* Dealer video and chat removed for now */}
-                            </section>
-
-                            {/* Right rail seats */}
-                            <aside className="order-3 flex flex-col gap-3">
-                                {seats.slice(Math.ceil(seats.length / 2)).map((s: any, i: number) => (
-                                    <SeatCardUI
-                                        key={s.id}
-                                        seat={s}
-                                        index={i + Math.ceil(seats.length / 2)}
-                                        small={i + Math.ceil(seats.length / 2) === smallBlindIdx}
-                                        big={i + Math.ceil(seats.length / 2) === bigBlindIdx}
-                                        active={!!highlightedSeatId && s.id === highlightedSeatId}
-                                        myUserId={session?.user?.id ?? null}
+                                {/* Hand Camera and Action Buttons Row */}
+                                <div className="flex w-full items-center justify-between gap-4">
+                                    {/* Hand Camera - Left */}
+                                    <HandCamera
+                                        tableId={tableIdStr}
+                                        roomName={handRoomName}
                                     />
-                                ))}
-                            </aside>
+
+                                    {/* Action Buttons - Center */}
+                                    <ActionButtons
+                                        isDealer={session?.user?.role === 'dealer'}
+                                        state={state}
+                                        currentUserSeatId={currentUserSeatId}
+                                        bettingActorSeatId={bettingActorSeatId}
+                                        onAction={(actionType, params) => action.mutate({ tableId: id!, action: actionType as any, params })}
+                                        onDealCard={(rank, suit) => action.mutate({ tableId: id!, action: 'DEAL_CARD', params: { rank, suit } })}
+                                        onRandomCard={() => {
+                                            const code = pickRandomUndealt();
+                                            if (!code) return;
+                                            action.mutate({ tableId: id!, action: 'DEAL_CARD', params: { rank: code[0], suit: code[1] } });
+                                        }}
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Right side seats (5, 6, 7, 8) */}
+                            <SeatSection
+                                seats={seats.slice(4, 8)}
+                                highlightedSeatId={highlightedSeatId}
+                                smallBlindIdx={smallBlindIdx}
+                                bigBlindIdx={bigBlindIdx}
+                                myUserId={session?.user?.id ?? null}
+                                side="right"
+                            />
                         </div>
                     </LiveKitRoom>
                 ) : (
