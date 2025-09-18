@@ -3,6 +3,9 @@ import { check, index, pgEnum, pgTableCreator, primaryKey, uniqueIndex } from 'd
 
 import type { AdapterAccount } from "next-auth/adapters";
 
+// Constants
+export const MAX_SEATS_PER_TABLE = 8;
+
 /**
  * This is an example of how to use the multi-project schema feature of Drizzle ORM. Use the same
  * database instance for multiple projects.
@@ -13,27 +16,6 @@ export const createTable = pgTableCreator((name) => `huffle-shuffle_${name}`);
 
 // User role enum
 export const userRoleEnum = pgEnum("user_role", ["player", "dealer"]);
-
-export const posts = createTable(
-  "post",
-  (d) => ({
-    id: d.integer().primaryKey().generatedByDefaultAsIdentity(),
-    name: d.varchar({ length: 256 }),
-    createdById: d
-      .varchar({ length: 255 })
-      .notNull()
-      .references(() => users.id),
-    createdAt: d
-      .timestamp({ withTimezone: true })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
-    updatedAt: d.timestamp({ withTimezone: true }).$onUpdate(() => new Date()),
-  }),
-  (t) => [
-    index("created_by_idx").on(t.createdById),
-    index("name_idx").on(t.name),
-  ],
-);
 
 export const users = createTable(
   "user",
@@ -134,6 +116,7 @@ export const pokerTables = createTable(
       .references(() => users.id),
     smallBlind: d.integer().notNull(),
     bigBlind: d.integer().notNull(),
+    maxSeats: d.integer().notNull().default(MAX_SEATS_PER_TABLE),
     createdAt: d
       .timestamp({ withTimezone: true })
       .default(sql`CURRENT_TIMESTAMP`)
@@ -163,7 +146,7 @@ export const seats = createTable(
       .varchar({ length: 255 })
       .notNull()
       .references(() => users.id),
-    seatNumber: d.integer().notNull(), // 0..7 inclusive
+    seatNumber: d.integer().notNull(), // 0..(MAX_SEATS_PER_TABLE-1) inclusive
     buyIn: d.integer().notNull().default(0),
     currentBet: d.integer().notNull().default(0),
     cards: d
@@ -184,19 +167,10 @@ export const seats = createTable(
     uniqueIndex("seat_table_number_unique").on(t.tableId, t.seatNumber),
     uniqueIndex("seat_player_unique").on(t.playerId), // player can be in only one table at a time
     index("seat_table_id_idx").on(t.tableId),
-    check(
-      "seat_number_range",
-      sql`${t.seatNumber} >= 0 AND ${t.seatNumber} <= 7`,
-    ),
   ],
 );
 
 // Game entity
-export const gameStatusEnum = pgEnum("game_status", [
-  "pending",
-  "active",
-  "completed",
-]);
 
 export const gameStateEnum = pgEnum("game_state", [
   "DEAL_HOLE_CARDS",
@@ -220,7 +194,7 @@ export const games = createTable(
       .varchar({ length: 255 })
       .notNull()
       .references(() => pokerTables.id),
-    status: gameStatusEnum("status").notNull().default("pending"),
+    isCompleted: d.boolean().notNull().default(false),
     state: gameStateEnum("state").notNull().default("DEAL_HOLE_CARDS"),
     dealerButtonSeatId: d.varchar({ length: 255 }).references(() => seats.id),
     assignedSeatId: d.varchar({ length: 255 }).references(() => seats.id),

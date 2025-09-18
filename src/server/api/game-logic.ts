@@ -198,7 +198,7 @@ export async function evaluateBettingTransition(
     }
     await tx
       .update(games)
-      .set({ state: "SHOWDOWN" })
+      .set({ state: "SHOWDOWN", isCompleted: true })
       .where(eq(games.id, updatedGame.id));
     return;
   }

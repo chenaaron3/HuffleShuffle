@@ -9,6 +9,7 @@ type GameAction = "RESET_TABLE" | "START_GAME" | "DEAL_CARD" | "RAISE" | "FOLD" 
 
 interface ActionButtonsProps {
     isDealer: boolean;
+    isJoinable: boolean;
     state?: string;
     currentUserSeatId?: string | null;
     bettingActorSeatId?: string | null;
@@ -25,6 +26,7 @@ interface ActionButtonsProps {
 
 export function ActionButtons({
     isDealer,
+    isJoinable,
     state,
     currentUserSeatId,
     bettingActorSeatId,
@@ -104,11 +106,17 @@ export function ActionButtons({
 
                         {/* Game Control Buttons */}
                         <Button
-                            onClick={() => onAction('START_GAME')}
+                            onClick={() => {
+                                if (isJoinable) {
+                                    onAction('START_GAME')
+                                } else {
+                                    onAction('RESET_TABLE')
+                                }
+                            }}
                             disabled={isLoading}
                             className="bg-green-600 hover:bg-green-700 text-white font-semibold px-6 py-2 rounded-lg transition-all duration-200 hover:scale-105"
                         >
-                            {isLoading ? 'Starting...' : 'Start Game'}
+                            {isJoinable ? 'Start Game' : 'Reset Table'}
                         </Button>
 
                         {onDealCard && (

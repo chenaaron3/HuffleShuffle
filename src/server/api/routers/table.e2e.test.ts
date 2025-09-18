@@ -3,7 +3,7 @@ import { and, eq, isNotNull, sql } from 'drizzle-orm';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { createCaller } from '~/server/api/root';
 import { db } from '~/server/db';
-import { games, pokerTables, seats, users } from '~/server/db/schema';
+import { games, MAX_SEATS_PER_TABLE, pokerTables, seats, users } from '~/server/db/schema';
 
 describe("table e2e flow", () => {
   const dealerId = "dealer-vitest";
@@ -135,6 +135,7 @@ rwIDAQAB
         name: "Vitest",
         smallBlind: 5,
         bigBlind: 10,
+        maxSeats: MAX_SEATS_PER_TABLE,
       });
       tableId = res.tableId;
       expect(tableId).toBeTypeOf("string");
@@ -249,10 +250,17 @@ rwIDAQAB
       snap = await secondCaller.table.action({ tableId, action: "CHECK" });
       expect(["SHOWDOWN", "BETTING"]).toContain(snap.game?.state as string);
 
-      // Reset table -> completes game and creates new one
+      // Reset table -> completes game without creating new one
       snap = await dealerCaller.table.action({
         tableId,
         action: "RESET_TABLE",
+      });
+      expect(snap.game?.isCompleted).toBe(true);
+
+      // Start new game -> creates new game
+      snap = await dealerCaller.table.action({
+        tableId,
+        action: "START_GAME",
       });
       expect(snap.game?.state).toBe("DEAL_HOLE_CARDS");
     } finally {

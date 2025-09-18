@@ -139,6 +139,7 @@ export default function TableView() {
                 <title>Table - HuffleShuffle</title>
             </Head>
             <main className="h-screen bg-black text-white overflow-hidden">
+                {/* Table Status Indicator */}
                 {canRenderLivekit ? (
                     <LiveKitRoom
                         token={livekit.data!.token}
@@ -192,6 +193,7 @@ export default function TableView() {
                                     {/* Action Buttons - Center */}
                                     <ActionButtons
                                         isDealer={session?.user?.role === 'dealer'}
+                                        isJoinable={snapshot?.isJoinable}
                                         state={state}
                                         currentUserSeatId={currentUserSeatId}
                                         bettingActorSeatId={bettingActorSeatId}

@@ -4,8 +4,9 @@ import { createRequire } from 'node:module';
 import { z } from 'zod';
 import { createTRPCRouter, protectedProcedure, publicProcedure } from '~/server/api/trpc';
 import { db } from '~/server/db';
-import { games, piDevices, pokerTables, seats, users } from '~/server/db/schema';
-import { pusher } from '~/server/pusher';
+import {
+    games, MAX_SEATS_PER_TABLE, piDevices, pokerTables, seats, users
+} from '~/server/db/schema';
 
 import {
     activeCountOf, dealCard, evaluateBettingTransition, notifyTableUpdate, pickNextIndex,
@@ -39,6 +40,8 @@ type TableSnapshot = {
   table: TableRow | null;
   seats: SeatWithPlayer[];
   game: GameRow | null;
+  isJoinable: boolean;
+  availableSeats: number;
 };
 type TableTransaction = { update: typeof db.update; query: typeof db.query };
 
@@ -65,7 +68,18 @@ const summarizeTable = async (
     where: eq(games.tableId, tableId),
     orderBy: (g, { desc }) => [desc(g.createdAt)],
   });
-  return { table: table ?? null, seats: tableSeats, game: game ?? null };
+  if (!table) throw new Error("Table not found");
+  // Determine if table is joinable
+  const isJoinable = !game || game.isCompleted;
+  const availableSeats = table?.maxSeats - tableSeats.length;
+
+  return {
+    table: table,
+    seats: tableSeats,
+    game: game ?? null,
+    isJoinable,
+    availableSeats,
+  };
 };
 
 function redactSnapshotForUser(
@@ -143,10 +157,10 @@ async function resetGame(
     s.currentBet = 0;
   }
 
-  // Mark current game complete and create a fresh one
+  // Mark current game as completed
   await tx
     .update(games)
-    .set({ status: "completed" })
+    .set({ isCompleted: true })
     .where(eq(games.id, game.id));
 }
 
@@ -161,7 +175,7 @@ async function createNewGame(
     .insert(games)
     .values({
       tableId: table.id,
-      status: "active",
+      isCompleted: false,
       state: "DEAL_HOLE_CARDS",
       dealerButtonSeatId,
       communityCards: [],
@@ -240,12 +254,34 @@ export const tableRouter = createTRPCRouter({
     const rows = await db.query.pokerTables.findMany({
       orderBy: (t, { asc }) => [asc(t.createdAt)],
     });
-    return rows.map((t) => ({
-      id: t.id,
-      name: t.name,
-      smallBlind: t.smallBlind,
-      bigBlind: t.bigBlind,
-    }));
+
+    return Promise.all(
+      rows.map(async (t) => {
+        // Get current game and seat count for each table
+        const game = await db.query.games.findFirst({
+          where: eq(games.tableId, t.id),
+          orderBy: (g, { desc }) => [desc(g.createdAt)],
+        });
+
+        const seatCount = await db.query.seats.findMany({
+          where: eq(seats.tableId, t.id),
+        });
+
+        const isJoinable = !game || game.isCompleted;
+        const availableSeats = t.maxSeats - seatCount.length;
+
+        return {
+          id: t.id,
+          name: t.name,
+          smallBlind: t.smallBlind,
+          bigBlind: t.bigBlind,
+          maxSeats: t.maxSeats,
+          isJoinable,
+          availableSeats,
+          playerCount: seatCount.length,
+        };
+      }),
+    );
   }),
   create: protectedProcedure
     .input(
@@ -253,6 +289,12 @@ export const tableRouter = createTRPCRouter({
         name: z.string().min(1),
         smallBlind: z.number().int().positive(),
         bigBlind: z.number().int().positive(),
+        maxSeats: z
+          .number()
+          .int()
+          .positive()
+          .max(MAX_SEATS_PER_TABLE)
+          .default(MAX_SEATS_PER_TABLE),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -270,6 +312,7 @@ export const tableRouter = createTRPCRouter({
             dealerId: userId,
             smallBlind: input.smallBlind,
             bigBlind: input.bigBlind,
+            maxSeats: input.maxSeats,
           })
           .returning({ id: pokerTables.id });
         const row = rows?.[0];
@@ -303,7 +346,7 @@ export const tableRouter = createTRPCRouter({
         const activeGame = await tx.query.games.findFirst({
           where: and(
             eq(games.tableId, input.tableId),
-            eq(games.status, "active"),
+            eq(games.isCompleted, false),
           ),
         });
         if (activeGame) throw new Error("Cannot join: game already active");
@@ -312,7 +355,8 @@ export const tableRouter = createTRPCRouter({
         const existingSeats = await tx.query.seats.findMany({
           where: eq(seats.tableId, input.tableId),
         });
-        if (existingSeats.length >= 8) throw new Error("Table is full");
+        if (existingSeats.length >= table.maxSeats)
+          throw new Error("Table is full");
 
         if (user.balance < input.buyIn)
           throw new Error("Insufficient balance for buy-in");
@@ -423,7 +467,7 @@ export const tableRouter = createTRPCRouter({
         const active = await tx.query.games.findFirst({
           where: and(
             eq(games.tableId, input.tableId),
-            eq(games.status, "active"),
+            eq(games.isCompleted, false),
           ),
         });
         if (
@@ -502,7 +546,7 @@ export const tableRouter = createTRPCRouter({
         let game = await tx.query.games.findFirst({
           where: and(
             eq(games.tableId, input.tableId),
-            eq(games.status, "active"),
+            eq(games.isCompleted, false),
           ),
         });
 
@@ -516,9 +560,17 @@ export const tableRouter = createTRPCRouter({
           return `${rank}${suit}`;
         };
 
-        if (input.action === "START_GAME" || input.action === "RESET_TABLE") {
-          if (!isDealerCaller)
-            throw new Error("Only dealer can START_GAME or RESET_TABLE");
+        if (input.action === "RESET_TABLE") {
+          if (!isDealerCaller) throw new Error("Only dealer can RESET_TABLE");
+          // If there was a previous game, mark it as complete
+          if (game) {
+            await resetGame(tx, game, orderedSeats);
+          }
+          return { ok: true } as const;
+        }
+
+        if (input.action === "START_GAME") {
+          if (!isDealerCaller) throw new Error("Only dealer can START_GAME");
           let dealerButtonSeatId = orderedSeats[0]!.id;
           // If there was a previous game, reset it
           if (game) {

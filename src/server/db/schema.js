@@ -146,11 +146,6 @@ export const seats = createTable("seat", (d) => ({
     check("seat_number_range", sql `${t.seatNumber} >= 0 AND ${t.seatNumber} <= 7`),
 ]);
 // Game entity
-export const gameStatusEnum = pgEnum("game_status", [
-    "pending",
-    "active",
-    "completed",
-]);
 export const gameStateEnum = pgEnum("game_state", [
     "DEAL_HOLE_CARDS",
     "BETTING",
@@ -170,7 +165,7 @@ export const games = createTable("game", (d) => ({
         .varchar({ length: 255 })
         .notNull()
         .references(() => pokerTables.id),
-    status: gameStatusEnum("status").notNull().default("pending"),
+    isCompleted: d.boolean().notNull().default(false),
     state: gameStateEnum("state").notNull().default("DEAL_HOLE_CARDS"),
     dealerButtonSeatId: d.varchar({ length: 255 }).references(() => seats.id),
     assignedSeatId: d.varchar({ length: 255 }).references(() => seats.id),

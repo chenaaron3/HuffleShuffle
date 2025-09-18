@@ -49,7 +49,7 @@
       - `run_dealer.sh`: uses GStreamer + x264 over TCP then `lk room join --publish h264://...` as "dealer-camera".
 
 - Database / Schema Notes (`src/server/db/schema.ts`):
-  - Enums: `user_role` (player|dealer), `game_status` (pending|active|completed), `game_state` (DEAL_HOLE_CARDS|BETTING|DEAL_FLOP|DEAL_TURN|DEAL_RIVER|SHOWDOWN|RESET_TABLE), `pi_device_type` (scanner|dealer|card|button).
+  - Enums: `user_role` (player|dealer), `game_state` (DEAL_HOLE_CARDS|BETTING|DEAL_FLOP|DEAL_TURN|DEAL_RIVER|SHOWDOWN|RESET_TABLE), `pi_device_type` (scanner|dealer|card|button).
   - Tables:
     - `user`: role, balance (non-negative), optional `publicKey`.
     - `poker_table`: unique `dealerId`, blinds.
