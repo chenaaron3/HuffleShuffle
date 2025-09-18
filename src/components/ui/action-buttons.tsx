@@ -5,7 +5,7 @@ import { Button } from '~/components/ui/button';
 import { Card, CardContent } from '~/components/ui/card';
 import { Slider } from '~/components/ui/slider';
 
-type GameAction = "RESET_TABLE" | "START_GAME" | "DEAL_CARD" | "RAISE" | "FOLD" | "CHECK";
+type GameAction = "RESET_TABLE" | "START_GAME" | "DEAL_CARD" | "RAISE" | "FOLD" | "CHECK" | "LEAVE";
 
 interface ActionButtonsProps {
     isDealer: boolean;
@@ -149,8 +149,23 @@ export function ActionButtons({
         return (
             <Card className="bg-gray-100/90 backdrop-blur-sm border-gray-200/50">
                 <CardContent className="p-4">
-                    <div className="text-center text-gray-600 font-medium">
-                        Waiting for your turn...
+                    <div className="space-y-4">
+                        <div className="text-center text-gray-600 font-medium">
+                            Waiting for your turn...
+                        </div>
+
+                        {/* Leave Button - Show when table is joinable */}
+                        {isJoinable && (
+                            <div className="pt-4 border-t border-gray-200">
+                                <Button
+                                    onClick={() => onAction('LEAVE')}
+                                    disabled={isLoading}
+                                    className="bg-gray-600 hover:bg-gray-700 text-white font-semibold px-6 py-2 rounded-lg transition-all duration-200 hover:scale-105 w-full"
+                                >
+                                    {isLoading ? 'Leaving...' : 'Leave Table'}
+                                </Button>
+                            </div>
+                        )}
                     </div>
                 </CardContent>
             </Card>
@@ -267,6 +282,19 @@ export function ActionButtons({
                                     </Button>
                                 </div>
                             </div>
+                        </div>
+                    )}
+
+                    {/* Leave Button - Show when table is joinable */}
+                    {isJoinable && (
+                        <div className="pt-4 border-t border-gray-200">
+                            <Button
+                                onClick={() => onAction('LEAVE')}
+                                disabled={isLoading}
+                                className="bg-gray-600 hover:bg-gray-700 text-white font-semibold px-6 py-2 rounded-lg transition-all duration-200 hover:scale-105 w-full"
+                            >
+                                {isLoading ? 'Leaving...' : 'Leave Table'}
+                            </Button>
                         </div>
                     )}
                 </div>

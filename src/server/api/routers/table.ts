@@ -470,10 +470,9 @@ export const tableRouter = createTRPCRouter({
             eq(games.isCompleted, false),
           ),
         });
-        if (
-          active &&
-          !["RESET_TABLE", "SHOWDOWN"].includes((active as any).state)
-        ) {
+        // Allow leaving if table is joinable (no active game or game is completed)
+        // This matches the isJoinable logic: !game || game.isCompleted
+        if (active && active.isCompleted === false) {
           throw new Error("Cannot leave during an active hand");
         }
 
@@ -485,22 +484,8 @@ export const tableRouter = createTRPCRouter({
             .where(eq(users.id, userId));
         }
 
-        // Remove seat and resequence seat numbers
+        // Remove seat
         await tx.delete(seats).where(eq(seats.id, seat.id));
-        const remainingSeats = await tx.query.seats.findMany({
-          where: eq(seats.tableId, input.tableId),
-          orderBy: (s, { asc }) => [asc(s.seatNumber)],
-        });
-        for (let i = 0; i < remainingSeats.length; i++) {
-          const s = remainingSeats[i]!;
-          if (s.seatNumber !== i) {
-            await tx
-              .update(seats)
-              .set({ seatNumber: i })
-              .where(eq(seats.id, s.id));
-          }
-        }
-
         return { ok: true } as const;
       });
       return result;

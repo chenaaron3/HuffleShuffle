@@ -47,6 +47,13 @@ export default function TableView() {
         }
     });
 
+    const leaveMutation = api.table.leave.useMutation({
+        onSuccess: () => {
+            // Redirect to lobby after successfully leaving
+            void router.push('/lobby');
+        },
+    });
+
     const [showSetup, setShowSetup] = React.useState<boolean>(false);
     const seats = snapshot?.seats ?? [];
     const state: string | undefined = snapshot?.game?.state as any;
@@ -193,17 +200,21 @@ export default function TableView() {
                                     {/* Action Buttons - Center */}
                                     <ActionButtons
                                         isDealer={session?.user?.role === 'dealer'}
-                                        isJoinable={snapshot?.isJoinable}
+                                        isJoinable={snapshot?.isJoinable ?? false}
                                         state={state}
                                         currentUserSeatId={currentUserSeatId}
                                         bettingActorSeatId={bettingActorSeatId}
-                                        isLoading={action.isPending}
+                                        isLoading={action.isPending || leaveMutation.isPending}
                                         potTotal={(snapshot?.game?.potTotal ?? 0) + (seats.reduce((sum, seat) => sum + (seat.currentBet ?? 0), 0))}
                                         currentBet={currentSeat?.currentBet ?? 0}
                                         playerBalance={currentSeat?.buyIn ?? 0}
                                         bigBlind={snapshot?.table?.bigBlind ?? 20}
                                         onAction={(actionType, params) => {
-                                            action.mutate({ tableId: id!, action: actionType as any, params });
+                                            if (actionType === 'LEAVE') {
+                                                leaveMutation.mutate({ tableId: id! });
+                                            } else {
+                                                action.mutate({ tableId: id!, action: actionType as any, params });
+                                            }
                                         }}
                                         onDealCard={(rank, suit) => {
                                             action.mutate({ tableId: id!, action: 'DEAL_CARD', params: { rank, suit } });
