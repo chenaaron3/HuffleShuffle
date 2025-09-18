@@ -148,7 +148,7 @@ export default function TableView() {
                         audio={true}
                     >
                         <RoomAudioRenderer />
-                        <div className="mx-auto mt-4 flex max-w-7xl items-center gap-3 px-4">
+                        <div className="absolute z-10 right-0 flex max-w-7xl items-center gap-3 px-4">
                             <StartAudio label="Enable Audio" />
                             {session?.user?.role === 'dealer' && (
                                 <button
@@ -196,6 +196,10 @@ export default function TableView() {
                                         currentUserSeatId={currentUserSeatId}
                                         bettingActorSeatId={bettingActorSeatId}
                                         isLoading={action.isPending}
+                                        potTotal={(snapshot?.game?.potTotal ?? 0) + (seats.reduce((sum, seat) => sum + (seat.currentBet ?? 0), 0))}
+                                        currentBet={currentSeat?.currentBet ?? 0}
+                                        playerBalance={currentSeat?.buyIn ?? 0}
+                                        bigBlind={snapshot?.table?.bigBlind ?? 20}
                                         onAction={(actionType, params) => {
                                             action.mutate({ tableId: id!, action: actionType as any, params });
                                         }}

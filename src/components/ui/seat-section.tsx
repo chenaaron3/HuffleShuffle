@@ -57,6 +57,7 @@ export function SeatSection({
                         big={actualSeatIndex === bigBlindIdx}
                         active={!!highlightedSeatId && seat?.id === highlightedSeatId}
                         myUserId={myUserId}
+                        side={side}
                     />
                 );
             })}
@@ -72,6 +73,7 @@ function SeatCard({
     big,
     active,
     myUserId,
+    side,
 }: {
     seat: SeatWithPlayer | null;
     index: number;
@@ -80,6 +82,7 @@ function SeatCard({
     big: boolean;
     active?: boolean;
     myUserId?: string | null;
+    side: 'left' | 'right';
 }) {
     const trackRefs = useTracks([Track.Source.Camera]);
     const videoTrackRef = seat ? trackRefs.find(
@@ -176,10 +179,7 @@ function SeatCard({
                 <div className="flex flex-col gap-1 min-w-0 flex-1">
                     <div className="flex gap-2">
                         <div className="rounded-full bg-green-600/20 px-2 py-1 text-xs font-medium text-green-400 border border-green-500/30">
-                            {seat.buyIn} chips
-                        </div>
-                        <div className="rounded-full bg-blue-600/20 px-2 py-1 text-xs font-medium text-blue-400 border border-blue-500/30">
-                            {seat.currentBet} wager
+                            ${seat.buyIn} total
                         </div>
                     </div>
                 </div>
@@ -193,6 +193,28 @@ function SeatCard({
                     </div>
                 )}
             </div>
+
+            {/* Wager Chip - Edge Positioned */}
+            {seat.currentBet > 0 && (
+                <div className={`absolute top-1/2 transform -translate-y-1/2 ${side === 'right'
+                    ? 'left-0 -translate-x-1/2'
+                    : 'right-0 translate-x-1/2'
+                    }`}>
+                    <div className="relative">
+                        {/* Chip shadow */}
+                        <div className="absolute inset-0 bg-black/30 rounded-full blur-sm scale-95"></div>
+                        {/* Main chip */}
+                        <div className="relative w-10 h-10 rounded-full bg-gradient-to-br from-yellow-400 via-yellow-500 to-yellow-600 border-2 border-yellow-300 shadow-lg flex items-center justify-center">
+                            {/* Inner ring */}
+                            <div className="absolute inset-1 rounded-full border border-yellow-200/50"></div>
+                            {/* Chip value */}
+                            <span className="relative text-sm font-bold text-yellow-900 drop-shadow-sm">
+                                ${seat.currentBet}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Player Name - Top Right */}
             <div className="absolute top-2 right-2 rounded-lg bg-black/70 px-2 py-1 text-xs font-medium text-white backdrop-blur-sm">

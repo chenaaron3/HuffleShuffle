@@ -15,7 +15,7 @@ export function DealerCamera({ communityCards, potTotal, gameStatus, activePlaye
     const dealerRef = tracks.find((t) => t.participant.identity === 'dealer-camera');
 
     return (
-        <div className="relative w-full overflow-hidden rounded-lg bg-black aspect-video">
+        <div className="relative w-full overflow-hidden border border-white/10 rounded-lg bg-black aspect-video">
             {/* Main Dealer Video */}
             {dealerRef ? (
                 <ParticipantTile trackRef={dealerRef}>
@@ -41,16 +41,20 @@ export function DealerCamera({ communityCards, potTotal, gameStatus, activePlaye
                 </div>
             )}
 
-            {/* Pot Total Overlay - Top Right */}
-            <div className="absolute top-4 right-4 rounded-lg bg-black/70 px-3 py-2 backdrop-blur-sm">
-                <div className="text-sm font-semibold text-white">
-                    Pot: ${potTotal.toFixed(2)}
+            {/* Pot Total Overlay - Center Top */}
+            <div className="absolute top-4 left-1/2 transform -translate-x-1/2">
+                <div className="bg-white/95 backdrop-blur-sm rounded-lg px-4 py-2 shadow-lg border border-gray-200/50">
+                    <div className="text-center">
+                        <div className="text-lg font-bold text-gray-900">
+                            ${potTotal.toFixed(2)}
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            {/* Game Status Overlay - Top Center */}
+            {/* Game Status Overlay - Top Right */}
             {gameStatus && activePlayerName && (
-                <div className="absolute top-4 left-1/2 transform -translate-x-1/2 rounded-lg bg-sky-500/90 px-4 py-2 backdrop-blur-sm">
+                <div className="absolute top-4 right-4 rounded-lg bg-sky-500/90 px-4 py-2 backdrop-blur-sm">
                     <div className="flex items-center gap-2">
                         <span className="h-2 w-2 animate-pulse rounded-full bg-sky-200" />
                         <span className="text-sm font-semibold text-white">
