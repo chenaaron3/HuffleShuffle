@@ -1,4 +1,6 @@
 import { eq, sql } from 'drizzle-orm';
+// Use the poker-hand-evaluator library
+import * as PokerHand from 'poker-hand-evaluator';
 
 import { games, seats } from '../db/schema';
 import { allActiveBetsEqual, fetchOrderedSeats, mergeBetsIntoPotGeneric } from './game-logic';
@@ -7,9 +9,6 @@ type SeatRow = typeof seats.$inferSelect;
 type GameRow = typeof games.$inferSelect;
 
 import type { db } from "../db";
-// Use the poker-hand-evaluator library
-const PokerHand = require("poker-hand-evaluator");
-
 interface PokerHandStatic {
   solve(cards: string[]): unknown;
   winners(hands: unknown[]): unknown[];
