@@ -9,9 +9,9 @@ import {
 } from '~/server/db/schema';
 
 import {
-    activeCountOf, dealCard, evaluateBettingTransition, notifyTableUpdate, pickNextIndex,
-    rotateToNextActiveSeatId
+    dealCard, notifyTableUpdate, pickNextIndex, rotateToNextActiveSeatId
 } from '../game-logic';
+import { evaluateBettingTransition } from '../hand-solver';
 
 import type { VideoGrant } from "livekit-server-sdk";
 const requireCjs = createRequire(import.meta.url);
@@ -201,6 +201,32 @@ async function createNewGame(
 }
 
 export const tableRouter = createTRPCRouter({
+  checkExistingSeat: protectedProcedure.query(async ({ ctx }) => {
+    const userId = ctx.session.user.id;
+
+    // Find if user has any existing seat
+    const seat = await db.query.seats.findFirst({
+      where: eq(seats.playerId, userId),
+      with: {
+        table: {
+          columns: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+    });
+
+    if (!seat) {
+      return { hasSeat: false };
+    }
+
+    return {
+      hasSeat: true,
+      tableId: seat.tableId,
+    };
+  }),
+
   livekitToken: protectedProcedure
     .input(z.object({ tableId: z.string(), roomName: z.string().optional() }))
     .query(async ({ ctx, input }) => {
@@ -587,6 +613,8 @@ export const tableRouter = createTRPCRouter({
 
         if (game.state !== "BETTING")
           throw new Error("Player actions only allowed in BETTING");
+        if (!game.assignedSeatId)
+          throw new Error("No assigned seat for betting");
         if (game.assignedSeatId !== actorSeat.id)
           throw new Error("Not your turn");
 

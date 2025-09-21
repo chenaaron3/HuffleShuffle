@@ -192,7 +192,8 @@ rwIDAQAB
         where: eq(seats.tableId, tableId),
         orderBy: (s, { asc }) => [asc(s.seatNumber)],
       });
-      const firstActor = snap.game?.assignedSeatId!;
+      const firstActor = snap.game?.assignedSeatId;
+      if (!firstActor) throw new Error("No assigned seat in game");
       const firstActorUser = order.find((s) => s.id === firstActor)!.playerId;
       const firstCaller =
         firstActorUser === playerAId ? playerACaller : playerBCaller;

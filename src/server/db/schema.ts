@@ -65,7 +65,7 @@ export const accounts = createTable(
   }),
   (t) => [
     primaryKey({ columns: [t.provider, t.providerAccountId] }),
-    index("account_user_id_idx").on(t.userId),
+    index("accounts_user_id_idx").on(t.userId),
   ],
 );
 
@@ -83,7 +83,7 @@ export const sessions = createTable(
       .references(() => users.id),
     expires: d.timestamp({ mode: "date", withTimezone: true }).notNull(),
   }),
-  (t) => [index("t_user_id_idx").on(t.userId)],
+  (t) => [index("session_user_id_idx").on(t.userId)],
 );
 
 export const sessionsRelations = relations(sessions, ({ one }) => ({
@@ -197,7 +197,9 @@ export const games = createTable(
     isCompleted: d.boolean().notNull().default(false),
     state: gameStateEnum("state").notNull().default("DEAL_HOLE_CARDS"),
     dealerButtonSeatId: d.varchar({ length: 255 }).references(() => seats.id),
-    assignedSeatId: d.varchar({ length: 255 }).references(() => seats.id),
+    assignedSeatId: d
+      .varchar({ length: 255 })
+      .references(() => seats.id, { onDelete: "set null" }),
     communityCards: d
       .text()
       .array()

@@ -2,7 +2,7 @@ import { useSession } from 'next-auth/react';
 import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { MAX_SEATS_PER_TABLE } from '~/server/db/schema';
 import { api } from '~/utils/api';
 import { generateRsaKeyPairForTable } from '~/utils/crypto';
@@ -11,6 +11,11 @@ export default function LobbyPage() {
     const { data: session, status } = useSession();
     const router = useRouter();
     const { data: tables, refetch } = api.table.list.useQuery(undefined, { refetchOnWindowFocus: false });
+
+    // Check if user has an existing seat
+    const { data: existingSeat } = api.table.checkExistingSeat.useQuery(undefined, {
+        enabled: status === 'authenticated',
+    });
 
     const isDealer = session?.user?.role === 'dealer';
     const createMutation = api.table.create.useMutation({
@@ -25,6 +30,13 @@ export default function LobbyPage() {
     });
 
     const [form, setForm] = useState({ name: 'Table', smallBlind: 5, bigBlind: 10, buyIn: 200, maxSeats: MAX_SEATS_PER_TABLE });
+
+    // Redirect to table if user has an existing seat
+    useEffect(() => {
+        if (existingSeat?.hasSeat && existingSeat.tableId) {
+            void router.push(`/table/${existingSeat.tableId}`);
+        }
+    }, [existingSeat, router]);
 
     return (
         <>

@@ -1,9 +1,705 @@
 {
-  "id": "46c5d1e3-7e34-4c7d-a89d-c5aeb1502791",
-  "prevId": "00000000-0000-0000-0000-000000000000",
+  "id": "00000000-0000-0000-0000-000000000000",
+  "prevId": "",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
+    "public.huffle-shuffle_seat": {
+      "name": "huffle-shuffle_seat",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "varchar(255)",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "tableId": {
+          "name": "tableId",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "playerId": {
+          "name": "playerId",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "seatNumber": {
+          "name": "seatNumber",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "buyIn": {
+          "name": "buyIn",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "currentBet": {
+          "name": "currentBet",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "cards": {
+          "name": "cards",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{\"RAY\"}'"
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "CURRENT_TIMESTAMP"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "isActive": {
+          "name": "isActive",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "encryptedUserNonce": {
+          "name": "encryptedUserNonce",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "encryptedPiNonce": {
+          "name": "encryptedPiNonce",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "seat_player_unique": {
+          "name": "seat_player_unique",
+          "columns": [
+            {
+              "expression": "playerId",
+              "asc": true,
+              "nulls": "last",
+              "opclass": "text_ops",
+              "isExpression": false
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "seat_table_id_idx": {
+          "name": "seat_table_id_idx",
+          "columns": [
+            {
+              "expression": "tableId",
+              "asc": true,
+              "nulls": "last",
+              "opclass": "text_ops",
+              "isExpression": false
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "seat_table_number_unique": {
+          "name": "seat_table_number_unique",
+          "columns": [
+            {
+              "expression": "tableId",
+              "asc": true,
+              "nulls": "last",
+              "opclass": "text_ops",
+              "isExpression": false
+            },
+            {
+              "expression": "seatNumber",
+              "asc": true,
+              "nulls": "last",
+              "opclass": "text_ops",
+              "isExpression": false
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "huffle-shuffle_seat_tableId_huffle-shuffle_poker_table_id_fk": {
+          "name": "huffle-shuffle_seat_tableId_huffle-shuffle_poker_table_id_fk",
+          "tableFrom": "huffle-shuffle_seat",
+          "tableTo": "huffle-shuffle_poker_table",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "tableId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "huffle-shuffle_seat_playerId_huffle-shuffle_user_id_fk": {
+          "name": "huffle-shuffle_seat_playerId_huffle-shuffle_user_id_fk",
+          "tableFrom": "huffle-shuffle_seat",
+          "tableTo": "huffle-shuffle_user",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "playerId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {},
+      "policies": {},
+      "isRLSEnabled": false
+    },
+    "public.huffle-shuffle_poker_table": {
+      "name": "huffle-shuffle_poker_table",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "varchar(255)",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "dealerId": {
+          "name": "dealerId",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "smallBlind": {
+          "name": "smallBlind",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "bigBlind": {
+          "name": "bigBlind",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "CURRENT_TIMESTAMP"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "maxSeats": {
+          "name": "maxSeats",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 8
+        }
+      },
+      "indexes": {
+        "poker_table_dealer_id_unique": {
+          "name": "poker_table_dealer_id_unique",
+          "columns": [
+            {
+              "expression": "dealerId",
+              "asc": true,
+              "nulls": "last",
+              "opclass": "text_ops",
+              "isExpression": false
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "poker_table_name_idx": {
+          "name": "poker_table_name_idx",
+          "columns": [
+            {
+              "expression": "name",
+              "asc": true,
+              "nulls": "last",
+              "opclass": "text_ops",
+              "isExpression": false
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "huffle-shuffle_poker_table_dealerId_huffle-shuffle_user_id_fk": {
+          "name": "huffle-shuffle_poker_table_dealerId_huffle-shuffle_user_id_fk",
+          "tableFrom": "huffle-shuffle_poker_table",
+          "tableTo": "huffle-shuffle_user",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "dealerId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {},
+      "policies": {},
+      "isRLSEnabled": false
+    },
+    "public.huffle-shuffle_game": {
+      "name": "huffle-shuffle_game",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "varchar(255)",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "tableId": {
+          "name": "tableId",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "dealerButtonSeatId": {
+          "name": "dealerButtonSeatId",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "communityCards": {
+          "name": "communityCards",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{\"RAY\"}'"
+        },
+        "potTotal": {
+          "name": "potTotal",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "CURRENT_TIMESTAMP"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "state": {
+          "name": "state",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'DEAL_HOLE_CARDS'"
+        },
+        "assignedSeatId": {
+          "name": "assignedSeatId",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "betCount": {
+          "name": "betCount",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "requiredBetCount": {
+          "name": "requiredBetCount",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "isCompleted": {
+          "name": "isCompleted",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        }
+      },
+      "indexes": {
+        "game_assigned_seat_id_idx": {
+          "name": "game_assigned_seat_id_idx",
+          "columns": [
+            {
+              "expression": "assignedSeatId",
+              "asc": true,
+              "nulls": "last",
+              "opclass": "text_ops",
+              "isExpression": false
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "game_dealer_button_seat_id_idx": {
+          "name": "game_dealer_button_seat_id_idx",
+          "columns": [
+            {
+              "expression": "dealerButtonSeatId",
+              "asc": true,
+              "nulls": "last",
+              "opclass": "text_ops",
+              "isExpression": false
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "game_table_id_idx": {
+          "name": "game_table_id_idx",
+          "columns": [
+            {
+              "expression": "tableId",
+              "asc": true,
+              "nulls": "last",
+              "opclass": "text_ops",
+              "isExpression": false
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "huffle-shuffle_game_tableId_huffle-shuffle_poker_table_id_fk": {
+          "name": "huffle-shuffle_game_tableId_huffle-shuffle_poker_table_id_fk",
+          "tableFrom": "huffle-shuffle_game",
+          "tableTo": "huffle-shuffle_poker_table",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "tableId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "huffle-shuffle_game_assignedSeatId_huffle-shuffle_seat_id_fk": {
+          "name": "huffle-shuffle_game_assignedSeatId_huffle-shuffle_seat_id_fk",
+          "tableFrom": "huffle-shuffle_game",
+          "tableTo": "huffle-shuffle_seat",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "assignedSeatId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {},
+      "policies": {},
+      "isRLSEnabled": false
+    },
+    "public.huffle-shuffle_user": {
+      "name": "huffle-shuffle_user",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "varchar(255)",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "email": {
+          "name": "email",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "emailVerified": {
+          "name": "emailVerified",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "CURRENT_TIMESTAMP"
+        },
+        "image": {
+          "name": "image",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "role": {
+          "name": "role",
+          "type": "user_role",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'player'"
+        },
+        "balance": {
+          "name": "balance",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "publicKey": {
+          "name": "publicKey",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "user_balance_non_negative": {
+          "name": "user_balance_non_negative",
+          "value": "balance >= 0"
+        }
+      },
+      "policies": {},
+      "isRLSEnabled": false
+    },
+    "public.huffle-shuffle_session": {
+      "name": "huffle-shuffle_session",
+      "schema": "",
+      "columns": {
+        "sessionToken": {
+          "name": "sessionToken",
+          "type": "varchar(255)",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "userId": {
+          "name": "userId",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "expires": {
+          "name": "expires",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "session_user_id_idx": {
+          "name": "session_user_id_idx",
+          "columns": [
+            {
+              "expression": "userId",
+              "asc": true,
+              "nulls": "last",
+              "opclass": "text_ops",
+              "isExpression": false
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "huffle-shuffle_session_userId_huffle-shuffle_user_id_fk": {
+          "name": "huffle-shuffle_session_userId_huffle-shuffle_user_id_fk",
+          "tableFrom": "huffle-shuffle_session",
+          "tableTo": "huffle-shuffle_user",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {},
+      "policies": {},
+      "isRLSEnabled": false
+    },
+    "public.huffle-shuffle_pi_device": {
+      "name": "huffle-shuffle_pi_device",
+      "schema": "",
+      "columns": {
+        "serial": {
+          "name": "serial",
+          "type": "varchar(128)",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "tableId": {
+          "name": "tableId",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "type": {
+          "name": "type",
+          "type": "pi_device_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "seatNumber": {
+          "name": "seatNumber",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "lastSeenAt": {
+          "name": "lastSeenAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "CURRENT_TIMESTAMP"
+        },
+        "publicKey": {
+          "name": "publicKey",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "pi_device_table_id_idx": {
+          "name": "pi_device_table_id_idx",
+          "columns": [
+            {
+              "expression": "tableId",
+              "asc": true,
+              "nulls": "last",
+              "opclass": "text_ops",
+              "isExpression": false
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {},
+      "policies": {},
+      "isRLSEnabled": false
+    },
+    "public.huffle-shuffle_verification_token": {
+      "name": "huffle-shuffle_verification_token",
+      "schema": "",
+      "columns": {
+        "identifier": {
+          "name": "identifier",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "token": {
+          "name": "token",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "expires": {
+          "name": "expires",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "huffle-shuffle_verification_token_identifier_token_pk": {
+          "name": "huffle-shuffle_verification_token_identifier_token_pk",
+          "columns": [
+            "identifier",
+            "token"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraints": {},
+      "policies": {},
+      "isRLSEnabled": false
+    },
     "public.huffle-shuffle_account": {
       "name": "huffle-shuffle_account",
       "schema": "",
@@ -76,14 +772,15 @@
         }
       },
       "indexes": {
-        "account_user_id_idx": {
-          "name": "account_user_id_idx",
+        "accounts_user_id_idx": {
+          "name": "accounts_user_id_idx",
           "columns": [
             {
               "expression": "userId",
-              "isExpression": false,
               "asc": true,
-              "nulls": "last"
+              "nulls": "last",
+              "opclass": "text_ops",
+              "isExpression": false
             }
           ],
           "isUnique": false,
@@ -97,6 +794,7 @@
           "name": "huffle-shuffle_account_userId_huffle-shuffle_user_id_fk",
           "tableFrom": "huffle-shuffle_account",
           "tableTo": "huffle-shuffle_user",
+          "schemaTo": "public",
           "columnsFrom": [
             "userId"
           ],
@@ -117,723 +815,17 @@
         }
       },
       "uniqueConstraints": {},
-      "policies": {},
       "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.huffle-shuffle_game": {
-      "name": "huffle-shuffle_game",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "varchar(255)",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "tableId": {
-          "name": "tableId",
-          "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "isCompleted": {
-          "name": "isCompleted",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": false
-        },
-        "state": {
-          "name": "state",
-          "type": "game_state",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'DEAL_HOLE_CARDS'"
-        },
-        "dealerButtonSeatId": {
-          "name": "dealerButtonSeatId",
-          "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "assignedSeatId": {
-          "name": "assignedSeatId",
-          "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "communityCards": {
-          "name": "communityCards",
-          "type": "text[]",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "ARRAY[]::text[]"
-        },
-        "potTotal": {
-          "name": "potTotal",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
-        },
-        "betCount": {
-          "name": "betCount",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
-        },
-        "requiredBetCount": {
-          "name": "requiredBetCount",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
-        },
-        "createdAt": {
-          "name": "createdAt",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "CURRENT_TIMESTAMP"
-        },
-        "updatedAt": {
-          "name": "updatedAt",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        }
-      },
-      "indexes": {
-        "game_table_id_idx": {
-          "name": "game_table_id_idx",
-          "columns": [
-            {
-              "expression": "tableId",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "game_dealer_button_seat_id_idx": {
-          "name": "game_dealer_button_seat_id_idx",
-          "columns": [
-            {
-              "expression": "dealerButtonSeatId",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "game_assigned_seat_id_idx": {
-          "name": "game_assigned_seat_id_idx",
-          "columns": [
-            {
-              "expression": "assignedSeatId",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "huffle-shuffle_game_tableId_huffle-shuffle_poker_table_id_fk": {
-          "name": "huffle-shuffle_game_tableId_huffle-shuffle_poker_table_id_fk",
-          "tableFrom": "huffle-shuffle_game",
-          "tableTo": "huffle-shuffle_poker_table",
-          "columnsFrom": [
-            "tableId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "huffle-shuffle_game_dealerButtonSeatId_huffle-shuffle_seat_id_fk": {
-          "name": "huffle-shuffle_game_dealerButtonSeatId_huffle-shuffle_seat_id_fk",
-          "tableFrom": "huffle-shuffle_game",
-          "tableTo": "huffle-shuffle_seat",
-          "columnsFrom": [
-            "dealerButtonSeatId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "huffle-shuffle_game_assignedSeatId_huffle-shuffle_seat_id_fk": {
-          "name": "huffle-shuffle_game_assignedSeatId_huffle-shuffle_seat_id_fk",
-          "tableFrom": "huffle-shuffle_game",
-          "tableTo": "huffle-shuffle_seat",
-          "columnsFrom": [
-            "assignedSeatId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
       "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.huffle-shuffle_pi_device": {
-      "name": "huffle-shuffle_pi_device",
-      "schema": "",
-      "columns": {
-        "serial": {
-          "name": "serial",
-          "type": "varchar(128)",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "tableId": {
-          "name": "tableId",
-          "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "type": {
-          "name": "type",
-          "type": "pi_device_type",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "seatNumber": {
-          "name": "seatNumber",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "publicKey": {
-          "name": "publicKey",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "lastSeenAt": {
-          "name": "lastSeenAt",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "CURRENT_TIMESTAMP"
-        }
-      },
-      "indexes": {
-        "pi_device_table_id_idx": {
-          "name": "pi_device_table_id_idx",
-          "columns": [
-            {
-              "expression": "tableId",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "huffle-shuffle_pi_device_tableId_huffle-shuffle_poker_table_id_fk": {
-          "name": "huffle-shuffle_pi_device_tableId_huffle-shuffle_poker_table_id_fk",
-          "tableFrom": "huffle-shuffle_pi_device",
-          "tableTo": "huffle-shuffle_poker_table",
-          "columnsFrom": [
-            "tableId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.huffle-shuffle_poker_table": {
-      "name": "huffle-shuffle_poker_table",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "varchar(255)",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "name": {
-          "name": "name",
-          "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "dealerId": {
-          "name": "dealerId",
-          "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "smallBlind": {
-          "name": "smallBlind",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "bigBlind": {
-          "name": "bigBlind",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "maxSeats": {
-          "name": "maxSeats",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 8
-        },
-        "createdAt": {
-          "name": "createdAt",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "CURRENT_TIMESTAMP"
-        },
-        "updatedAt": {
-          "name": "updatedAt",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        }
-      },
-      "indexes": {
-        "poker_table_dealer_id_unique": {
-          "name": "poker_table_dealer_id_unique",
-          "columns": [
-            {
-              "expression": "dealerId",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "poker_table_name_idx": {
-          "name": "poker_table_name_idx",
-          "columns": [
-            {
-              "expression": "name",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "huffle-shuffle_poker_table_dealerId_huffle-shuffle_user_id_fk": {
-          "name": "huffle-shuffle_poker_table_dealerId_huffle-shuffle_user_id_fk",
-          "tableFrom": "huffle-shuffle_poker_table",
-          "tableTo": "huffle-shuffle_user",
-          "columnsFrom": [
-            "dealerId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.huffle-shuffle_seat": {
-      "name": "huffle-shuffle_seat",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "varchar(255)",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "tableId": {
-          "name": "tableId",
-          "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "playerId": {
-          "name": "playerId",
-          "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "seatNumber": {
-          "name": "seatNumber",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "buyIn": {
-          "name": "buyIn",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
-        },
-        "currentBet": {
-          "name": "currentBet",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
-        },
-        "cards": {
-          "name": "cards",
-          "type": "text[]",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "ARRAY[]::text[]"
-        },
-        "isActive": {
-          "name": "isActive",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": true
-        },
-        "encryptedUserNonce": {
-          "name": "encryptedUserNonce",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "encryptedPiNonce": {
-          "name": "encryptedPiNonce",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "createdAt": {
-          "name": "createdAt",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "CURRENT_TIMESTAMP"
-        },
-        "updatedAt": {
-          "name": "updatedAt",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        }
-      },
-      "indexes": {
-        "seat_table_number_unique": {
-          "name": "seat_table_number_unique",
-          "columns": [
-            {
-              "expression": "tableId",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "seatNumber",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "seat_player_unique": {
-          "name": "seat_player_unique",
-          "columns": [
-            {
-              "expression": "playerId",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "seat_table_id_idx": {
-          "name": "seat_table_id_idx",
-          "columns": [
-            {
-              "expression": "tableId",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "huffle-shuffle_seat_tableId_huffle-shuffle_poker_table_id_fk": {
-          "name": "huffle-shuffle_seat_tableId_huffle-shuffle_poker_table_id_fk",
-          "tableFrom": "huffle-shuffle_seat",
-          "tableTo": "huffle-shuffle_poker_table",
-          "columnsFrom": [
-            "tableId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "huffle-shuffle_seat_playerId_huffle-shuffle_user_id_fk": {
-          "name": "huffle-shuffle_seat_playerId_huffle-shuffle_user_id_fk",
-          "tableFrom": "huffle-shuffle_seat",
-          "tableTo": "huffle-shuffle_user",
-          "columnsFrom": [
-            "playerId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.huffle-shuffle_session": {
-      "name": "huffle-shuffle_session",
-      "schema": "",
-      "columns": {
-        "sessionToken": {
-          "name": "sessionToken",
-          "type": "varchar(255)",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "userId": {
-          "name": "userId",
-          "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "expires": {
-          "name": "expires",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true
-        }
-      },
-      "indexes": {
-        "t_user_id_idx": {
-          "name": "t_user_id_idx",
-          "columns": [
-            {
-              "expression": "userId",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "huffle-shuffle_session_userId_huffle-shuffle_user_id_fk": {
-          "name": "huffle-shuffle_session_userId_huffle-shuffle_user_id_fk",
-          "tableFrom": "huffle-shuffle_session",
-          "tableTo": "huffle-shuffle_user",
-          "columnsFrom": [
-            "userId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.huffle-shuffle_user": {
-      "name": "huffle-shuffle_user",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "varchar(255)",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "name": {
-          "name": "name",
-          "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "email": {
-          "name": "email",
-          "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "emailVerified": {
-          "name": "emailVerified",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false,
-          "default": "CURRENT_TIMESTAMP"
-        },
-        "image": {
-          "name": "image",
-          "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "role": {
-          "name": "role",
-          "type": "user_role",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'player'"
-        },
-        "balance": {
-          "name": "balance",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
-        },
-        "publicKey": {
-          "name": "publicKey",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "user_balance_non_negative": {
-          "name": "user_balance_non_negative",
-          "value": "\"huffle-shuffle_user\".\"balance\" >= 0"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.huffle-shuffle_verification_token": {
-      "name": "huffle-shuffle_verification_token",
-      "schema": "",
-      "columns": {
-        "identifier": {
-          "name": "identifier",
-          "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "token": {
-          "name": "token",
-          "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "expires": {
-          "name": "expires",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {},
-      "compositePrimaryKeys": {
-        "huffle-shuffle_verification_token_identifier_token_pk": {
-          "name": "huffle-shuffle_verification_token_identifier_token_pk",
-          "columns": [
-            "identifier",
-            "token"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
       "isRLSEnabled": false
     }
   },
   "enums": {
     "public.game_state": {
       "name": "game_state",
-      "schema": "public",
       "values": [
+        "INITIAL",
+        "GAME_START",
         "DEAL_HOLE_CARDS",
         "BETTING",
         "DEAL_FLOP",
@@ -841,35 +833,148 @@
         "DEAL_RIVER",
         "SHOWDOWN",
         "RESET_TABLE"
-      ]
+      ],
+      "schema": "public"
+    },
+    "public.game_status": {
+      "name": "game_status",
+      "values": [
+        "pending",
+        "active",
+        "completed"
+      ],
+      "schema": "public"
     },
     "public.pi_device_type": {
       "name": "pi_device_type",
-      "schema": "public",
       "values": [
         "scanner",
         "dealer",
         "card",
         "button"
-      ]
+      ],
+      "schema": "public"
     },
     "public.user_role": {
       "name": "user_role",
-      "schema": "public",
       "values": [
         "player",
         "dealer"
-      ]
+      ],
+      "schema": "public"
     }
   },
   "schemas": {},
-  "sequences": {},
+  "sequences": {
+    "public.podsearch_playlist_id_seq": {
+      "name": "podsearch_playlist_id_seq",
+      "schema": "public",
+      "startWith": "1",
+      "minValue": "1",
+      "maxValue": "2147483647",
+      "increment": "1",
+      "cycle": false,
+      "cache": "1"
+    },
+    "public.podsearch_post_id_seq": {
+      "name": "podsearch_post_id_seq",
+      "schema": "public",
+      "startWith": "1",
+      "minValue": "1",
+      "maxValue": "2147483647",
+      "increment": "1",
+      "cycle": false,
+      "cache": "1"
+    },
+    "public.podsearch_video_id_seq": {
+      "name": "podsearch_video_id_seq",
+      "schema": "public",
+      "startWith": "1",
+      "minValue": "1",
+      "maxValue": "2147483647",
+      "increment": "1",
+      "cycle": false,
+      "cache": "1"
+    },
+    "public.podsearch_transcript_id_seq": {
+      "name": "podsearch_transcript_id_seq",
+      "schema": "public",
+      "startWith": "1",
+      "minValue": "1",
+      "maxValue": "2147483647",
+      "increment": "1",
+      "cycle": false,
+      "cache": "1"
+    },
+    "public.podsearch_search_execution_id_seq": {
+      "name": "podsearch_search_execution_id_seq",
+      "schema": "public",
+      "startWith": "1",
+      "minValue": "1",
+      "maxValue": "2147483647",
+      "increment": "1",
+      "cycle": false,
+      "cache": "1"
+    },
+    "public.podsearch_transcript_request_id_seq": {
+      "name": "podsearch_transcript_request_id_seq",
+      "schema": "public",
+      "startWith": "1",
+      "minValue": "1",
+      "maxValue": "2147483647",
+      "increment": "1",
+      "cycle": false,
+      "cache": "1"
+    },
+    "public.podsearch_chapter_similarity_id_seq": {
+      "name": "podsearch_chapter_similarity_id_seq",
+      "schema": "public",
+      "startWith": "1",
+      "minValue": "1",
+      "maxValue": "2147483647",
+      "increment": "1",
+      "cycle": false,
+      "cache": "1"
+    },
+    "public.podsearch_chapter_id_seq": {
+      "name": "podsearch_chapter_id_seq",
+      "schema": "public",
+      "startWith": "1",
+      "minValue": "1",
+      "maxValue": "2147483647",
+      "increment": "1",
+      "cycle": false,
+      "cache": "1"
+    }
+  },
   "roles": {},
   "policies": {},
   "views": {},
   "_meta": {
-    "columns": {},
     "schemas": {},
-    "tables": {}
+    "tables": {},
+    "columns": {}
+  },
+  "internal": {
+    "tables": {
+      "huffle-shuffle_seat": {
+        "columns": {
+          "cards": {
+            "isArray": true,
+            "dimensions": 1,
+            "rawType": "text"
+          }
+        }
+      },
+      "huffle-shuffle_game": {
+        "columns": {
+          "communityCards": {
+            "isArray": true,
+            "dimensions": 1,
+            "rawType": "text"
+          }
+        }
+      }
+    }
   }
 }

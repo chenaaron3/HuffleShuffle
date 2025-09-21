@@ -1,28 +1,7 @@
 import { and, eq, sql } from 'drizzle-orm';
-import { evaluate } from 'poker-hand-evaluator';
 import { db } from '~/server/db';
 import { games, seats } from '~/server/db/schema';
 import { pusher } from '~/server/pusher';
-
-// Use the new poker-hand-evaluator library instead of pokersolver
-interface PokerHandStatic {
-  solve(cards: string[]): unknown;
-  winners(hands: unknown[]): unknown[];
-}
-
-// Create a compatibility layer for the new library
-const Hand: PokerHandStatic = {
-  solve(cards: string[]) {
-    // Convert card format if needed and evaluate
-    // poker-hand-evaluator expects cards in format like ['AS', 'KH', 'QD', 'JC', '10S']
-    return evaluate(cards);
-  },
-  winners(hands: unknown[]) {
-    // Implement winner logic using the new library
-    // This is a simplified version - you can expand as needed
-    return hands.length > 0 ? [hands[0]] : [];
-  },
-};
 
 type DB = typeof db;
 type SeatRow = typeof seats.$inferSelect;
@@ -162,66 +141,6 @@ export async function ensurePostflopProgression(
     .where(eq(games.id, gameObj.id));
 }
 
-export async function evaluateBettingTransition(
-  tx: { query: typeof db.query; update: typeof db.update },
-  tableId: string,
-  gameObj: GameRow,
-): Promise<void> {
-  const freshSeats = await fetchOrderedSeats(tx, tableId);
-  const activeSeats = freshSeats.filter((s: SeatRow) => s.isActive);
-  const singleActive = activeSeats.length === 1;
-  const allEqual = allActiveBetsEqual(freshSeats);
-  const finished =
-    (gameObj.betCount >= gameObj.requiredBetCount && allEqual) || singleActive;
-  if (!finished) return;
-
-  // Merge bets into pot
-  const updatedGame = await mergeBetsIntoPotGeneric(tx, gameObj, freshSeats);
-  const cc = updatedGame.communityCards.length;
-  if (singleActive || cc === 5) {
-    // SHOWDOWN
-    const contenders = freshSeats.filter((s: SeatRow) => s.isActive);
-    const hands = contenders.map((s: SeatRow) =>
-      Hand.solve([...(s.cards as string[]), ...updatedGame.communityCards]),
-    ) as unknown[];
-    const winners = Hand.winners(hands) as unknown[];
-    const winnerSeatIds = winners.map((w) => {
-      const idx = (hands as unknown[]).indexOf(w);
-      return contenders[idx]!.id;
-    });
-    const share = Math.floor(updatedGame.potTotal / winnerSeatIds.length);
-    for (const sid of winnerSeatIds) {
-      await tx
-        .update(seats)
-        .set({ buyIn: sql`${seats.buyIn} + ${share}` })
-        .where(eq(seats.id, sid));
-    }
-    await tx
-      .update(games)
-      .set({ state: "SHOWDOWN", isCompleted: true })
-      .where(eq(games.id, updatedGame.id));
-    return;
-  }
-  if (cc === 0) {
-    await tx
-      .update(games)
-      .set({ state: "DEAL_FLOP" })
-      .where(eq(games.id, updatedGame.id));
-  }
-  if (cc === 3) {
-    await tx
-      .update(games)
-      .set({ state: "DEAL_TURN" })
-      .where(eq(games.id, updatedGame.id));
-  }
-  if (cc === 4) {
-    await tx
-      .update(games)
-      .set({ state: "DEAL_RIVER" })
-      .where(eq(games.id, updatedGame.id));
-  }
-}
-
 // Card dealing logic that can be shared between consumer and table router
 export async function dealCard(
   tx: { query: typeof db.query; update: typeof db.update },
@@ -240,7 +159,13 @@ export async function dealCard(
   const n = orderedSeats.length;
 
   if (game.state === "DEAL_HOLE_CARDS") {
-    const seat = orderedSeats.find((s) => s.id === game.assignedSeatId!)!;
+    if (!game.assignedSeatId) {
+      throw new Error("No assigned seat for dealing hole cards");
+    }
+    const seat = orderedSeats.find((s) => s.id === game.assignedSeatId);
+    if (!seat) {
+      throw new Error("Assigned seat not found in ordered seats");
+    }
     await tx
       .update(seats)
       .set({ cards: sql`array_append(${seats.cards}, ${cardCode})` })
