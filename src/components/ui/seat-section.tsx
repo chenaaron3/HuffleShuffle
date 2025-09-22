@@ -44,7 +44,7 @@ export function SeatSection({
     }
 
     return (
-        <div className={`flex flex-col gap-2 ${side === 'left' ? 'pr-2' : 'pl-2'}`}>
+        <div className={`flex flex-col gap-2 relative z-50 ${side === 'left' ? 'pr-2' : 'pl-2'}`}>
             {displaySeats.map((seat, index) => {
                 // Calculate the actual seat number for display (1-based)
                 const seatNumber = side === 'left' ? (4 - index) : (index + 5);
@@ -245,7 +245,7 @@ function SeatCard({
 
             {/* Hand Type - Edge Positioned (same side as bet chip during showdown) */}
             {gameState === 'SHOWDOWN' && seat.handType && (
-                <div className={`absolute z-10 top-1/2 transform -translate-y-1/2 ${side === 'right'
+                <div className={`absolute top-1/2 transform -translate-y-1/2 ${side === 'right'
                     ? 'left-0 -translate-x-1/2'
                     : 'right-0 translate-x-1/2'
                     }`}>
