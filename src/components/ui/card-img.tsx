@@ -1,3 +1,4 @@
+
 export function cardCodeToFilename(code: string): string | null {
     if (!code || code.length < 2) return null;
     // Facedown placeholder
@@ -47,13 +48,13 @@ export function CardImage({
 
     const baseClasses = "select-none rounded-sm shadow [image-rendering:auto]";
     const highlightedClasses = highlighted
-        ? "ring-2 ring-yellow-400 ring-opacity-75 shadow-lg shadow-yellow-400/50 animate-pulse"
+        ? "ring-2 ring-yellow-400 ring-opacity-75 shadow-lg shadow-yellow-400/50"
         : "";
 
     return (
-        <div className={`relative ${highlighted ? 'animate-pulse' : ''}`}>
+        <div className="relative">
             {highlighted && (
-                <div className="absolute inset-0 rounded-sm bg-gradient-to-r from-yellow-400/20 to-yellow-500/20 blur-sm scale-110"></div>
+                <div className="absolute inset-0 rounded-sm bg-gradient-to-r from-yellow-400/10 to-yellow-500/15 blur-sm scale-110 animate-pulse" />
             )}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img

@@ -27,6 +27,13 @@ export default function TableView() {
     const tableQuery = api.table.get.useQuery({ tableId: id ?? '' }, { enabled: !!id });
     const [snapshot, setSnapshot] = React.useState(tableQuery.data);
 
+    // Update snapshot when tableQuery data changes
+    React.useEffect(() => {
+        if (tableQuery.data) {
+            setSnapshot(tableQuery.data);
+        }
+    }, [tableQuery.data]);
+
     const action = api.table.action.useMutation({
         onSuccess: (data) => {
             // Update snapshot directly with returned gameplay state
@@ -57,6 +64,34 @@ export default function TableView() {
 
     const currentSeat = seats.find((s: any) => s.playerId === session?.user?.id) as any | undefined;
     const [handRoomName, setHandRoomName] = React.useState<string | null>(null);
+
+    // Memoize winning cards calculation to prevent unnecessary re-renders
+    const allWinningCards = React.useMemo(() => {
+        const winningCards = new Set<string>();
+        if (state === 'SHOWDOWN') {
+            seats.forEach((seat: any) => {
+                if (Array.isArray(seat.winningCards)) {
+                    seat.winningCards.forEach((card: string) => {
+                        winningCards.add(card);
+                    });
+                }
+            });
+        }
+        return Array.from(winningCards);
+    }, [state, seats]);
+
+    // Memoize pot total calculation to prevent unnecessary re-renders
+    const totalPot = React.useMemo(() => {
+        return (snapshot?.game?.potTotal ?? 0) + (seats.reduce((sum, seat) => sum + (seat.currentBet ?? 0), 0));
+    }, [snapshot?.game?.potTotal, seats]);
+
+    // Memoize active player name calculation to prevent unnecessary re-renders
+    const activePlayerName = React.useMemo(() => {
+        if (state === 'BETTING') {
+            return seats.find((s: any) => s.id === bettingActorSeatId)?.player?.name ?? undefined;
+        }
+        return undefined;
+    }, [state, seats, bettingActorSeatId]);
     React.useEffect(() => {
         (async () => {
             if (!id || !currentSeat?.encryptedUserNonce) return;
@@ -70,13 +105,6 @@ export default function TableView() {
         })();
     }, [id, currentSeat?.encryptedUserNonce]);
 
-    // Update snapshot when tableQuery data changes
-    React.useEffect(() => {
-        if (tableQuery.data) {
-            setSnapshot(tableQuery.data);
-        }
-    }, [tableQuery.data]);
-
     // Force refresh when game state changes to SHOWDOWN to fix card display
     React.useEffect(() => {
         if (state === 'SHOWDOWN') {
@@ -86,7 +114,7 @@ export default function TableView() {
             }, 100);
             return () => clearTimeout(timer);
         }
-    }, [state, tableQuery]);
+    }, [state]); // Removed tableQuery dependency
 
     // Pusher subscription for real-time table updates
     React.useEffect(() => {
@@ -106,7 +134,7 @@ export default function TableView() {
             channel.unbind_all();
             pusher.unsubscribe(id);
         };
-    }, [id, tableQuery]);
+    }, [id]); // Removed tableQuery dependency
 
     // Cleanup Pusher connection on unmount
     React.useEffect(() => {
@@ -197,9 +225,10 @@ export default function TableView() {
                                 {/* Dealer Camera with Community Cards Overlay */}
                                 <DealerCamera
                                     communityCards={snapshot?.game?.communityCards ?? []}
-                                    potTotal={(snapshot?.game?.potTotal ?? 0) + (seats.reduce((sum, seat) => sum + (seat.currentBet ?? 0), 0))}
+                                    potTotal={totalPot}
                                     gameStatus={state}
-                                    activePlayerName={state === 'BETTING' ? seats.find((s: any) => s.id === bettingActorSeatId)?.player?.name ?? undefined : undefined}
+                                    activePlayerName={activePlayerName}
+                                    winningCards={allWinningCards}
                                 />
 
                                 {/* Hand Camera and Action Buttons Row */}
@@ -218,7 +247,7 @@ export default function TableView() {
                                         currentUserSeatId={currentUserSeatId}
                                         bettingActorSeatId={bettingActorSeatId}
                                         isLoading={action.isPending || leaveMutation.isPending}
-                                        potTotal={(snapshot?.game?.potTotal ?? 0) + (seats.reduce((sum, seat) => sum + (seat.currentBet ?? 0), 0))}
+                                        potTotal={totalPot}
                                         currentBet={currentSeat?.currentBet ?? 0}
                                         playerBalance={currentSeat?.buyIn ?? 0}
                                         bigBlind={snapshot?.table?.bigBlind ?? 20}

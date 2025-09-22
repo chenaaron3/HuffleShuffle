@@ -34,9 +34,16 @@ function convertCardsToPokerSolver(cards: string[]): string[] {
 }
 
 // Helper function to convert card format from poker solver format to our format
-function convertCardsFromPokerSolver(cards: string[]): string[] {
+function convertCardsFromPokerSolver(cards: any[]): string[] {
   return cards.map((card) => {
-    if (card.length === 2) {
+    // Handle Card objects from pokersolver
+    if (card && typeof card === "object" && card.value && card.suit) {
+      const rank = card.value.toUpperCase();
+      const suit = card.suit.toUpperCase();
+      return `${rank}${suit}`;
+    }
+    // Handle string format
+    if (typeof card === "string" && card.length === 2) {
       // Convert from "Ad" format to "AS" format
       const rank = card[0]?.toUpperCase();
       const suit = card[1]?.toUpperCase();
@@ -145,18 +152,24 @@ export async function evaluateBettingTransition(
       };
     });
 
-    // Find winners
+    // Find winners using pokersolver's built-in tie-breaking
     const handResults = hands.map((h) => h.hand);
     const winners = findPokerWinners(handResults);
 
-    // Get winner seat IDs
+    // Get winner seat IDs by comparing the actual winning hand objects
     const winnerSeatIds = winners.map((winner) => {
-      const handIndex = handResults.findIndex(
-        (h) =>
-          h.name === winner.name &&
-          h.descr === winner.descr &&
-          h.score === winner.score,
-      );
+      // Find the hand that matches this winner by comparing the actual hand data
+      const handIndex = hands.findIndex((h) => {
+        // Compare the actual cards that make up the winning hand
+        const winnerCards = winner.cards.sort();
+        const handCards = h.hand.cards.sort();
+
+        // Check if the cards match (this handles tie-breaking correctly)
+        return (
+          winnerCards.length === handCards.length &&
+          winnerCards.every((card, index) => card === handCards[index])
+        );
+      });
       return hands[handIndex]!.seatId;
     });
 
@@ -171,6 +184,19 @@ export async function evaluateBettingTransition(
       })),
       winnerSeatIds,
     });
+
+    // Additional debug logging for tie-breaking
+    console.log(
+      "Hand comparison details:",
+      hands.map((h, index) => ({
+        seatId: h.seatId,
+        handType: h.hand.name,
+        description: h.hand.descr,
+        score: h.hand.score,
+        winningCards: h.hand.cards,
+        isWinner: winnerSeatIds.includes(h.seatId),
+      })),
+    );
 
     // Store hand evaluation results and distribute pot
     const share = Math.floor(updatedGame.potTotal / winnerSeatIds.length);

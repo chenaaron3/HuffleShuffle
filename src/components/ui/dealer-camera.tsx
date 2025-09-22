@@ -1,3 +1,4 @@
+import { AnimatePresence, motion } from 'framer-motion';
 import { Track } from 'livekit-client';
 import { CardImage } from '~/components/ui/card-img';
 
@@ -8,9 +9,10 @@ interface DealerCameraProps {
     potTotal: number;
     gameStatus?: string;
     activePlayerName?: string;
+    winningCards?: string[]; // Cards that make up the winning hand
 }
 
-export function DealerCamera({ communityCards, potTotal, gameStatus, activePlayerName }: DealerCameraProps) {
+export function DealerCamera({ communityCards, potTotal, gameStatus, activePlayerName, winningCards }: DealerCameraProps) {
     const tracks = useTracks([Track.Source.Camera]);
     const dealerRef = tracks.find((t) => t.participant.identity === 'dealer-camera');
 
@@ -28,18 +30,44 @@ export function DealerCamera({ communityCards, potTotal, gameStatus, activePlaye
             )}
 
             {/* Community Cards Overlay - Top Left */}
-            {communityCards.length > 0 && (
-                <div className="absolute top-4 left-4 flex flex-col gap-2">
-                    <div className="flex gap-2">
-                        {communityCards.map((card: string) => (
-                            <div key={card} className="relative">
-                                <CardImage code={card} size={60} />
-                                <div className="absolute inset-0 rounded-lg shadow-lg ring-2 ring-white/20" />
-                            </div>
-                        ))}
-                    </div>
+            <div className="absolute top-4 left-4 flex flex-col gap-2">
+                <div className="flex gap-2">
+                    <AnimatePresence mode="popLayout">
+                        {communityCards.map((card: string, index: number) => {
+                            // Check if this community card is part of the winning hand
+                            const normalizedCard = card.toUpperCase();
+                            const isWinningCard = gameStatus === 'SHOWDOWN' &&
+                                Array.isArray(winningCards) &&
+                                winningCards.some(wc => wc.toUpperCase() === normalizedCard);
+
+                            return (
+                                <motion.div
+                                    key={`community-card-${card}`} // More stable key for community cards
+                                    className="relative"
+                                    initial={{ opacity: 0, y: 30, scale: 0.8 }}
+                                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                                    exit={{ opacity: 0, y: -30, scale: 0.8 }}
+                                    transition={{
+                                        duration: 0.5,
+                                        delay: index * 0.15,
+                                        ease: "easeOut"
+                                    }}
+                                >
+                                    <CardImage
+                                        code={card}
+                                        size={60}
+                                        highlighted={isWinningCard}
+                                    />
+                                    <div className={`absolute inset-0 rounded-lg shadow-lg ring-2 ${isWinningCard
+                                        ? 'ring-yellow-400/75 shadow-yellow-400/50'
+                                        : 'ring-white/20'
+                                        }`} />
+                                </motion.div>
+                            );
+                        })}
+                    </AnimatePresence>
                 </div>
-            )}
+            </div>
 
             {/* Pot Total Overlay - Center Top */}
             <div className="absolute top-4 left-1/2 transform -translate-x-1/2">

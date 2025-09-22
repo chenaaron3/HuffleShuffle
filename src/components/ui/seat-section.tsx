@@ -1,3 +1,4 @@
+import { AnimatePresence, motion } from 'framer-motion';
 import { Track } from 'livekit-client';
 import { CardImage } from '~/components/ui/card-img';
 
@@ -199,25 +200,38 @@ function SeatCard({
                 </div>
 
                 {/* Right Side - Cards */}
-                {Array.isArray(seat.cards) && seat.cards.length > 0 && (
-                    <div className="flex gap-1">
-                        {seat.cards.map((c: string) => {
+                <div className="flex gap-1">
+                    <AnimatePresence mode="popLayout">
+                        {Array.isArray(seat.cards) && seat.cards.map((c: string, index: number) => {
                             // Check if this card is part of the winning hand
+                            // Normalize both cards to uppercase for comparison
+                            const normalizedCard = c.toUpperCase();
                             const isWinningCard = gameState === 'SHOWDOWN' &&
                                 Array.isArray(seat.winningCards) &&
-                                seat.winningCards.includes(c);
+                                seat.winningCards.some(wc => wc.toUpperCase() === normalizedCard);
 
                             return (
-                                <CardImage
-                                    key={c}
-                                    code={c}
-                                    size={28}
-                                    highlighted={isWinningCard}
-                                />
+                                <motion.div
+                                    key={`seat-${seat.id}-card-${c}-${index}`} // More stable key with seat ID
+                                    initial={{ opacity: 0, y: 20, scale: 0.8 }}
+                                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                                    exit={{ opacity: 0, y: -20, scale: 0.8 }}
+                                    transition={{
+                                        duration: 0.4,
+                                        delay: index * 0.1,
+                                        ease: "easeOut"
+                                    }}
+                                >
+                                    <CardImage
+                                        code={c}
+                                        size={28}
+                                        highlighted={isWinningCard}
+                                    />
+                                </motion.div>
                             );
                         })}
-                    </div>
-                )}
+                    </AnimatePresence>
+                </div>
             </div>
 
             {/* Wager Chip - Edge Positioned */}

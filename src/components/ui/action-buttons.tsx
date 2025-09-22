@@ -46,7 +46,7 @@ export function ActionButtons({
     const [maxBet, setMaxBet] = useState<number>(playerBalance);
 
     const isPlayerTurn = state === 'BETTING' && currentUserSeatId === bettingActorSeatId;
-    const isDealing = ['DEAL_HOLE_CARDS', 'DEAL_FLOP', 'DEAL_TURN', 'DEAL_RIVER'].includes(state || '');
+    const isDealing = ['DEAL_HOLE_CARDS', 'DEAL_FLOP', 'DEAL_TURN', 'DEAL_RIVER', 'SHOWDOWN'].includes(state || '');
 
     // Calculate raise amounts
     const halfPot = Math.floor(potTotal / 2);
@@ -69,6 +69,21 @@ export function ActionButtons({
     };
 
     if (isDealer) {
+        // Only show dealer controls when it's the dealer's turn
+        if (!isDealing) {
+            return (
+                <Card className="bg-white/95 backdrop-blur-sm border-white/20 shadow-xl">
+                    <CardContent className="p-4">
+                        <div className="flex items-center justify-center">
+                            <span className="text-gray-600 font-medium">
+                                Waiting for dealer turn...
+                            </span>
+                        </div>
+                    </CardContent>
+                </Card>
+            );
+        }
+
         return (
             <Card className="bg-white/95 backdrop-blur-sm border-white/20 shadow-xl">
                 <CardContent className="p-4">
