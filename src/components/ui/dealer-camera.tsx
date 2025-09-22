@@ -108,7 +108,7 @@ export function DealerCamera({
             </div>
 
             {/* Pot Total Overlay - Center Top */}
-            <div className="absolute top-4 left-1/2 transform -translate-x-1/2">
+            <div className="absolute top-4 right-4 transform">
                 <div className="bg-zinc-900/95 backdrop-blur-sm rounded-xl px-6 py-3 shadow-2xl border border-zinc-700/50">
                     <div className="text-center">
                         <div className="text-xl font-bold text-zinc-100">
@@ -122,7 +122,7 @@ export function DealerCamera({
             </div>
 
             {/* Game Status Overlay - Top Right */}
-            {gameStatus && activePlayerName && !isPlayerTurn && (
+            {/* {gameStatus && activePlayerName && !isPlayerTurn && (
                 <div className="absolute top-4 right-4 rounded-xl bg-blue-600/90 px-4 py-3 backdrop-blur-sm shadow-lg border border-blue-500/50">
                     <div className="flex items-center gap-2">
                         <span className="h-2 w-2 animate-pulse rounded-full bg-blue-200" />
@@ -131,7 +131,7 @@ export function DealerCamera({
                         </span>
                     </div>
                 </div>
-            )}
+            )} */}
 
             {/* Action Buttons Overlay - Center when it's the user's turn or dealer's turn */}
             {((isPlayerTurn || isDealerTurn) && onAction) && (
