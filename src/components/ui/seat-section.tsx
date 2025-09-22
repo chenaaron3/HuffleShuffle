@@ -1,6 +1,7 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { Track } from 'livekit-client';
 import { CardImage } from '~/components/ui/card-img';
+import { CardSlot } from '~/components/ui/card-slot';
 
 import { ParticipantTile, TrackToggle, useTracks, VideoTrack } from '@livekit/components-react';
 
@@ -120,8 +121,8 @@ function SeatCard({
 
                     {/* Empty Cards Area */}
                     <div className="flex gap-1">
-                        <div className="h-8 w-6 rounded border border-zinc-700/40 bg-zinc-800/40"></div>
-                        <div className="h-8 w-6 rounded border border-zinc-700/40 bg-zinc-800/40"></div>
+                        <CardSlot card={null} index={0} size={28} />
+                        <CardSlot card={null} index={1} size={28} />
                     </div>
                 </div>
             </div>
@@ -201,36 +202,22 @@ function SeatCard({
 
                 {/* Right Side - Cards */}
                 <div className="flex gap-1">
-                    <AnimatePresence mode="popLayout">
-                        {Array.isArray(seat.cards) && seat.cards.map((c: string, index: number) => {
-                            // Check if this card is part of the winning hand
-                            // Normalize both cards to uppercase for comparison
-                            const normalizedCard = c.toUpperCase();
-                            const isWinningCard = gameState === 'SHOWDOWN' &&
-                                Array.isArray(seat.winningCards) &&
-                                seat.winningCards.some(wc => wc.toUpperCase() === normalizedCard);
+                    {/* Always show 2 card slots - either placeholders or actual cards */}
+                    {Array.from({ length: 2 }, (_, index) => {
+                        const card = Array.isArray(seat.cards) ? seat.cards[index] : null;
 
-                            return (
-                                <motion.div
-                                    key={`seat-${seat.id}-card-${c}-${index}`} // More stable key with seat ID
-                                    initial={{ opacity: 0, y: 20, scale: 0.8 }}
-                                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                                    exit={{ opacity: 0, y: -20, scale: 0.8 }}
-                                    transition={{
-                                        duration: 0.4,
-                                        delay: index * 0.1,
-                                        ease: "easeOut"
-                                    }}
-                                >
-                                    <CardImage
-                                        code={c}
-                                        size={28}
-                                        highlighted={isWinningCard}
-                                    />
-                                </motion.div>
-                            );
-                        })}
-                    </AnimatePresence>
+                        return (
+                            <CardSlot
+                                key={`seat-${seat.id}-card-slot-${index}`}
+                                card={card}
+                                index={index}
+                                size={28}
+                                gameState={gameState}
+                                winningCards={seat.winningCards ?? undefined}
+                                seatId={seat.id}
+                            />
+                        );
+                    })}
                 </div>
             </div>
 
