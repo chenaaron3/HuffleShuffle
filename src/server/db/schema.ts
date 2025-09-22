@@ -157,6 +157,13 @@ export const seats = createTable(
     isActive: d.boolean().notNull().default(true),
     encryptedUserNonce: d.text(),
     encryptedPiNonce: d.text(),
+    handType: d.text(), // Store poker hand type (e.g., "One Pair", "Straight Flush")
+    handDescription: d.text(), // Store detailed hand description
+    winAmount: d.integer().default(0), // Amount won in this hand (0 = no win, >0 = winner)
+    winningCards: d
+      .text()
+      .array()
+      .default(sql`ARRAY[]::text[]`), // Cards that make up the winning hand
     createdAt: d
       .timestamp({ withTimezone: true })
       .default(sql`CURRENT_TIMESTAMP`)

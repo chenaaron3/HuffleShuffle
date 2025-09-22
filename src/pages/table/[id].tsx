@@ -27,13 +27,6 @@ export default function TableView() {
     const tableQuery = api.table.get.useQuery({ tableId: id ?? '' }, { enabled: !!id });
     const [snapshot, setSnapshot] = React.useState(tableQuery.data);
 
-    // Update snapshot when tableQuery data changes
-    React.useEffect(() => {
-        if (tableQuery.data) {
-            setSnapshot(tableQuery.data);
-        }
-    }, [tableQuery.data]);
-
     const action = api.table.action.useMutation({
         onSuccess: (data) => {
             // Update snapshot directly with returned gameplay state
@@ -76,6 +69,24 @@ export default function TableView() {
             }
         })();
     }, [id, currentSeat?.encryptedUserNonce]);
+
+    // Update snapshot when tableQuery data changes
+    React.useEffect(() => {
+        if (tableQuery.data) {
+            setSnapshot(tableQuery.data);
+        }
+    }, [tableQuery.data]);
+
+    // Force refresh when game state changes to SHOWDOWN to fix card display
+    React.useEffect(() => {
+        if (state === 'SHOWDOWN') {
+            // Small delay to ensure backend has updated
+            const timer = setTimeout(() => {
+                void tableQuery.refetch();
+            }, 100);
+            return () => clearTimeout(timer);
+        }
+    }, [state, tableQuery]);
 
     // Pusher subscription for real-time table updates
     React.useEffect(() => {
@@ -171,12 +182,14 @@ export default function TableView() {
                         <div className="flex h-full gap-4 px-4 py-4">
                             {/* Left side seats (4, 3, 2, 1) */}
                             <SeatSection
+                                key={`left-${state}-${snapshot?.game?.id}`}
                                 seats={seats.slice(0, 4)}
                                 highlightedSeatId={highlightedSeatId}
                                 smallBlindIdx={smallBlindIdx}
                                 bigBlindIdx={bigBlindIdx}
                                 myUserId={session?.user?.id ?? null}
                                 side="left"
+                                gameState={state}
                             />
 
                             {/* Center area with dealer cam and controls */}
@@ -230,12 +243,14 @@ export default function TableView() {
 
                             {/* Right side seats (5, 6, 7, 8) */}
                             <SeatSection
+                                key={`right-${state}-${snapshot?.game?.id}`}
                                 seats={seats.slice(4, 8)}
                                 highlightedSeatId={highlightedSeatId}
                                 smallBlindIdx={smallBlindIdx}
                                 bigBlindIdx={bigBlindIdx}
                                 myUserId={session?.user?.id ?? null}
                                 side="right"
+                                gameState={state}
                             />
                         </div>
                     </LiveKitRoom>

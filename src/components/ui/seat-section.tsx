@@ -12,6 +12,7 @@ interface SeatSectionProps {
     bigBlindIdx: number;
     myUserId?: string | null;
     side: 'left' | 'right';
+    gameState?: string;
 }
 
 export function SeatSection({
@@ -20,7 +21,8 @@ export function SeatSection({
     smallBlindIdx,
     bigBlindIdx,
     myUserId,
-    side
+    side,
+    gameState
 }: SeatSectionProps) {
     // Create array of 4 seats with proper numbering
     let displaySeats: (any | null)[] = [];
@@ -56,8 +58,10 @@ export function SeatSection({
                         small={actualSeatIndex === smallBlindIdx}
                         big={actualSeatIndex === bigBlindIdx}
                         active={!!highlightedSeatId && seat?.id === highlightedSeatId}
+                        isWinner={gameState === 'SHOWDOWN' && (seat?.winAmount ?? 0) > 0}
                         myUserId={myUserId}
                         side={side}
+                        gameState={gameState}
                     />
                 );
             })}
@@ -72,8 +76,10 @@ function SeatCard({
     small,
     big,
     active,
+    isWinner,
     myUserId,
     side,
+    gameState,
 }: {
     seat: SeatWithPlayer | null;
     index: number;
@@ -81,8 +87,10 @@ function SeatCard({
     small: boolean;
     big: boolean;
     active?: boolean;
+    isWinner?: boolean;
     myUserId?: string | null;
     side: 'left' | 'right';
+    gameState?: string;
 }) {
     const trackRefs = useTracks([Track.Source.Camera]);
     const videoTrackRef = seat ? trackRefs.find(
@@ -175,21 +183,39 @@ function SeatCard({
             </div>
 
             {/* Player Info and Cards Row */}
-            <div className="flex items-center justify-between">
-                <div className="flex flex-col gap-1 min-w-0 flex-1">
-                    <div className="flex gap-2">
-                        <div className="rounded-full bg-green-600/20 px-2 py-1 text-xs font-medium text-green-400 border border-green-500/30">
-                            ${seat.buyIn} total
+            <div className="flex items-end justify-between">
+                {/* Left Side - Total and Win Amount */}
+                <div className="flex flex-col gap-1">
+                    {/* Win amount centered above total */}
+                    {gameState === 'SHOWDOWN' && (seat?.winAmount ?? 0) > 0 && (
+                        <div className="w-fit mx-auto translate-y-1/3 rounded-full bg-green-600/20 px-2 py-1 text-xs font-medium text-green-400 border border-green-500/30 text-center animate-pulse">
+                            +${seat.winAmount}
                         </div>
+                    )}
+                    {/* Total */}
+                    <div className="rounded-full z-10 bg-green-600/20 px-2 py-1 text-xs font-medium text-green-400 border border-green-500/30">
+                        ${seat.buyIn} total
                     </div>
                 </div>
 
-                {/* Cards - Right Side */}
+                {/* Right Side - Cards */}
                 {Array.isArray(seat.cards) && seat.cards.length > 0 && (
-                    <div className="flex gap-1 shrink-0">
-                        {seat.cards.map((c: string) => (
-                            <CardImage key={c} code={c} size={28} />
-                        ))}
+                    <div className="flex gap-1">
+                        {seat.cards.map((c: string) => {
+                            // Check if this card is part of the winning hand
+                            const isWinningCard = gameState === 'SHOWDOWN' &&
+                                Array.isArray(seat.winningCards) &&
+                                seat.winningCards.includes(c);
+
+                            return (
+                                <CardImage
+                                    key={c}
+                                    code={c}
+                                    size={28}
+                                    highlighted={isWinningCard}
+                                />
+                            );
+                        })}
                     </div>
                 )}
             </div>
@@ -211,6 +237,26 @@ function SeatCard({
                             <span className="relative text-sm font-bold text-yellow-900 drop-shadow-sm">
                                 ${seat.currentBet}
                             </span>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Hand Type - Edge Positioned (same side as bet chip during showdown) */}
+            {gameState === 'SHOWDOWN' && seat.handType && (
+                <div className={`absolute z-10 top-1/2 transform -translate-y-1/2 ${side === 'right'
+                    ? 'left-0 -translate-x-1/2'
+                    : 'right-0 translate-x-1/2'
+                    }`}>
+                    <div className="relative">
+                        {/* Banner shadow */}
+                        <div className="absolute inset-0 bg-black/30 rounded-full blur-sm scale-95"></div>
+                        {/* Main banner */}
+                        <div className={`relative px-3 py-1 rounded-full text-xs font-bold shadow-lg flex items-center justify-center  ${isWinner
+                            ? 'bg-gradient-to-r from-yellow-400 via-yellow-500 to-yellow-600 text-black'
+                            : 'bg-gradient-to-r from-blue-400 via-blue-500 to-blue-600 text-white'
+                            }`}>
+                            {seat.handType}
                         </div>
                     </div>
                 </div>

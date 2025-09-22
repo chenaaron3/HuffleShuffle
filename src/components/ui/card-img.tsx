@@ -35,23 +35,36 @@ export function CardImage({
     code,
     size = 28,
     className,
+    highlighted = false,
 }: {
     code: string;
     size?: number;
     className?: string;
+    highlighted?: boolean;
 }) {
     const src = cardCodeToFilename(code);
     if (!src) return null;
+
+    const baseClasses = "select-none rounded-sm shadow [image-rendering:auto]";
+    const highlightedClasses = highlighted
+        ? "ring-2 ring-yellow-400 ring-opacity-75 shadow-lg shadow-yellow-400/50 animate-pulse"
+        : "";
+
     return (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-            src={src}
-            alt={code}
-            width={size}
-            height={Math.round(size * 1.4)}
-            className={className ?? "select-none rounded-sm shadow [image-rendering:auto]"}
-            draggable={false}
-        />
+        <div className={`relative ${highlighted ? 'animate-pulse' : ''}`}>
+            {highlighted && (
+                <div className="absolute inset-0 rounded-sm bg-gradient-to-r from-yellow-400/20 to-yellow-500/20 blur-sm scale-110"></div>
+            )}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+                src={src}
+                alt={code}
+                width={size}
+                height={Math.round(size * 1.4)}
+                className={`${baseClasses} ${highlightedClasses} ${className ?? ''}`}
+                draggable={false}
+            />
+        </div>
     );
 }
 

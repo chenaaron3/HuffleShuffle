@@ -88,7 +88,11 @@ function redactSnapshotForUser(
 ): TableSnapshot {
   const isShowdown = snapshot.game?.state === "SHOWDOWN";
   const redactedSeats: SeatWithPlayer[] = snapshot.seats.map((s) => {
-    if (isShowdown || s.playerId === userId) return s;
+    // During showdown, show all cards face up for all players
+    // For other states, only show cards face up for the current user
+    if (isShowdown || s.playerId === userId) {
+      return s; // Show actual cards
+    }
     const hiddenCount = (s.cards ?? []).length;
     return { ...s, cards: Array(hiddenCount).fill("FD") } as SeatWithPlayer;
   });
@@ -141,8 +145,7 @@ async function resetGame(
   game: GameRow | null,
   orderedSeats: Array<SeatRow>,
 ): Promise<void> {
-  if (!game) return;
-  // Reset all seats
+  // Always reset all seats
   for (const s of orderedSeats) {
     await tx
       .update(seats)
@@ -150,18 +153,28 @@ async function resetGame(
         cards: sql`ARRAY[]::text[]`,
         isActive: true,
         currentBet: 0,
+        handType: null,
+        handDescription: null,
+        winAmount: 0,
+        winningCards: sql`ARRAY[]::text[]`,
       })
       .where(eq(seats.id, s.id));
     s.cards = [];
     s.isActive = true;
     s.currentBet = 0;
+    s.handType = null;
+    s.handDescription = null;
+    s.winAmount = 0;
+    s.winningCards = [];
   }
 
-  // Mark current game as completed
-  await tx
-    .update(games)
-    .set({ isCompleted: true })
-    .where(eq(games.id, game.id));
+  // Mark current game as completed (if there is one)
+  if (game) {
+    await tx
+      .update(games)
+      .set({ isCompleted: true })
+      .where(eq(games.id, game.id));
+  }
 }
 
 async function createNewGame(
@@ -563,9 +576,6 @@ export const tableRouter = createTRPCRouter({
 
         const isDealerCaller = table.dealerId === userId;
 
-        const findSeatById = (id: string) =>
-          orderedSeats.find((s) => s.id === id)!;
-
         const toCardCode = (rank?: string, suit?: string) => {
           if (!rank || !suit) throw new Error("rank and suit required");
           return `${rank}${suit}`;
@@ -583,15 +593,18 @@ export const tableRouter = createTRPCRouter({
         if (input.action === "START_GAME") {
           if (!isDealerCaller) throw new Error("Only dealer can START_GAME");
           let dealerButtonSeatId = orderedSeats[0]!.id;
-          // If there was a previous game, reset it
+
+          // Reset all seats and mark current game as completed (if exists)
+          await resetGame(tx, game ?? null, orderedSeats);
+
+          // If there was a previous game, progress the dealer button
           if (game) {
-            await resetGame(tx, game, orderedSeats);
-            // Create a new game
             const prevButton = game.dealerButtonSeatId!;
             const prevIdx = orderedSeats.findIndex((s) => s.id === prevButton);
             dealerButtonSeatId =
               orderedSeats[pickNextIndex(prevIdx, orderedSeats.length)]!.id;
           }
+
           await createNewGame(tx, table, orderedSeats, dealerButtonSeatId);
           return { ok: true } as const;
         }

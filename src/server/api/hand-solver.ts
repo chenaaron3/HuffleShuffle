@@ -1,51 +1,105 @@
 import { eq, sql } from 'drizzle-orm';
-// Use the poker-hand-evaluator library
-import * as PokerHand from 'poker-hand-evaluator';
 
 import { games, seats } from '../db/schema';
 import { allActiveBetsEqual, fetchOrderedSeats, mergeBetsIntoPotGeneric } from './game-logic';
+
+const { Hand: PokerHand } = require("pokersolver");
 
 type SeatRow = typeof seats.$inferSelect;
 type GameRow = typeof games.$inferSelect;
 
 import type { db } from "../db";
-interface PokerHandStatic {
-  solve(cards: string[]): unknown;
-  winners(hands: unknown[]): unknown[];
+
+// Type definitions for poker hand evaluation
+interface PokerHandResult {
+  name: string; // Hand type (e.g., "Straight Flush", "Four of a Kind")
+  descr: string; // Detailed description (e.g., "Royal Flush", "Ace-High Straight Flush")
+  cards: string[]; // Cards that make up the winning hand
+  rank: number; // Hand rank (1-10, where 10 is highest)
+  score: number; // Numeric score for comparison (derived from rank)
 }
 
-// Create a compatibility layer for the poker-hand-evaluator library
-const Hand: PokerHandStatic = {
-  solve(cards: string[]) {
-    // Convert card format and create PokerHand instance
-    // poker-hand-evaluator expects cards in format like ['AS', 'KH', 'QD', 'JC', '10S']
-    const pokerHand = new PokerHand(cards);
-    return {
-      score: pokerHand.getScore(),
-      rank: pokerHand.getRank(),
-      description: pokerHand.describe(),
-    };
-  },
-  winners(hands: unknown[]) {
-    // Implement winner logic using the new library
-    // This is a simplified version - you can expand as needed
-    if (hands.length === 0) return [];
-
-    // Find the hand with the highest score
-    let bestHand = hands[0];
-    let bestScore = (bestHand as any)?.score || 0;
-
-    for (let i = 1; i < hands.length; i++) {
-      const currentScore = (hands[i] as any)?.score || 0;
-      if (currentScore > bestScore) {
-        bestHand = hands[i];
-        bestScore = currentScore;
-      }
+// Helper function to convert card format from our format to poker solver format
+function convertCardsToPokerSolver(cards: string[]): string[] {
+  return cards.map((card) => {
+    if (card.length === 2) {
+      // Handle single digit ranks (2-9)
+      return (card[0] ?? "") + (card[1]?.toLowerCase() ?? "");
+    } else if (card.length === 3) {
+      // Handle '10' rank
+      return "T" + (card[2]?.toLowerCase() ?? "");
     }
+    return card;
+  });
+}
 
-    return [bestHand];
-  },
-};
+// Helper function to convert card format from poker solver format to our format
+function convertCardsFromPokerSolver(cards: string[]): string[] {
+  return cards.map((card) => {
+    if (card.length === 2) {
+      // Convert from "Ad" format to "AS" format
+      const rank = card[0]?.toUpperCase();
+      const suit = card[1]?.toUpperCase();
+      const suitMap: Record<string, string> = {
+        D: "D", // Diamonds
+        H: "H", // Hearts
+        S: "S", // Spades
+        C: "C", // Clubs
+      };
+      return `${rank}${suitMap[suit ?? ""] ?? suit}`;
+    }
+    return card;
+  });
+}
+
+// Helper function to normalize hand names
+function normalizeHandName(pokerHand: any): string {
+  let normalizedName = pokerHand.name;
+  if (pokerHand.descr === "Royal Flush") {
+    normalizedName = "Royal Flush";
+  } else if (pokerHand.name === "Pair") {
+    normalizedName = "One Pair";
+  }
+  return normalizedName;
+}
+
+// Helper function to solve a poker hand
+export function solvePokerHand(cards: string[]): PokerHandResult {
+  // pokersolver expects cards in format like ['Ad', 'As', 'Jc', 'Th', '2d', '3c', 'Kd']
+  // Our cards are in format like ['AS', 'KH', 'QD', 'JC', '10S']
+  const convertedCards = convertCardsToPokerSolver(cards);
+  const pokerHand = PokerHand.solve(convertedCards);
+
+  return {
+    name: normalizeHandName(pokerHand),
+    descr: pokerHand.descr,
+    cards: convertCardsFromPokerSolver(pokerHand.cards), // Convert back to our format
+    rank: pokerHand.rank,
+    score: pokerHand.rank, // Use rank as score for comparison
+  };
+}
+
+// Helper function to find winners among multiple hands
+export function findPokerWinners(hands: PokerHandResult[]): PokerHandResult[] {
+  if (hands.length === 0) return [];
+
+  // Use pokersolver's built-in winner comparison
+  const pokerHands = hands.map((hand) => {
+    const convertedCards = convertCardsToPokerSolver(hand.cards);
+    return PokerHand.solve(convertedCards);
+  });
+
+  const winners = PokerHand.winners(pokerHands);
+
+  // Convert back to our format
+  return winners.map((winner: any) => ({
+    name: normalizeHandName(winner),
+    descr: winner.descr,
+    cards: convertCardsFromPokerSolver(winner.cards), // Convert back to our format
+    rank: winner.rank,
+    score: winner.rank, // Use rank as score for comparison
+  }));
+}
 
 export async function evaluateBettingTransition(
   tx: { query: typeof db.query; update: typeof db.update },
@@ -66,24 +120,82 @@ export async function evaluateBettingTransition(
   if (singleActive || cc === 5) {
     // SHOWDOWN
     const contenders = freshSeats.filter((s: SeatRow) => s.isActive);
-    const hands = contenders.map((s: SeatRow) =>
-      Hand.solve([...(s.cards as string[]), ...updatedGame.communityCards]),
-    ) as unknown[];
-    const winners = Hand.winners(hands) as unknown[];
-    const winnerSeatIds = winners.map((w) => {
-      const idx = (hands as unknown[]).indexOf(w);
-      return contenders[idx]!.id;
+
+    // Evaluate each player's hand
+    const hands = contenders.map((s: SeatRow) => {
+      const playerCards = [
+        ...(s.cards as string[]),
+        ...updatedGame.communityCards,
+      ];
+      const handResult = solvePokerHand(playerCards);
+
+      // Log hand evaluation for debugging
+      console.log(`Player ${s.id} hand:`, {
+        cards: playerCards,
+        handType: handResult.name,
+        description: handResult.descr,
+        winningCards: handResult.cards,
+        score: handResult.score,
+      });
+
+      return {
+        seatId: s.id,
+        hand: handResult,
+        playerCards,
+      };
     });
+
+    // Find winners
+    const handResults = hands.map((h) => h.hand);
+    const winners = findPokerWinners(handResults);
+
+    // Get winner seat IDs
+    const winnerSeatIds = winners.map((winner) => {
+      const handIndex = handResults.findIndex(
+        (h) =>
+          h.name === winner.name &&
+          h.descr === winner.descr &&
+          h.score === winner.score,
+      );
+      return hands[handIndex]!.seatId;
+    });
+
+    // Log winner information
+    console.log("Showdown results:", {
+      totalPlayers: contenders.length,
+      winners: winners.map((w) => ({
+        handType: w.name,
+        description: w.descr,
+        winningCards: w.cards,
+        score: w.score,
+      })),
+      winnerSeatIds,
+    });
+
+    // Store hand evaluation results and distribute pot
     const share = Math.floor(updatedGame.potTotal / winnerSeatIds.length);
-    for (const sid of winnerSeatIds) {
+
+    for (const handData of hands) {
+      const isWinner = winnerSeatIds.includes(handData.seatId);
       await tx
         .update(seats)
-        .set({ buyIn: sql`${seats.buyIn} + ${share}` })
-        .where(eq(seats.id, sid));
+        .set({
+          handType: handData.hand.name,
+          handDescription: handData.hand.descr,
+          winAmount: isWinner ? share : 0,
+          buyIn: isWinner ? sql`${seats.buyIn} + ${share}` : seats.buyIn,
+          winningCards: isWinner ? handData.hand.cards : sql`ARRAY[]::text[]`,
+        })
+        .where(eq(seats.id, handData.seatId));
     }
+
+    // Set game to showdown state
     await tx
       .update(games)
-      .set({ state: "SHOWDOWN", isCompleted: true })
+      .set({
+        state: "SHOWDOWN",
+        isCompleted: true,
+      })
       .where(eq(games.id, updatedGame.id));
     return;
   }
