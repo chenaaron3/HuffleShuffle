@@ -102,10 +102,10 @@ function SeatCard({
     // Empty seat placeholder
     if (!seat) {
         return (
-            <div className="relative flex h-[22vh] flex-col rounded-lg border border-dashed border-zinc-600/50 bg-zinc-900/20 p-2">
+            <div className="relative flex h-[22vh] flex-col rounded-xl border border-dashed border-zinc-700/50 bg-zinc-900/30 p-3 backdrop-blur-sm">
                 {/* Empty Video Feed - Match Occupied Seat Dimensions */}
-                <div className="relative h-full aspect-[4/3] overflow-hidden rounded-md bg-zinc-800/50 border border-zinc-600/30 mb-2">
-                    <div className="flex h-full items-center justify-center text-xs text-zinc-500">
+                <div className="relative h-full aspect-[4/3] overflow-hidden rounded-lg bg-zinc-800/60 border border-zinc-700/40 mb-3">
+                    <div className="flex h-full items-center justify-center text-sm text-zinc-500 font-medium">
                         Empty Seat
                     </div>
                 </div>
@@ -113,15 +113,15 @@ function SeatCard({
                 {/* Empty Player Info and Cards Row */}
                 <div className="flex items-center justify-between">
                     <div className="flex flex-col gap-1">
-                        <div className="rounded-full bg-zinc-600/20 px-2 py-1 text-xs font-medium text-zinc-500 border border-zinc-500/30 w-fit">
+                        <div className="rounded-full bg-zinc-700/40 px-3 py-1 text-xs font-medium text-zinc-400 border border-zinc-600/50 w-fit">
                             Seat {seatNumber}
                         </div>
                     </div>
 
                     {/* Empty Cards Area */}
                     <div className="flex gap-1">
-                        <div className="h-8 w-6 rounded border border-zinc-600/30 bg-zinc-800/30"></div>
-                        <div className="h-8 w-6 rounded border border-zinc-600/30 bg-zinc-800/30"></div>
+                        <div className="h-8 w-6 rounded border border-zinc-700/40 bg-zinc-800/40"></div>
+                        <div className="h-8 w-6 rounded border border-zinc-700/40 bg-zinc-800/40"></div>
                     </div>
                 </div>
             </div>
@@ -130,13 +130,13 @@ function SeatCard({
 
     return (
         <div
-            className="relative flex h-[22vh] flex-col rounded-lg border bg-zinc-900/50 p-2"
+            className="relative flex h-[22vh] flex-col rounded-xl border bg-zinc-900/60 p-3 backdrop-blur-sm"
             style={{
-                borderColor: active ? "rgb(234 179 8 / 0.5)" : "rgb(255 255 255 / 0.1)",
+                borderColor: active ? "rgb(234 179 8 / 0.6)" : "rgb(113 113 122 / 0.3)",
             }}
         >
             {/* Video Feed - Scaled Down with Aspect Ratio */}
-            <div className="group relative h-full aspect-[4/3] overflow-hidden rounded-md bg-black mb-2">
+            <div className="group relative h-full aspect-[4/3] overflow-hidden rounded-lg bg-black mb-3">
                 {videoTrackRef ? (
                     isSelf ? (
                         <>
@@ -165,19 +165,19 @@ function SeatCard({
                         </ParticipantTile>
                     )
                 ) : (
-                    <div className="flex h-full items-center justify-center text-xs text-zinc-400">
+                    <div className="flex h-full items-center justify-center text-sm text-zinc-500 font-medium">
                         No Video
                     </div>
                 )}
 
                 {/* Big/Small Blind Overlay */}
                 {small && (
-                    <div className="absolute top-2 left-2 rounded bg-blue-500 px-2 py-1 text-xs font-semibold text-white">
+                    <div className="absolute top-2 left-2 rounded-lg bg-blue-600 px-2 py-1 text-xs font-semibold text-white shadow-lg border border-blue-500/50">
                         S
                     </div>
                 )}
                 {big && (
-                    <div className="absolute top-2 left-2 rounded bg-red-500 px-2 py-1 text-xs font-semibold text-white">
+                    <div className="absolute top-2 left-2 rounded-lg bg-red-600 px-2 py-1 text-xs font-semibold text-white shadow-lg border border-red-500/50">
                         B
                     </div>
                 )}
@@ -189,12 +189,12 @@ function SeatCard({
                 <div className="flex flex-col gap-1">
                     {/* Win amount centered above total */}
                     {gameState === 'SHOWDOWN' && (seat?.winAmount ?? 0) > 0 && (
-                        <div className="w-fit mx-auto translate-y-1/3 rounded-full bg-green-600/20 px-2 py-1 text-xs font-medium text-green-400 border border-green-500/30 text-center animate-pulse">
+                        <div className="w-fit mx-auto translate-y-1/3 rounded-full bg-green-600/30 px-3 py-1 text-xs font-medium text-green-300 border border-green-500/50 text-center animate-pulse shadow-lg">
                             +${seat.winAmount}
                         </div>
                     )}
                     {/* Total */}
-                    <div className="rounded-full z-10 bg-green-600/20 px-2 py-1 text-xs font-medium text-green-400 border border-green-500/30">
+                    <div className="rounded-full z-10 bg-green-600/30 px-3 py-1 text-xs font-medium text-green-300 border border-green-500/50 shadow-lg">
                         ${seat.buyIn} total
                     </div>
                 </div>
@@ -277,7 +277,7 @@ function SeatCard({
             )}
 
             {/* Player Name - Top Right */}
-            <div className="absolute top-2 right-2 rounded-lg bg-black/70 px-2 py-1 text-xs font-medium text-white backdrop-blur-sm">
+            <div className="absolute top-2 right-2 rounded-lg bg-black/80 px-3 py-1 text-xs font-medium text-white backdrop-blur-sm border border-white/10">
                 {seat.player?.name ?? "Player"}
             </div>
         </div>

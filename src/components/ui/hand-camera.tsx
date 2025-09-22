@@ -13,14 +13,14 @@ interface HandCameraProps {
 export function HandCamera({ tableId, roomName }: HandCameraProps) {
     if (!roomName) {
         return (
-            <div className="w-48 h-32 rounded-lg border border-white/10 bg-black flex items-center justify-center">
-                <div className="text-xs text-zinc-400">No hand camera</div>
+            <div className="w-64 h-40 rounded-xl border border-zinc-700/50 bg-zinc-900/50 backdrop-blur-sm flex items-center justify-center shadow-2xl">
+                <div className="text-sm text-zinc-500 font-medium">No hand camera</div>
             </div>
         );
     }
 
     return (
-        <div className="w-48 h-32 rounded-lg border border-white/10 bg-black overflow-hidden">
+        <div className="w-64 h-40 rounded-xl border border-zinc-700/50 bg-zinc-900/50 backdrop-blur-sm overflow-hidden shadow-2xl">
             <HandCameraView tableId={tableId} roomName={roomName} />
         </div>
     );

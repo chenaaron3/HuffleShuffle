@@ -4,17 +4,55 @@ import { CardImage } from '~/components/ui/card-img';
 
 import { ParticipantTile, useTracks, VideoTrack } from '@livekit/components-react';
 
+import { ActionButtons } from './action-buttons';
+
 interface DealerCameraProps {
     communityCards: string[];
     potTotal: number;
     gameStatus?: string;
     activePlayerName?: string;
     winningCards?: string[]; // Cards that make up the winning hand
+    // Action button props
+    isDealer?: boolean;
+    isJoinable?: boolean;
+    currentUserSeatId?: string | null;
+    bettingActorSeatId?: string | null;
+    isLoading?: boolean;
+    onAction?: (action: any, params?: any) => void;
+    onDealCard?: (rank: string, suit: string) => void;
+    onRandomCard?: () => void;
+    currentBet?: number;
+    playerBalance?: number;
+    bigBlind?: number;
 }
 
-export function DealerCamera({ communityCards, potTotal, gameStatus, activePlayerName, winningCards }: DealerCameraProps) {
+export function DealerCamera({
+    communityCards,
+    potTotal,
+    gameStatus,
+    activePlayerName,
+    winningCards,
+    isDealer,
+    isJoinable,
+    currentUserSeatId,
+    bettingActorSeatId,
+    isLoading,
+    onAction,
+    onDealCard,
+    onRandomCard,
+    currentBet,
+    playerBalance,
+    bigBlind
+}: DealerCameraProps) {
     const tracks = useTracks([Track.Source.Camera]);
     const dealerRef = tracks.find((t) => t.participant.identity === 'dealer-camera');
+
+    // Check if it's the current user's turn
+    const isPlayerTurn = gameStatus === 'BETTING' && currentUserSeatId === bettingActorSeatId;
+
+    // Check if it's the dealer's turn (for dealing cards, etc.)
+    const isDealing = ['DEAL_HOLE_CARDS', 'DEAL_FLOP', 'DEAL_TURN', 'DEAL_RIVER', 'SHOWDOWN'].includes(gameStatus || '');
+    const isDealerTurn = isDealer && isDealing;
 
     return (
         <div className="relative w-full overflow-hidden border border-white/10 rounded-lg bg-black aspect-video">
@@ -71,23 +109,49 @@ export function DealerCamera({ communityCards, potTotal, gameStatus, activePlaye
 
             {/* Pot Total Overlay - Center Top */}
             <div className="absolute top-4 left-1/2 transform -translate-x-1/2">
-                <div className="bg-white/95 backdrop-blur-sm rounded-lg px-4 py-2 shadow-lg border border-gray-200/50">
+                <div className="bg-zinc-900/95 backdrop-blur-sm rounded-xl px-6 py-3 shadow-2xl border border-zinc-700/50">
                     <div className="text-center">
-                        <div className="text-lg font-bold text-gray-900">
+                        <div className="text-xl font-bold text-zinc-100">
                             ${potTotal.toFixed(2)}
+                        </div>
+                        <div className="text-xs text-zinc-400 font-medium">
+                            Pot Total
                         </div>
                     </div>
                 </div>
             </div>
 
             {/* Game Status Overlay - Top Right */}
-            {gameStatus && activePlayerName && (
-                <div className="absolute top-4 right-4 rounded-lg bg-sky-500/90 px-4 py-2 backdrop-blur-sm">
+            {gameStatus && activePlayerName && !isPlayerTurn && (
+                <div className="absolute top-4 right-4 rounded-xl bg-blue-600/90 px-4 py-3 backdrop-blur-sm shadow-lg border border-blue-500/50">
                     <div className="flex items-center gap-2">
-                        <span className="h-2 w-2 animate-pulse rounded-full bg-sky-200" />
+                        <span className="h-2 w-2 animate-pulse rounded-full bg-blue-200" />
                         <span className="text-sm font-semibold text-white">
                             {activePlayerName}'s turn to act
                         </span>
+                    </div>
+                </div>
+            )}
+
+            {/* Action Buttons Overlay - Center when it's the user's turn or dealer's turn */}
+            {((isPlayerTurn || isDealerTurn) && onAction) && (
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <div className="pointer-events-auto">
+                        <ActionButtons
+                            isDealer={isDealer ?? false}
+                            isJoinable={isJoinable ?? false}
+                            state={gameStatus}
+                            currentUserSeatId={currentUserSeatId}
+                            bettingActorSeatId={bettingActorSeatId}
+                            isLoading={isLoading ?? false}
+                            potTotal={potTotal}
+                            currentBet={currentBet ?? 0}
+                            playerBalance={playerBalance ?? 1000}
+                            bigBlind={bigBlind ?? 20}
+                            onAction={onAction ?? (() => { })}
+                            onDealCard={onDealCard}
+                            onRandomCard={onRandomCard}
+                        />
                     </div>
                 </div>
             )}

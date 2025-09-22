@@ -6,7 +6,6 @@ import Head from 'next/head';
 import { useRouter } from 'next/router';
 import * as React from 'react';
 import { TableSetupModal } from '~/components/TableSetupModal';
-import { ActionButtons } from '~/components/ui/action-buttons';
 import { DealerCamera } from '~/components/ui/dealer-camera';
 import { HandCamera } from '~/components/ui/hand-camera';
 import { SeatSection } from '~/components/ui/seat-section';
@@ -206,11 +205,11 @@ export default function TableView() {
                                 </button>
                             )}
                         </div>
-                        {/* New 8-seat rectangular layout */}
+                        {/* Improved 8-seat layout with centered hand camera */}
                         <div className="flex h-full gap-4 px-4 py-4">
                             {/* Left side seats (4, 3, 2, 1) */}
                             <SeatSection
-                                key={`left-${state}-${snapshot?.game?.id}`}
+                                key={`left-${snapshot?.game?.id}`}
                                 seats={seats.slice(0, 4)}
                                 highlightedSeatId={highlightedSeatId}
                                 smallBlindIdx={smallBlindIdx}
@@ -220,8 +219,8 @@ export default function TableView() {
                                 gameState={state}
                             />
 
-                            {/* Center area with dealer cam and controls */}
-                            <div className="flex flex-1 flex-col items-center gap-4">
+                            {/* Center area with dealer cam and player controls */}
+                            <div className="flex flex-1 flex-col items-center gap-6">
                                 {/* Dealer Camera with Community Cards Overlay */}
                                 <DealerCamera
                                     communityCards={snapshot?.game?.communityCards ?? []}
@@ -229,50 +228,41 @@ export default function TableView() {
                                     gameStatus={state}
                                     activePlayerName={activePlayerName}
                                     winningCards={allWinningCards}
+                                    isDealer={session?.user?.role === 'dealer'}
+                                    isJoinable={snapshot?.isJoinable ?? false}
+                                    currentUserSeatId={currentUserSeatId}
+                                    bettingActorSeatId={bettingActorSeatId}
+                                    isLoading={action.isPending || leaveMutation.isPending}
+                                    currentBet={currentSeat?.currentBet ?? 0}
+                                    playerBalance={currentSeat?.buyIn ?? 0}
+                                    bigBlind={snapshot?.table?.bigBlind ?? 20}
+                                    onAction={(actionType, params) => {
+                                        if (actionType === 'LEAVE') {
+                                            leaveMutation.mutate({ tableId: id! });
+                                        } else {
+                                            action.mutate({ tableId: id!, action: actionType as any, params });
+                                        }
+                                    }}
+                                    onDealCard={(rank, suit) => {
+                                        action.mutate({ tableId: id!, action: 'DEAL_CARD', params: { rank, suit } });
+                                    }}
+                                    onRandomCard={() => {
+                                        const code = pickRandomUndealt();
+                                        if (!code) return;
+                                        action.mutate({ tableId: id!, action: 'DEAL_CARD', params: { rank: code[0], suit: code[1] } });
+                                    }}
                                 />
 
-                                {/* Hand Camera and Action Buttons Row */}
-                                <div className="flex w-full items-center justify-between gap-4">
-                                    {/* Hand Camera - Left */}
-                                    <HandCamera
-                                        tableId={tableIdStr}
-                                        roomName={handRoomName}
-                                    />
-
-                                    {/* Action Buttons - Center */}
-                                    <ActionButtons
-                                        isDealer={session?.user?.role === 'dealer'}
-                                        isJoinable={snapshot?.isJoinable ?? false}
-                                        state={state}
-                                        currentUserSeatId={currentUserSeatId}
-                                        bettingActorSeatId={bettingActorSeatId}
-                                        isLoading={action.isPending || leaveMutation.isPending}
-                                        potTotal={totalPot}
-                                        currentBet={currentSeat?.currentBet ?? 0}
-                                        playerBalance={currentSeat?.buyIn ?? 0}
-                                        bigBlind={snapshot?.table?.bigBlind ?? 20}
-                                        onAction={(actionType, params) => {
-                                            if (actionType === 'LEAVE') {
-                                                leaveMutation.mutate({ tableId: id! });
-                                            } else {
-                                                action.mutate({ tableId: id!, action: actionType as any, params });
-                                            }
-                                        }}
-                                        onDealCard={(rank, suit) => {
-                                            action.mutate({ tableId: id!, action: 'DEAL_CARD', params: { rank, suit } });
-                                        }}
-                                        onRandomCard={() => {
-                                            const code = pickRandomUndealt();
-                                            if (!code) return;
-                                            action.mutate({ tableId: id!, action: 'DEAL_CARD', params: { rank: code[0], suit: code[1] } });
-                                        }}
-                                    />
-                                </div>
+                                {/* Hand Camera - Centered */}
+                                <HandCamera
+                                    tableId={tableIdStr}
+                                    roomName={handRoomName}
+                                />
                             </div>
 
                             {/* Right side seats (5, 6, 7, 8) */}
                             <SeatSection
-                                key={`right-${state}-${snapshot?.game?.id}`}
+                                key={`right-${snapshot?.game?.id}`}
                                 seats={seats.slice(4, 8)}
                                 highlightedSeatId={highlightedSeatId}
                                 smallBlindIdx={smallBlindIdx}
