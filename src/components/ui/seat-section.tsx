@@ -121,8 +121,8 @@ function SeatCard({
 
                     {/* Empty Cards Area */}
                     <div className="flex gap-1">
-                        <CardSlot card={null} index={0} size={28} />
-                        <CardSlot card={null} index={1} size={28} />
+                        <CardSlot card={null} index={0} size={30} />
+                        <CardSlot card={null} index={1} size={30} />
                     </div>
                 </div>
             </div>
@@ -211,7 +211,7 @@ function SeatCard({
                                 key={`seat-${seat.id}-card-slot-${index}`}
                                 card={card}
                                 index={index}
-                                size={28}
+                                size={30}
                                 gameState={gameState}
                                 winningCards={seat.winningCards ?? undefined}
                                 seatId={seat.id}
