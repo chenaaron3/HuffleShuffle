@@ -131,13 +131,13 @@ function SeatCard({
 
     return (
         <div
-            className="relative flex h-[22vh] flex-col rounded-xl border bg-zinc-900/60 p-3 backdrop-blur-sm"
+            className="relative flex h-[22vh] flex-col rounded-xl border bg-zinc-900/60 backdrop-blur-sm"
             style={{
                 borderColor: active ? "rgb(234 179 8 / 0.6)" : "rgb(113 113 122 / 0.3)",
             }}
         >
             {/* Video Feed - Scaled Down with Aspect Ratio */}
-            <div className="group relative h-full aspect-[4/3] overflow-hidden rounded-lg bg-black mb-3">
+            <div className="group relative h-full aspect-[4/3] overflow-hidden rounded-xl bg-black mb-3 -z-10">
                 {videoTrackRef ? (
                     isSelf ? (
                         <>
@@ -185,7 +185,7 @@ function SeatCard({
             </div>
 
             {/* Player Info and Cards Row */}
-            <div className="flex items-end justify-between">
+            <div className="flex items-center justify-between px-2 pb-2">
                 {/* Left Side - Total and Win Amount */}
                 <div className="flex flex-col gap-1">
                     {/* Win amount centered above total */}
