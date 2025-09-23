@@ -17,6 +17,8 @@ import {
     LiveKitRoom, ParticipantTile, RoomAudioRenderer, StartAudio, useTracks, VideoTrack
 } from '@livekit/components-react';
 
+import type { SeatWithPlayer } from '~/server/api/routers/table';
+
 export default function TableView() {
     const router = useRouter();
     const { id } = router.query as { id?: string };
@@ -54,21 +56,35 @@ export default function TableView() {
     });
 
     const [showSetup, setShowSetup] = React.useState<boolean>(false);
-    const seats = snapshot?.seats ?? [];
+
+    // Create padded seats array on client side - array index matches seat number
+    const paddedSeats = React.useMemo(() => {
+        if (!snapshot?.table?.maxSeats || !snapshot?.seats) return [];
+
+        const maxSeats = snapshot.table.maxSeats;
+        return Array.from({ length: maxSeats }, (_, index) => {
+            const seat = snapshot.seats.find(s => s.seatNumber === index);
+            return seat || null;
+        });
+    }, [snapshot?.table?.maxSeats, snapshot?.seats]);
+
+    const seats = paddedSeats; // For rendering (includes nulls for empty seats)
+    const originalSeats = snapshot?.seats ?? []; // For calculations (only actual seats)
+
     const state: string | undefined = snapshot?.game?.state as any;
     const dealSeatId = state === 'DEAL_HOLE_CARDS' ? (snapshot?.game?.assignedSeatId ?? null) : null;
     const bettingActorSeatId = state === 'BETTING' ? (snapshot?.game?.assignedSeatId ?? null) : null;
-    const currentUserSeatId = seats.find((s: any) => s.playerId === session?.user?.id)?.id ?? null;
+    const currentUserSeatId = originalSeats.find((s: SeatWithPlayer) => s.playerId === session?.user?.id)?.id ?? null;
     const highlightedSeatId = dealSeatId ?? bettingActorSeatId;
 
-    const currentSeat = seats.find((s: any) => s.playerId === session?.user?.id) as any | undefined;
+    const currentSeat = originalSeats.find((s: SeatWithPlayer) => s.playerId === session?.user?.id) as SeatWithPlayer | undefined;
     const [handRoomName, setHandRoomName] = React.useState<string | null>(null);
 
     // Memoize winning cards calculation to prevent unnecessary re-renders
     const allWinningCards = React.useMemo(() => {
         const winningCards = new Set<string>();
         if (state === 'SHOWDOWN') {
-            seats.forEach((seat: any) => {
+            originalSeats.forEach((seat: SeatWithPlayer) => {
                 if (Array.isArray(seat.winningCards)) {
                     seat.winningCards.forEach((card: string) => {
                         winningCards.add(card);
@@ -77,20 +93,20 @@ export default function TableView() {
             });
         }
         return Array.from(winningCards);
-    }, [state, seats]);
+    }, [state, originalSeats]);
 
     // Memoize pot total calculation to prevent unnecessary re-renders
     const totalPot = React.useMemo(() => {
-        return (snapshot?.game?.potTotal ?? 0) + (seats.reduce((sum, seat) => sum + (seat.currentBet ?? 0), 0));
-    }, [snapshot?.game?.potTotal, seats]);
+        return (snapshot?.game?.potTotal ?? 0) + (originalSeats.reduce((sum, seat) => sum + (seat.currentBet ?? 0), 0));
+    }, [snapshot?.game?.potTotal, originalSeats]);
 
     // Memoize active player name calculation to prevent unnecessary re-renders
     const activePlayerName = React.useMemo(() => {
         if (state === 'BETTING') {
-            return seats.find((s: any) => s.id === bettingActorSeatId)?.player?.name ?? undefined;
+            return originalSeats.find((s: SeatWithPlayer) => s.id === bettingActorSeatId)?.player?.name ?? undefined;
         }
         return undefined;
-    }, [state, seats, bettingActorSeatId]);
+    }, [state, originalSeats, bettingActorSeatId]);
     React.useEffect(() => {
         (async () => {
             if (!id || !currentSeat?.encryptedUserNonce) return;
@@ -143,16 +159,36 @@ export default function TableView() {
     }, []);
 
     const dealerSeatId = snapshot?.game?.dealerButtonSeatId ?? null;
-    const dealerIdx = dealerSeatId ? seats.findIndex((s: any) => s.id === dealerSeatId) : -1;
-    const smallBlindIdx = dealerIdx >= 0 ? (dealerIdx + 1) % seats.length : -1;
-    const bigBlindIdx = dealerIdx >= 0 ? (dealerIdx + 2) % seats.length : -1;
+    const dealerSeat = dealerSeatId ? seats.find((s: SeatWithPlayer | null) => s?.id === dealerSeatId) : null;
+    const dealerSeatNumber = dealerSeat?.seatNumber ?? -1;
+
+    // Find the next occupied seats for blinds (not just next seat numbers)
+    const findNextOccupiedSeat = (startSeatNumber: number): number => {
+        if (startSeatNumber < 0) return -1;
+
+        const totalSeats = snapshot?.table?.maxSeats ?? 8;
+        for (let i = 1; i < totalSeats; i++) {
+            const nextSeatNumber = (startSeatNumber + i) % totalSeats;
+            if (seats[nextSeatNumber] !== null) {
+                return nextSeatNumber;
+            }
+        }
+        return -1; // No occupied seats found
+    };
+
+    const smallBlindSeatNumber = findNextOccupiedSeat(dealerSeatNumber);
+    const bigBlindSeatNumber = smallBlindSeatNumber >= 0 ? findNextOccupiedSeat(smallBlindSeatNumber) : -1;
+
+    // Array indices now match seat numbers since array is padded
+    const smallBlindIdx = smallBlindSeatNumber;
+    const bigBlindIdx = bigBlindSeatNumber;
 
     function getDealtSet() {
         const dealt = new Set<string>();
         if (snapshot?.game?.communityCards) {
             snapshot.game.communityCards.forEach((c) => dealt.add(c));
         }
-        seats.forEach((s: any) => {
+        originalSeats.forEach((s: SeatWithPlayer) => {
             (s.cards ?? []).forEach((c: string) => dealt.add(c));
         });
         return dealt;
@@ -251,6 +287,8 @@ export default function TableView() {
                                         if (!code) return;
                                         action.mutate({ tableId: id!, action: 'DEAL_CARD', params: { rank: code[0], suit: code[1] } });
                                     }}
+                                    onLeaveTable={() => leaveMutation.mutate({ tableId: id! })}
+                                    isLeaving={leaveMutation.isPending}
                                 />
 
                                 {/* Hand Camera - Centered */}

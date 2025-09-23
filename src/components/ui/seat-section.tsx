@@ -8,7 +8,7 @@ import { ParticipantTile, TrackToggle, useTracks, VideoTrack } from '@livekit/co
 import type { SeatWithPlayer } from "~/server/api/routers/table";
 
 interface SeatSectionProps {
-    seats: SeatWithPlayer[];
+    seats: (SeatWithPlayer | null)[];
     highlightedSeatId: string | null;
     smallBlindIdx: number;
     bigBlindIdx: number;
@@ -26,39 +26,43 @@ export function SeatSection({
     side,
     gameState
 }: SeatSectionProps) {
-    // Create array of 4 seats with proper numbering
-    let displaySeats: (any | null)[] = [];
+    // Since seats array is now padded, array index matches seat number
+    let displaySeats: (SeatWithPlayer | null)[] = [];
 
     if (side === 'left') {
-        // Left side: seats 1-4 from bottom to top
-        // seats[0] = seat 1 (bottom), seats[1] = seat 2, seats[2] = seat 3, seats[3] = seat 4 (top)
-        displaySeats = Array.from({ length: 4 }, (_, index) => {
-            return seats[3 - index] || null; // Reverse the order: 3,2,1,0
-        });
+        // Left side: seats 0-3 (seat numbers) from bottom to top
+        // Display order: seat 3 (top), seat 2, seat 1, seat 0 (bottom)
+        displaySeats = [
+            seats[3] ?? null, // seat 3 (top)
+            seats[2] ?? null, // seat 2
+            seats[1] ?? null, // seat 1
+            seats[0] ?? null, // seat 0 (bottom)
+        ];
     } else {
-        // Right side: seats 5-8 from top to bottom
-        // seats[4] = seat 5, seats[5] = seat 6, seats[6] = seat 7, seats[7] = seat 8
-        displaySeats = Array.from({ length: 4 }, (_, index) => {
-            return seats[index + 4] || null;
-        });
+        // Right side: seats 4-7 (seat numbers) from top to bottom
+        // Display order: seat 4, seat 5, seat 6, seat 7
+        displaySeats = [
+            seats[4] ?? null, // seat 4
+            seats[5] ?? null, // seat 5
+            seats[6] ?? null, // seat 6
+            seats[7] ?? null, // seat 7
+        ];
     }
 
     return (
         <div className={`flex flex-col gap-2 relative z-50 ${side === 'left' ? 'pr-2' : 'pl-2'}`}>
             {displaySeats.map((seat, index) => {
-                // Calculate the actual seat number for display (1-based)
-                const seatNumber = side === 'left' ? (4 - index) : (index + 5);
-                // Calculate the actual seat index for blind checking
-                const actualSeatIndex = side === 'left' ? (3 - index) : (index + 4);
+                // Calculate the actual seat number (0-based) based on side and display position
+                const seatNumber = side === 'left' ? (3 - index) : (index + 4);
 
                 return (
                     <SeatCard
                         key={seat?.id || `empty-${side}-${index}`}
                         seat={seat}
                         index={index} // Use the display index directly
-                        seatNumber={seatNumber} // Pass the actual seat number
-                        small={actualSeatIndex === smallBlindIdx}
-                        big={actualSeatIndex === bigBlindIdx}
+                        seatNumber={seatNumber} // Pass the actual seat number (0-based)
+                        small={seatNumber === smallBlindIdx}
+                        big={seatNumber === bigBlindIdx}
                         active={!!highlightedSeatId && seat?.id === highlightedSeatId}
                         isWinner={gameState === 'SHOWDOWN' && (seat?.winAmount ?? 0) > 0}
                         myUserId={myUserId}

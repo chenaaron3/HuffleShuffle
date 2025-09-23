@@ -24,6 +24,9 @@ interface DealerCameraProps {
     currentBet?: number;
     playerBalance?: number;
     bigBlind?: number;
+    // Leave table props
+    onLeaveTable?: () => void;
+    isLeaving?: boolean;
 }
 
 export function DealerCamera({
@@ -42,7 +45,9 @@ export function DealerCamera({
     onRandomCard,
     currentBet,
     playerBalance,
-    bigBlind
+    bigBlind,
+    onLeaveTable,
+    isLeaving
 }: DealerCameraProps) {
     const tracks = useTracks([Track.Source.Camera]);
     const dealerRef = tracks.find((t) => t.participant.identity === 'dealer-camera');
@@ -153,6 +158,19 @@ export function DealerCamera({
                             onRandomCard={onRandomCard}
                         />
                     </div>
+                </div>
+            )}
+
+            {/* Leave Table Button - Bottom Left */}
+            {isJoinable && onLeaveTable && (
+                <div className="absolute bottom-4 left-4">
+                    <button
+                        onClick={onLeaveTable}
+                        disabled={isLeaving}
+                        className="bg-red-600/90 hover:bg-red-500/90 disabled:bg-red-600/50 text-white font-semibold px-4 py-2 rounded-lg transition-all duration-200 hover:scale-105 border border-red-500/50 hover:border-red-400/50 backdrop-blur-sm shadow-lg"
+                    >
+                        {isLeaving ? 'Leaving...' : 'Leave Table'}
+                    </button>
                 </div>
             )}
 

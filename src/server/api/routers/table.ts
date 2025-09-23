@@ -1,4 +1,5 @@
 import { and, asc, count, desc, eq, inArray, isNotNull, sql } from 'drizzle-orm';
+import { index } from 'drizzle-orm/pg-core';
 import { AccessToken } from 'livekit-server-sdk';
 import { createRequire } from 'node:module';
 import { z } from 'zod';
@@ -19,7 +20,6 @@ interface PokerHandStatic {
   solve(cards: string[]): unknown;
   winners(hands: unknown[]): unknown[];
 }
-const Hand: PokerHandStatic = requireCjs("pokersolver").Hand as PokerHandStatic;
 
 const ensureDealerRole = (role: string | undefined) => {
   if (role !== "dealer") throw new Error("FORBIDDEN: dealer role required");
@@ -400,7 +400,21 @@ export const tableRouter = createTRPCRouter({
         if (user.balance < input.buyIn)
           throw new Error("Insufficient balance for buy-in");
 
-        const seatNumber = existingSeats.length; // contiguous 0..n-1
+        // Find the first available seat number (smallest available)
+        const occupiedSeatNumbers = new Set(
+          existingSeats.map((seat) => seat.seatNumber),
+        );
+        let seatNumber = -1;
+        for (let i = 0; i < table.maxSeats; i++) {
+          if (!occupiedSeatNumbers.has(i)) {
+            seatNumber = i;
+            break;
+          }
+        }
+
+        if (seatNumber === -1) {
+          throw new Error("No available seats found");
+        }
 
         // Store/refresh user's public key
         await tx
