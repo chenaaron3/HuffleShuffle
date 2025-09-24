@@ -148,6 +148,7 @@ export const seats = createTable(
       .references(() => users.id),
     seatNumber: d.integer().notNull(), // 0..(MAX_SEATS_PER_TABLE-1) inclusive
     buyIn: d.integer().notNull().default(0),
+    startingBalance: d.integer().notNull().default(0), // Initial buyIn amount before game starts
     currentBet: d.integer().notNull().default(0),
     cards: d
       .text()
@@ -180,6 +181,8 @@ export const seats = createTable(
 // Game entity
 
 export const gameStateEnum = pgEnum("game_state", [
+  "INITIAL", // DEPRECATED
+  "GAME_START", // DEPRECATED
   "DEAL_HOLE_CARDS",
   "BETTING",
   "DEAL_FLOP",

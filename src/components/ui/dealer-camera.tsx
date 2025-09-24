@@ -1,5 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { Track } from 'livekit-client';
+import { isDefaultClause } from 'typescript';
 import { CardImage } from '~/components/ui/card-img';
 
 import { ParticipantTile, useTracks, VideoTrack } from '@livekit/components-react';
@@ -54,10 +55,6 @@ export function DealerCamera({
 
     // Check if it's the current user's turn
     const isPlayerTurn = gameStatus === 'BETTING' && currentUserSeatId === bettingActorSeatId;
-
-    // Check if it's the dealer's turn (for dealing cards, etc.)
-    const isDealing = ['DEAL_HOLE_CARDS', 'DEAL_FLOP', 'DEAL_TURN', 'DEAL_RIVER', 'SHOWDOWN'].includes(gameStatus || '');
-    const isDealerTurn = isDealer && isDealing;
 
     return (
         <div className="relative w-full overflow-hidden border border-white/10 rounded-lg bg-black aspect-video">
@@ -139,7 +136,7 @@ export function DealerCamera({
             )} */}
 
             {/* Action Buttons Overlay - Center when it's the user's turn or dealer's turn */}
-            {((isPlayerTurn || isDealerTurn) && onAction) && (
+            {((isPlayerTurn || isDealer) && onAction) && (
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                     <div className="pointer-events-auto">
                         <ActionButtons

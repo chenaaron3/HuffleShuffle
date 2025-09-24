@@ -144,21 +144,27 @@ async function resetGame(
   tx: TableTransaction,
   game: GameRow | null,
   orderedSeats: Array<SeatRow>,
+  resetBalance: boolean = false,
 ): Promise<void> {
   // Always reset all seats
   for (const s of orderedSeats) {
-    await tx
-      .update(seats)
-      .set({
-        cards: sql`ARRAY[]::text[]`,
-        isActive: true,
-        currentBet: 0,
-        handType: null,
-        handDescription: null,
-        winAmount: 0,
-        winningCards: sql`ARRAY[]::text[]`,
-      })
-      .where(eq(seats.id, s.id));
+    const updateData: any = {
+      cards: sql`ARRAY[]::text[]`,
+      isActive: true,
+      currentBet: 0,
+      handType: null,
+      handDescription: null,
+      winAmount: 0,
+      winningCards: sql`ARRAY[]::text[]`,
+    };
+
+    // Only reset buyIn to startingBalance if explicitly requested
+    if (resetBalance) {
+      updateData.buyIn = s.startingBalance;
+    }
+
+    await tx.update(seats).set(updateData).where(eq(seats.id, s.id));
+
     s.cards = [];
     s.isActive = true;
     s.currentBet = 0;
@@ -166,6 +172,11 @@ async function resetGame(
     s.handDescription = null;
     s.winAmount = 0;
     s.winningCards = [];
+
+    // Only reset buyIn to startingBalance if explicitly requested
+    if (resetBalance) {
+      s.buyIn = s.startingBalance;
+    }
   }
 
   // Mark current game as completed (if there is one)
@@ -183,6 +194,30 @@ async function createNewGame(
   orderedSeats: Array<SeatRow>,
   dealerButtonSeatId: string,
 ): Promise<void> {
+  // Validate that all players have enough chips to participate
+  const minimumBet = table.bigBlind; // Players need at least the big blind amount
+  const playersWithInsufficientChips = orderedSeats.filter(
+    (seat) => seat.buyIn < minimumBet,
+  );
+
+  if (playersWithInsufficientChips.length > 0) {
+    const playerNames = playersWithInsufficientChips
+      .map((seat) => `Player at seat ${seat.seatNumber} (${seat.buyIn} chips)`)
+      .join(", ");
+    throw new Error(
+      `Cannot start game: ${playerNames} have insufficient chips. Minimum required: ${minimumBet} chips (big blind amount)`,
+    );
+  }
+
+  // Update startingBalance to current buyIn for all players before starting new game
+  for (const seat of orderedSeats) {
+    await tx
+      .update(seats)
+      .set({ startingBalance: seat.buyIn })
+      .where(eq(seats.id, seat.id));
+    seat.startingBalance = seat.buyIn; // Update in-memory object too
+  }
+
   // Create a new game object
   const createdRows = await (tx as DB)
     .insert(games)
@@ -434,6 +469,7 @@ export const tableRouter = createTRPCRouter({
             playerId: userId,
             seatNumber,
             buyIn: input.buyIn,
+            startingBalance: input.buyIn, // Set startingBalance to initial buyIn amount
             isActive: true,
           })
           .returning();
@@ -599,7 +635,7 @@ export const tableRouter = createTRPCRouter({
           if (!isDealerCaller) throw new Error("Only dealer can RESET_TABLE");
           // If there was a previous game, mark it as complete
           if (game) {
-            await resetGame(tx, game, orderedSeats);
+            await resetGame(tx, game, orderedSeats, true); // Reset buyIn to startingBalance
           }
           return { ok: true } as const;
         }

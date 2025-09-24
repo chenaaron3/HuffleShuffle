@@ -1,0 +1,1 @@
+ALTER TABLE "huffle-shuffle_seat" ADD COLUMN "startingBalance" integer DEFAULT 0 NOT NULL;
