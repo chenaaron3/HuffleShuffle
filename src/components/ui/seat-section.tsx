@@ -2,6 +2,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Track } from 'livekit-client';
 import { CardImage } from '~/components/ui/card-img';
 import { CardSlot } from '~/components/ui/card-slot';
+import { RollingNumber } from '~/components/ui/chip-animations';
 
 import { ParticipantTile, TrackToggle, useTracks, VideoTrack } from '@livekit/components-react';
 
@@ -135,6 +136,7 @@ function SeatCard({
 
     return (
         <div
+            id={`seat-${seat.id}`}
             className="relative flex h-[22vh] flex-col rounded-xl border bg-zinc-900/60 backdrop-blur-sm"
             style={{
                 borderColor: active ? "rgb(234 179 8 / 0.6)" : "rgb(113 113 122 / 0.3)",
@@ -195,12 +197,21 @@ function SeatCard({
                     {/* Win amount centered above total */}
                     {gameState === 'SHOWDOWN' && (seat?.winAmount ?? 0) > 0 && (
                         <div className="w-fit mx-auto translate-y-1/3 rounded-full bg-green-600/30 px-3 py-1 text-xs font-medium text-green-300 border border-green-500/50 text-center animate-pulse shadow-lg">
-                            +${seat.winAmount}
+                            <RollingNumber
+                                value={seat.winAmount ?? 0}
+                                className="text-green-300"
+                                prefix="+$"
+                            />
                         </div>
                     )}
                     {/* Total */}
                     <div className="rounded-full z-10 bg-green-600/30 px-3 py-1 text-xs font-medium text-green-300 border border-green-500/50 shadow-lg">
-                        ${seat.buyIn} total
+                        <RollingNumber
+                            value={seat.buyIn}
+                            className="text-green-300"
+                            prefix="$"
+                            suffix=" total"
+                        />
                     </div>
                 </div>
 
@@ -227,24 +238,38 @@ function SeatCard({
 
             {/* Wager Chip - Edge Positioned */}
             {seat.currentBet > 0 && (
-                <div className={`absolute top-1/2 transform -translate-y-1/2 ${side === 'right'
-                    ? 'left-0 -translate-x-1/2'
-                    : 'right-0 translate-x-1/2'
-                    }`}>
+                <motion.div
+                    id={`seat-${seat.id}-chip`}
+                    className={`absolute top-1/2 transform -translate-y-1/2 ${side === 'right'
+                        ? 'left-0 -translate-x-1/2'
+                        : 'right-0 translate-x-1/2'
+                        }`}
+                    initial={{ scale: 0, opacity: 0, rotate: -180 }}
+                    animate={{ scale: 1, opacity: 1, rotate: 0 }}
+                    exit={{ scale: 0, opacity: 0, rotate: 180 }}
+                    transition={{
+                        type: "spring",
+                        stiffness: 300,
+                        damping: 20,
+                        duration: 0.6
+                    }}
+                >
                     <div className="relative">
                         {/* Chip shadow */}
                         <div className="absolute inset-0 bg-black/30 rounded-full blur-sm scale-95"></div>
                         {/* Main chip */}
-                        <div className="relative w-10 h-10 rounded-full bg-gradient-to-br from-yellow-400 via-yellow-500 to-yellow-600 border-2 border-yellow-300 shadow-lg flex items-center justify-center">
+                        <div className="relative w-14 h-14 rounded-full bg-gradient-to-br from-yellow-400 via-yellow-500 to-yellow-600 border-2 border-yellow-300 shadow-lg flex items-center justify-center">
                             {/* Inner ring */}
                             <div className="absolute inset-1 rounded-full border border-yellow-200/50"></div>
                             {/* Chip value */}
-                            <span className="relative text-sm font-bold text-yellow-900 drop-shadow-sm">
-                                ${seat.currentBet}
-                            </span>
+                            <RollingNumber
+                                value={seat.currentBet}
+                                className="relative text-sm font-bold text-yellow-900 drop-shadow-sm"
+                                prefix="$"
+                            />
                         </div>
                     </div>
-                </div>
+                </motion.div>
             )}
 
             {/* Hand Type - Edge Positioned (same side as bet chip during showdown) */}

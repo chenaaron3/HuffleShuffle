@@ -2,6 +2,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Track } from 'livekit-client';
 import { isDefaultClause } from 'typescript';
 import { CardImage } from '~/components/ui/card-img';
+import { RollingNumber } from '~/components/ui/chip-animations';
 
 import { ParticipantTile, useTracks, VideoTrack } from '@livekit/components-react';
 
@@ -110,12 +111,14 @@ export function DealerCamera({
             </div>
 
             {/* Pot Total Overlay - Center Top */}
-            <div className="absolute top-4 right-4 transform">
+            <div id="pot-display" className="absolute top-4 right-4 transform">
                 <div className="bg-zinc-900/95 backdrop-blur-sm rounded-xl px-6 py-3 shadow-2xl border border-zinc-700/50">
                     <div className="text-center">
-                        <div className="text-xl font-bold text-zinc-100">
-                            ${potTotal.toFixed(2)}
-                        </div>
+                        <RollingNumber
+                            value={potTotal}
+                            className="text-xl font-bold text-zinc-100"
+                            prefix="$"
+                        />
                         <div className="text-xs text-zinc-400 font-medium">
                             Pot Total
                         </div>
