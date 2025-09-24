@@ -1,0 +1,14 @@
+# HuffleShuffle Scanner Device Access Rules
+# This file grants the pi user access to HID scanner devices
+
+# Generic HID device rule - grants rw access to pi group for all HID devices
+SUBSYSTEM=="hidraw", GROUP="pi", MODE="0664"
+
+# Alternative: If you need to target a specific scanner device by vendor/product ID
+# Uncomment and modify the lines below with your scanner's USB IDs
+# To find your scanner's IDs, run: lsusb
+# SUBSYSTEM=="hidraw", ATTRS{idVendor}=="1234", ATTRS{idProduct}=="5678", GROUP="pi", MODE="0664"
+
+# Create a symlink for easier access (optional)
+# This creates /dev/huffle-scanner pointing to the actual hidraw device
+# SUBSYSTEM=="hidraw", GROUP="pi", MODE="0664", SYMLINK+="huffle-scanner"

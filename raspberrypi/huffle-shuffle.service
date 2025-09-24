@@ -1,0 +1,31 @@
+[Unit]
+Description=HuffleShuffle Raspberry Pi Daemon
+After=network-online.target
+Wants=network-online.target
+StartLimitInterval=0
+
+[Service]
+Type=simple
+User=pi
+Group=pi
+WorkingDirectory=/home/pi/huffle-shuffle/raspberrypi
+ExecStart=/home/pi/huffle-shuffle/raspberrypi/startup.sh
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=huffle-shuffle
+
+# Environment variables (will be loaded from .env file)
+Environment=NODE_ENV=production
+
+# Security settings
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/home/pi/huffle-shuffle
+ReadWritePaths=/home/pi/.huffle
+
+[Install]
+WantedBy=multi-user.target

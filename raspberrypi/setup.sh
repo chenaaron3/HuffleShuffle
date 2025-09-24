@@ -37,3 +37,31 @@ cd "$SCRIPT_DIR"
 
 echo "[setup] Installing local Node dependencies (dealer + hand)"
 npm install --no-audit --no-fund || true
+
+echo "[setup] Setting up udev rules for scanner device access"
+# Copy udev rules for scanner device access
+cp 99-huffle-scanner.rules /etc/udev/rules.d/
+
+# Reload udev rules
+udevadm control --reload-rules
+udevadm trigger
+
+# Add pi user to necessary groups
+usermod -a -G input pi
+
+echo "[setup] Setting up systemd service for auto-startup"
+# Make startup script executable
+chmod +x startup.sh
+
+# Copy systemd service file
+cp huffle-shuffle.service /etc/systemd/system/
+
+# Reload systemd and enable service
+systemctl daemon-reload
+systemctl enable huffle-shuffle.service
+
+echo "[setup] HuffleShuffle systemd service installed and enabled"
+echo "[setup] The service will start automatically on boot"
+echo "[setup] To start the service now: sudo systemctl start huffle-shuffle"
+echo "[setup] To check service status: sudo systemctl status huffle-shuffle"
+echo "[setup] To view logs: sudo journalctl -u huffle-shuffle -f"
