@@ -137,9 +137,15 @@ function SeatCard({
     return (
         <div
             id={`seat-${seat.id}`}
-            className="relative flex h-[22vh] flex-col rounded-xl border bg-zinc-900/60 backdrop-blur-sm"
+            className={`relative flex h-[22vh] flex-col rounded-xl border bg-zinc-900/60 backdrop-blur-sm ${isWinner ? 'shadow-2xl shadow-yellow-500/50' : ''
+                }`}
             style={{
-                borderColor: active ? "rgb(234 179 8 / 0.6)" : "rgb(113 113 122 / 0.3)",
+                borderColor: isWinner
+                    ? "rgb(251 191 36 / 0.8)" // Gold border for winners
+                    : active
+                        ? "rgb(234 179 8 / 0.6)" // Yellow border for active
+                        : "rgb(113 113 122 / 0.3)", // Default gray border
+                boxShadow: isWinner ? "0 0 20px rgba(251, 191, 36, 0.5), 0 0 40px rgba(251, 191, 36, 0.3)" : undefined,
             }}
         >
             {/* Video Feed - Scaled Down with Aspect Ratio */}
@@ -196,7 +202,7 @@ function SeatCard({
                 <div className="flex flex-col gap-1">
                     {/* Win amount centered above total */}
                     {gameState === 'SHOWDOWN' && (seat?.winAmount ?? 0) > 0 && (
-                        <div className="w-fit mx-auto translate-y-1/3 rounded-full bg-green-600/30 px-3 py-1 text-xs font-medium text-green-300 border border-green-500/50 text-center animate-pulse shadow-lg">
+                        <div className="w-fit mx-auto translate-y-1/3 rounded-full bg-green-600/30 px-3 py-1 text-xs font-medium text-green-300 border border-green-500/50 text-center shadow-lg">
                             <RollingNumber
                                 value={seat.winAmount ?? 0}
                                 className="text-green-300"
@@ -283,10 +289,13 @@ function SeatCard({
                         {/* Banner shadow */}
                         <div className="absolute inset-0 bg-black/30 rounded-full blur-sm scale-95"></div>
                         {/* Main banner */}
-                        <div className={`relative px-3 py-1 rounded-full text-xs font-bold shadow-lg flex items-center justify-center  ${isWinner
-                            ? 'bg-gradient-to-r from-yellow-400 via-yellow-500 to-yellow-600 text-black'
+                        <div className={`relative px-3 py-1 rounded-full text-xs font-bold shadow-lg flex items-center justify-center ${isWinner
+                            ? 'bg-gradient-to-r from-yellow-400 via-yellow-500 to-yellow-600 text-black shadow-yellow-500/50'
                             : 'bg-gradient-to-r from-blue-400 via-blue-500 to-blue-600 text-white'
-                            }`}>
+                            }`}
+                            style={{
+                                boxShadow: isWinner ? "0 0 15px rgba(251, 191, 36, 0.7), 0 0 30px rgba(251, 191, 36, 0.5)" : undefined,
+                            }}>
                             {seat.handType}
                         </div>
                     </div>

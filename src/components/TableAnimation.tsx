@@ -26,6 +26,16 @@ export function TableAnimation({ seats, gameState }: TableAnimationProps) {
         triggerChipStream(fromPosition, toPosition, 75);
     };
 
+    const testSeatToPot = () => {
+        console.log('Testing pot to seat chip stream');
+
+        // Test from pot to a seat
+        const toPosition = getPotPosition() || { x: window.innerWidth - 150, y: 100 };
+        const fromPosition = getSeatPosition(seats[0]?.id || 'seat-1') || { x: 100, y: 300 };
+
+        triggerChipStream(fromPosition, toPosition, 75);
+    };
+
     return (
         <>
             {/* Test buttons */}
@@ -35,6 +45,12 @@ export function TableAnimation({ seats, gameState }: TableAnimationProps) {
                     className="px-3 py-2 bg-green-600 hover:bg-green-700 text-white text-xs rounded shadow-lg"
                 >
                     Pot→Seat
+                </button>
+                <button
+                    onClick={testSeatToPot}
+                    className="px-3 py-2 bg-green-600 hover:bg-green-700 text-white text-xs rounded shadow-lg"
+                >
+                    Seat→Pot
                 </button>
             </div>
 

@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { seats } from '~/server/db/schema';
 import { getPotPosition, getSeatPosition } from '~/utils/dom-positions';
 
 import type { SeatWithPlayer } from "~/server/api/routers/table";
-
 interface UsePokerAnimationsProps {
   seats: SeatWithPlayer[];
   gameState: string;
@@ -60,7 +60,7 @@ export function usePokerAnimations({
       previousSeatsRef.current.forEach((previousSeat) => {
         if (
           previousSeat &&
-          previousSeat.currentBet &&
+          previousSeat.isActive &&
           previousSeat.currentBet > 0
         ) {
           console.log("usePokerAnimations: Triggering chip stream for seat", {

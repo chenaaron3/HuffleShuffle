@@ -104,6 +104,11 @@ export default function TableView() {
         }
         return undefined;
     }, [state, originalSeats, bettingActorSeatId]);
+
+    // Memoize maximum bet calculation to prevent unnecessary re-renders
+    const maxBet = React.useMemo(() => {
+        return Math.max(...originalSeats.filter(s => s.isActive).map(s => s.currentBet), 0);
+    }, [originalSeats]);
     React.useEffect(() => {
         (async () => {
             if (!id || !currentSeat?.encryptedUserNonce) return;
@@ -269,6 +274,7 @@ export default function TableView() {
                                     currentBet={currentSeat?.currentBet ?? 0}
                                     playerBalance={currentSeat?.buyIn ?? 0}
                                     bigBlind={snapshot?.table?.bigBlind ?? 20}
+                                    maxBet={maxBet}
                                     onAction={(actionType, params) => {
                                         if (actionType === 'LEAVE') {
                                             leaveMutation.mutate({ tableId: id! });

@@ -179,11 +179,14 @@ async function resetGame(
     }
   }
 
-  // Mark current game as completed (if there is one)
+  // Mark current game as completed and reset pot total (if there is one)
   if (game) {
     await tx
       .update(games)
-      .set({ isCompleted: true })
+      .set({
+        isCompleted: true,
+        potTotal: 0,
+      })
       .where(eq(games.id, game.id));
   }
 }
@@ -687,10 +690,10 @@ export const tableRouter = createTRPCRouter({
 
         if (input.action === "RAISE") {
           const amount = input.params?.amount ?? 0;
-          // The raised amount has to be greater than the max bet
+          // The raised amount must be at least the max bet
           if (amount <= 0 || amount < maxBet)
             throw new Error(
-              `Invalid raise amount, must be greater than max bet, ${maxBet}`,
+              `Invalid raise amount, must be at least the max bet of ${maxBet}`,
             );
           const total = amount - actorSeat.currentBet;
           if (actorSeat.buyIn < total)

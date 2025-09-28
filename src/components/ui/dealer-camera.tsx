@@ -1,5 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { Track } from 'livekit-client';
+import { useEffect, useState } from 'react';
 import { isDefaultClause } from 'typescript';
 import { CardImage } from '~/components/ui/card-img';
 import { RollingNumber } from '~/components/ui/chip-animations';
@@ -7,6 +8,7 @@ import { RollingNumber } from '~/components/ui/chip-animations';
 import { ParticipantTile, useTracks, VideoTrack } from '@livekit/components-react';
 
 import { ActionButtons } from './action-buttons';
+import { VerticalRaiseControls } from './vertical-raise-controls';
 
 interface DealerCameraProps {
     communityCards: string[];
@@ -26,6 +28,7 @@ interface DealerCameraProps {
     currentBet?: number;
     playerBalance?: number;
     bigBlind?: number;
+    maxBet?: number;
     // Leave table props
     onLeaveTable?: () => void;
     isLeaving?: boolean;
@@ -48,6 +51,7 @@ export function DealerCamera({
     currentBet,
     playerBalance,
     bigBlind,
+    maxBet,
     onLeaveTable,
     isLeaving
 }: DealerCameraProps) {
@@ -56,6 +60,21 @@ export function DealerCamera({
 
     // Check if it's the current user's turn
     const isPlayerTurn = gameStatus === 'BETTING' && currentUserSeatId === bettingActorSeatId;
+
+    // State for raise amount
+    const [raiseAmount, setRaiseAmount] = useState<number>(bigBlind ?? 20);
+
+    // Update raise amount when big blind or max bet changes
+    useEffect(() => {
+        if (bigBlind && maxBet !== undefined) {
+            setRaiseAmount(Math.max(bigBlind, maxBet + bigBlind));
+        }
+    }, [bigBlind, maxBet]);
+
+    // Handle raise action
+    const handleRaise = () => {
+        onAction?.('RAISE', { amount: raiseAmount });
+    };
 
     return (
         <div className="relative w-full overflow-hidden border border-white/10 rounded-lg bg-black aspect-video">
@@ -149,13 +168,11 @@ export function DealerCamera({
                             currentUserSeatId={currentUserSeatId}
                             bettingActorSeatId={bettingActorSeatId}
                             isLoading={isLoading ?? false}
-                            potTotal={potTotal}
-                            currentBet={currentBet ?? 0}
-                            playerBalance={playerBalance ?? 1000}
-                            bigBlind={bigBlind ?? 20}
                             onAction={onAction ?? (() => { })}
                             onDealCard={onDealCard}
                             onRandomCard={onRandomCard}
+                            raiseAmount={raiseAmount}
+                            onRaise={isPlayerTurn ? handleRaise : undefined}
                         />
                     </div>
                 </div>
@@ -171,6 +188,24 @@ export function DealerCamera({
                     >
                         {isLeaving ? 'Leaving...' : 'Leave Table'}
                     </button>
+                </div>
+            )}
+
+            {/* Horizontal Raise Controls - Bottom Right */}
+            {isPlayerTurn && onAction && (
+                <div className="absolute bottom-4 right-4">
+                    <div className="bg-black/20 backdrop-blur-md rounded-xl p-3 shadow-2xl border border-white/10 w-64">
+                        <VerticalRaiseControls
+                            isLoading={isLoading ?? false}
+                            potTotal={potTotal}
+                            currentBet={currentBet ?? 0}
+                            playerBalance={playerBalance ?? 1000}
+                            bigBlind={bigBlind ?? 20}
+                            maxBet={maxBet ?? 0}
+                            raiseAmount={raiseAmount}
+                            onRaiseAmountChange={setRaiseAmount}
+                        />
+                    </div>
                 </div>
             )}
 

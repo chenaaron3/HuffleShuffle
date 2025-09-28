@@ -37,7 +37,7 @@ export function ChipStream({
     });
 
     // Calculate number of chips based on amount (more chips for larger amounts)
-    const chipCount = Math.min(Math.max(Math.floor(amount / 25), 3), 12);
+    const chipCount = 10// Math.min(Math.max(Math.floor(amount / 25), 3), 12);
 
     // Generate randomized offsets for each chip
     const chipOffsets = Array.from({ length: chipCount }, (_, i) => ({
