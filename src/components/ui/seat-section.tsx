@@ -236,41 +236,42 @@ function SeatCard({
                 </div>
             </div>
 
-            {/* Wager Chip - Edge Positioned */}
-            {seat.currentBet > 0 && (
-                <motion.div
-                    id={`seat-${seat.id}-chip`}
-                    className={`absolute top-1/2 transform -translate-y-1/2 ${side === 'right'
-                        ? 'left-0 -translate-x-1/2'
-                        : 'right-0 translate-x-1/2'
-                        }`}
-                    initial={{ scale: 0, opacity: 0, rotate: -180 }}
-                    animate={{ scale: 1, opacity: 1, rotate: 0 }}
-                    exit={{ scale: 0, opacity: 0, rotate: 180 }}
-                    transition={{
-                        type: "spring",
-                        stiffness: 300,
-                        damping: 20,
-                        duration: 0.6
-                    }}
-                >
-                    <div className="relative">
-                        {/* Chip shadow */}
-                        <div className="absolute inset-0 bg-black/30 rounded-full blur-sm scale-95"></div>
-                        {/* Main chip */}
-                        <div className="relative w-14 h-14 rounded-full bg-gradient-to-br from-yellow-400 via-yellow-500 to-yellow-600 border-2 border-yellow-300 shadow-lg flex items-center justify-center">
-                            {/* Inner ring */}
-                            <div className="absolute inset-1 rounded-full border border-yellow-200/50"></div>
-                            {/* Chip value */}
-                            <RollingNumber
-                                value={seat.currentBet}
-                                className="relative text-sm font-bold text-yellow-900 drop-shadow-sm"
-                                prefix="$"
-                            />
+            <AnimatePresence>
+                {/* Wager Chip - Edge Positioned */}
+                {seat.currentBet > 0 && (
+                    <motion.div
+                        className={`absolute top-1/2 transform -translate-y-1/2 ${side === 'right'
+                            ? 'left-0 -translate-x-1/2'
+                            : 'right-0 translate-x-1/2'
+                            }`}
+                        initial={{ scale: 0, opacity: 0, rotate: -180 }}
+                        animate={{ scale: 1, opacity: 1, rotate: 0 }}
+                        exit={{ scale: 0, opacity: 0, rotate: 180 }}
+                        transition={{
+                            type: "spring",
+                            stiffness: 300,
+                            damping: 20,
+                            duration: 0.6
+                        }}
+                    >
+                        <div className="relative">
+                            {/* Chip shadow */}
+                            <div className="absolute inset-0 bg-black/30 rounded-full blur-sm scale-95"></div>
+                            {/* Main chip */}
+                            <div className="relative w-14 h-14 rounded-full bg-gradient-to-br from-yellow-400 via-yellow-500 to-yellow-600 border-2 border-yellow-300 shadow-lg flex items-center justify-center">
+                                {/* Inner ring */}
+                                <div className="absolute inset-1 rounded-full border border-yellow-200/50"></div>
+                                {/* Chip value */}
+                                <RollingNumber
+                                    value={seat.currentBet}
+                                    className="relative text-sm font-bold text-yellow-900 drop-shadow-sm"
+                                    prefix="$"
+                                />
+                            </div>
                         </div>
-                    </div>
-                </motion.div>
-            )}
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
             {/* Hand Type - Edge Positioned (same side as bet chip during showdown) */}
             {gameState === 'SHOWDOWN' && seat.handType && (

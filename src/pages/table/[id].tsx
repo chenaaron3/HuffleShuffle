@@ -1,12 +1,10 @@
 import '@livekit/components-styles';
 
-import { Track } from 'livekit-client';
 import { useSession } from 'next-auth/react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import * as React from 'react';
-import { AnimatedTable } from '~/components/AnimatedTable';
-import { AnimationTestButton } from '~/components/AnimationTestButton';
+import { TableAnimation } from '~/components/TableAnimation';
 import { TableSetupModal } from '~/components/TableSetupModal';
 import { DealerCamera } from '~/components/ui/dealer-camera';
 import { HandCamera } from '~/components/ui/hand-camera';
@@ -15,12 +13,9 @@ import { api } from '~/utils/api';
 import { rsaDecryptBase64 } from '~/utils/crypto';
 import { disconnectPusherClient, getPusherClient } from '~/utils/pusher-client';
 
-import {
-    LiveKitRoom, ParticipantTile, RoomAudioRenderer, StartAudio, useTracks, VideoTrack
-} from '@livekit/components-react';
+import { LiveKitRoom, RoomAudioRenderer, StartAudio } from '@livekit/components-react';
 
 import type { SeatWithPlayer } from '~/server/api/routers/table';
-
 export default function TableView() {
     const router = useRouter();
     const { id } = router.query as { id?: string };
@@ -244,81 +239,78 @@ export default function TableView() {
                             )}
                         </div>
                         {/* Improved 8-seat layout with centered hand camera */}
-                        <AnimatedTable
-                            seats={originalSeats}
-                            potTotal={totalPot}
-                            gameState={state}
-                        >
-                            <div className="flex h-full gap-4 px-4 py-4">
-                                {/* Left side seats (4, 3, 2, 1) */}
-                                <SeatSection
-                                    key={`left-${snapshot?.game?.id}`}
-                                    seats={seats.slice(0, 4)}
-                                    highlightedSeatId={highlightedSeatId}
-                                    smallBlindIdx={smallBlindIdx}
-                                    bigBlindIdx={bigBlindIdx}
-                                    myUserId={session?.user?.id ?? null}
-                                    side="left"
-                                    gameState={state}
+                        <div className="flex h-full gap-4 px-4 py-4">
+                            {/* Left side seats (4, 3, 2, 1) */}
+                            <SeatSection
+                                key={`left-${snapshot?.game?.id}`}
+                                seats={seats.slice(0, 4)}
+                                highlightedSeatId={highlightedSeatId}
+                                smallBlindIdx={smallBlindIdx}
+                                bigBlindIdx={bigBlindIdx}
+                                myUserId={session?.user?.id ?? null}
+                                side="left"
+                                gameState={state}
+                            />
+
+                            {/* Center area with dealer cam and player controls */}
+                            <div className="flex flex-1 flex-col items-center gap-6">
+                                {/* Dealer Camera with Community Cards Overlay */}
+                                <DealerCamera
+                                    communityCards={snapshot?.game?.communityCards ?? []}
+                                    potTotal={totalPot}
+                                    gameStatus={state}
+                                    activePlayerName={activePlayerName}
+                                    winningCards={allWinningCards}
+                                    isDealer={session?.user?.role === 'dealer'}
+                                    isJoinable={snapshot?.isJoinable ?? false}
+                                    currentUserSeatId={currentUserSeatId}
+                                    bettingActorSeatId={bettingActorSeatId}
+                                    isLoading={action.isPending || leaveMutation.isPending}
+                                    currentBet={currentSeat?.currentBet ?? 0}
+                                    playerBalance={currentSeat?.buyIn ?? 0}
+                                    bigBlind={snapshot?.table?.bigBlind ?? 20}
+                                    onAction={(actionType, params) => {
+                                        if (actionType === 'LEAVE') {
+                                            leaveMutation.mutate({ tableId: id! });
+                                        } else {
+                                            action.mutate({ tableId: id!, action: actionType as any, params });
+                                        }
+                                    }}
+                                    onDealCard={(rank, suit) => {
+                                        action.mutate({ tableId: id!, action: 'DEAL_CARD', params: { rank, suit } });
+                                    }}
+                                    onRandomCard={() => {
+                                        const code = pickRandomUndealt();
+                                        if (!code) return;
+                                        action.mutate({ tableId: id!, action: 'DEAL_CARD', params: { rank: code[0], suit: code[1] } });
+                                    }}
+                                    onLeaveTable={() => leaveMutation.mutate({ tableId: id! })}
+                                    isLeaving={leaveMutation.isPending}
                                 />
 
-                                {/* Center area with dealer cam and player controls */}
-                                <div className="flex flex-1 flex-col items-center gap-6">
-                                    {/* Dealer Camera with Community Cards Overlay */}
-                                    <DealerCamera
-                                        communityCards={snapshot?.game?.communityCards ?? []}
-                                        potTotal={totalPot}
-                                        gameStatus={state}
-                                        activePlayerName={activePlayerName}
-                                        winningCards={allWinningCards}
-                                        isDealer={session?.user?.role === 'dealer'}
-                                        isJoinable={snapshot?.isJoinable ?? false}
-                                        currentUserSeatId={currentUserSeatId}
-                                        bettingActorSeatId={bettingActorSeatId}
-                                        isLoading={action.isPending || leaveMutation.isPending}
-                                        currentBet={currentSeat?.currentBet ?? 0}
-                                        playerBalance={currentSeat?.buyIn ?? 0}
-                                        bigBlind={snapshot?.table?.bigBlind ?? 20}
-                                        onAction={(actionType, params) => {
-                                            if (actionType === 'LEAVE') {
-                                                leaveMutation.mutate({ tableId: id! });
-                                            } else {
-                                                action.mutate({ tableId: id!, action: actionType as any, params });
-                                            }
-                                        }}
-                                        onDealCard={(rank, suit) => {
-                                            action.mutate({ tableId: id!, action: 'DEAL_CARD', params: { rank, suit } });
-                                        }}
-                                        onRandomCard={() => {
-                                            const code = pickRandomUndealt();
-                                            if (!code) return;
-                                            action.mutate({ tableId: id!, action: 'DEAL_CARD', params: { rank: code[0], suit: code[1] } });
-                                        }}
-                                        onLeaveTable={() => leaveMutation.mutate({ tableId: id! })}
-                                        isLeaving={leaveMutation.isPending}
-                                    />
-
-                                    {/* Hand Camera - Centered */}
-                                    <HandCamera
-                                        tableId={tableIdStr}
-                                        roomName={handRoomName}
-                                    />
-                                </div>
-
-                                {/* Right side seats (5, 6, 7, 8) */}
-                                <SeatSection
-                                    key={`right-${snapshot?.game?.id}`}
-                                    seats={seats.slice(4, 8)}
-                                    highlightedSeatId={highlightedSeatId}
-                                    smallBlindIdx={smallBlindIdx}
-                                    bigBlindIdx={bigBlindIdx}
-                                    myUserId={session?.user?.id ?? null}
-                                    side="right"
-                                    gameState={state}
+                                {/* Hand Camera - Centered */}
+                                <HandCamera
+                                    tableId={tableIdStr}
+                                    roomName={handRoomName}
                                 />
                             </div>
-                            <AnimationTestButton />
-                        </AnimatedTable>
+
+                            {/* Right side seats (5, 6, 7, 8) */}
+                            <SeatSection
+                                key={`right-${snapshot?.game?.id}`}
+                                seats={seats.slice(4, 8)}
+                                highlightedSeatId={highlightedSeatId}
+                                smallBlindIdx={smallBlindIdx}
+                                bigBlindIdx={bigBlindIdx}
+                                myUserId={session?.user?.id ?? null}
+                                side="right"
+                                gameState={state}
+                            />
+                        </div>
+                        <TableAnimation
+                            seats={originalSeats}
+                            gameState={state ?? ''}
+                        />
                     </LiveKitRoom>
                 ) : (
                     <div className="flex min-h-screen items-center justify-center">
