@@ -2,26 +2,30 @@
 set -euo pipefail
 
 echo "[setup] Starting Raspberry Pi setup for HuffleShuffle dealer daemon"
+echo "[setup] Running as pi user - will use sudo only when needed"
 
-if [[ $EUID -ne 0 ]]; then
-  echo "[setup] Please run as root (use sudo)" >&2
+# Check if running as pi user
+if [[ $EUID -eq 0 ]]; then
+  echo "[setup] WARNING: Running as root. Please run as pi user instead." >&2
+  echo "[setup] Use: su - pi, then run this script" >&2
   exit 1
 fi
 
-export DEBIAN_FRONTEND=noninteractive
-apt-get update -y || true
+# Update package lists
+echo "[setup] Updating package lists..."
+sudo apt-get update -y || true
 
 echo "[setup] Installing system dependencies (curl, jq, libcamera-apps, nodejs)"
-apt-get install -y curl ca-certificates gnupg jq || true
+sudo apt-get install -y curl ca-certificates gnupg jq || true
 
 if ! command -v libcamera-vid >/dev/null 2>&1; then
-  apt-get install -y libcamera-apps || true
+  sudo apt-get install -y libcamera-apps || true
 fi
 
 # Install Node.js (using NodeSource for current LTS)
 if ! command -v node >/dev/null 2>&1; then
-  curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
-  apt-get install -y nodejs
+  curl -fsSL https://deb.nodesource.com/setup_20.x | sudo bash -
+  sudo apt-get install -y nodejs
 fi
 
 echo "[setup] Installing LiveKit CLI"
@@ -40,25 +44,25 @@ npm install --no-audit --no-fund || true
 
 echo "[setup] Setting up udev rules for scanner device access"
 # Copy udev rules for scanner device access
-cp 99-huffle-scanner.rules /etc/udev/rules.d/
+sudo cp 99-huffle-scanner.rules /etc/udev/rules.d/
 
 # Reload udev rules
-udevadm control --reload-rules
-udevadm trigger
+sudo udevadm control --reload-rules
+sudo udevadm trigger
 
 # Add pi user to necessary groups
-usermod -a -G input pi
+sudo usermod -a -G input pi
 
 echo "[setup] Setting up systemd service for auto-startup"
 # Make startup script executable
 chmod +x startup.sh
 
 # Copy systemd service file
-cp huffle-shuffle.service /etc/systemd/system/
+sudo cp huffle-shuffle.service /etc/systemd/system/
 
 # Reload systemd and enable service
-systemctl daemon-reload
-systemctl enable huffle-shuffle.service
+sudo systemctl daemon-reload
+sudo systemctl enable huffle-shuffle.service
 
 echo "[setup] HuffleShuffle systemd service installed and enabled"
 echo "[setup] The service will start automatically on boot"

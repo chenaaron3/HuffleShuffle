@@ -9,7 +9,7 @@ Type=simple
 User=pi
 Group=pi
 WorkingDirectory=/home/pi/huffle-shuffle/raspberrypi
-ExecStart=/home/pi/huffle-shuffle/raspberrypi/startup.sh
+ExecStart=/usr/bin/env bash /home/pi/huffle-shuffle/raspberrypi/startup.sh
 Restart=always
 RestartSec=10
 StandardOutput=journal
@@ -18,12 +18,13 @@ SyslogIdentifier=huffle-shuffle
 
 # Environment variables (will be loaded from .env file)
 Environment=NODE_ENV=production
+Environment=PATH=/usr/local/bin:/usr/bin:/bin
 
 # Security settings
 NoNewPrivileges=true
 PrivateTmp=true
-ProtectSystem=strict
-ProtectHome=true
+ProtectSystem=full
+ProtectHome=no
 ReadWritePaths=/home/pi/huffle-shuffle
 ReadWritePaths=/home/pi/.huffle
 

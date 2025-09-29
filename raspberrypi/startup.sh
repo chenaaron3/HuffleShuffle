@@ -7,7 +7,7 @@ set -euo pipefail
 REPO_URL="https://github.com/chenaaron3/HuffleShuffle.git"
 REPO_DIR="/home/pi/huffle-shuffle"
 RASPBERRYPI_DIR="$REPO_DIR/raspberrypi"
-LOG_FILE="/home/pi/huffle-shuffle.log"
+LOG_FILE="$RASPBERRYPI_DIR/startup.log"
 
 # Function to log with timestamp
 log() {
@@ -67,13 +67,23 @@ install_dependencies() {
     
     # Install dependencies if package.json exists
     if [ -f "package.json" ]; then
-        npm install --no-audit --no-fund
+        # Ensure devDependencies are installed even if NODE_ENV=production
+        if ! npm ci --no-audit --no-fund --include=dev; then
+            npm_config_production=false npm ci --no-audit --no-fund
+        fi
+        # Ensure tsx is present locally for runtime
+        if [ ! -x "$RASPBERRYPI_DIR/node_modules/.bin/tsx" ]; then
+            log "tsx not found; installing as devDependency..."
+            npm_config_production=false npm install --no-audit --no-fund --save-dev tsx@^4
+        fi
         log "Dependencies installed successfully"
     else
         log "ERROR: package.json not found in raspberrypi directory"
         exit 1
     fi
 }
+
+# (no build step required when using tsx)
 
 # Function to check environment file
 check_environment() {
@@ -117,8 +127,20 @@ run_daemon() {
     log "Starting HuffleShuffle generic daemon..."
     cd "$RASPBERRYPI_DIR"
     
-    # Run the generic daemon
-    npm run start
+    # Prefer running via local tsx to avoid ESM build path issues
+    export PATH="$RASPBERRYPI_DIR/node_modules/.bin:$PATH"
+    local tsx_bin="$RASPBERRYPI_DIR/node_modules/.bin/tsx"
+    if [ -x "$tsx_bin" ]; then
+        exec "$tsx_bin" "$RASPBERRYPI_DIR/generic-daemon.ts"
+    else
+        # Fallback: try npx (shouldn't normally be needed)
+        if command -v npx >/dev/null 2>&1; then
+            exec npx tsx "$RASPBERRYPI_DIR/generic-daemon.ts"
+        else
+            log "ERROR: tsx not found. Ensure devDependencies are installed."
+            exit 1
+        fi
+    fi
 }
 
 # Main execution
