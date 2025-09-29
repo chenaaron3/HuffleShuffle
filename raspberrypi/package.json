@@ -13,7 +13,8 @@
     "dependencies": {
         "@aws-sdk/client-sqs": "^3.875.0",
         "amqplib": "^0.10.4",
-        "pusher-js": "^8.4.0"
+        "pusher-js": "^8.4.0",
+        "livekit-server-sdk": "^2.0.0"
     },
     "devDependencies": {
         "@types/node": "^20.14.12",

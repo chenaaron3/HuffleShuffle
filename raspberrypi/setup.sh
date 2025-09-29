@@ -33,9 +33,6 @@ if ! command -v lk >/dev/null 2>&1; then
   bash -lc "curl -sSL https://get.livekit.io/cli | bash"
 fi
 
-echo "[setup] Installing PM2 to manage the daemon"
-npm i -g pm2 >/dev/null 2>&1 || true
-
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$SCRIPT_DIR"
 

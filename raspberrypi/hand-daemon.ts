@@ -1,3 +1,4 @@
+import { RoomServiceClient } from 'livekit-server-sdk';
 import { ChildProcess, spawn } from 'node:child_process';
 import { webcrypto as crypto } from 'node:crypto';
 import { readFileSync } from 'node:fs';
@@ -82,6 +83,26 @@ export async function runHandDaemon(): Promise<void> {
     });
   };
 
+  async function getParticipantCount(roomName: string): Promise<number> {
+    const { LIVEKIT_URL, LIVEKIT_API_KEY, LIVEKIT_API_SECRET } =
+      process.env as Record<string, string | undefined>;
+    if (!LIVEKIT_URL || !LIVEKIT_API_KEY || !LIVEKIT_API_SECRET) {
+      return 0;
+    }
+    try {
+      const roomService = new RoomServiceClient(
+        LIVEKIT_URL,
+        LIVEKIT_API_KEY,
+        LIVEKIT_API_SECRET,
+      );
+      const participants = await roomService.listParticipants(roomName);
+      return participants.length;
+    } catch (e) {
+      console.error("[hand-daemon] listParticipants error", e);
+      return 0;
+    }
+  }
+
   // Subscribe to device channel via Pusher
   const key = process.env.PUSHER_KEY;
   const cluster = process.env.PUSHER_CLUSTER;
@@ -124,7 +145,17 @@ export async function runHandDaemon(): Promise<void> {
   // Also perform a one-shot fetch in case event already existed
   try {
     const initial = await resolveTable(serial);
-    if (initial?.encNonce) await startStream(initial.encNonce);
+    if (initial?.encNonce) {
+      const roomName = await decryptBase64(priv, initial.encNonce);
+      const count = await getParticipantCount(roomName);
+      if (count > 0) {
+        await startStream(initial.encNonce);
+      } else {
+        console.log(
+          "[hand-daemon] room has no other participants; waiting for start signal",
+        );
+      }
+    }
   } catch {}
 }
 
