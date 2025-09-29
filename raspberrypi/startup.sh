@@ -68,8 +68,10 @@ install_dependencies() {
     # Install dependencies if package.json exists
     if [ -f "package.json" ]; then
         # Ensure devDependencies are installed even if NODE_ENV=production
+        # Prefer ci, but fall back to install if lockfile is out of date
         if ! npm ci --no-audit --no-fund --include=dev; then
-            npm_config_production=false npm ci --no-audit --no-fund
+            log "npm ci failed (likely lockfile mismatch); running npm install..."
+            npm_config_production=false npm install --no-audit --no-fund
         fi
         # Ensure tsx is present locally for runtime
         if [ ! -x "$RASPBERRYPI_DIR/node_modules/.bin/tsx" ]; then
