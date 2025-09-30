@@ -13,7 +13,17 @@ interface HandCameraProps {
 export function HandCamera({ tableId, roomName }: HandCameraProps) {
     if (!roomName) {
         return (
-            <div className="w-64 h-40 rounded-xl border border-zinc-700/50 bg-zinc-900/50 backdrop-blur-sm flex items-center justify-center shadow-2xl">
+            <div
+                className="flex items-center justify-center shadow-2xl"
+                style={{
+                    width: 256,
+                    height: 160,
+                    borderRadius: 14,
+                    border: '1px solid rgba(63,63,70,0.5)',
+                    backgroundColor: 'rgba(24,24,27,0.5)',
+                    backdropFilter: 'blur(8px)'
+                }}
+            >
                 <div className="text-sm text-zinc-500 font-medium">No hand camera</div>
             </div>
         );
