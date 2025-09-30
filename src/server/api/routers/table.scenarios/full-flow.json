@@ -69,17 +69,17 @@
         {
             "type": "action",
             "action": "CHECK",
+            "by": "A"
+        },
+        {
+            "type": "action",
+            "action": "CHECK",
             "by": "B"
         },
         {
             "type": "action",
             "action": "CHECK",
             "by": "C"
-        },
-        {
-            "type": "action",
-            "action": "CHECK",
-            "by": "A"
         },
         {
             "type": "validate",
@@ -221,8 +221,7 @@
         {
             "type": "validate",
             "game": {
-                "isCompleted": true,
-                "state": "DEAL_HOLE_CARDS"
+                "isCompleted": true
             }
         },
         {

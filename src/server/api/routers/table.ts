@@ -683,8 +683,10 @@ export const tableRouter = createTRPCRouter({
           throw new Error("Player actions only allowed in BETTING");
         if (!game.assignedSeatId)
           throw new Error("No assigned seat for betting");
-        if (game.assignedSeatId !== actorSeat.id)
+        if (game.assignedSeatId !== actorSeat.id) {
+          console.log("Expected seat id:", game.assignedSeatId);
           throw new Error("Not your turn");
+        }
 
         const maxBet = Math.max(
           ...orderedSeats.filter((s) => s.isActive).map((s) => s.currentBet),

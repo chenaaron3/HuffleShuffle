@@ -233,6 +233,7 @@ describe("table scenario harness", () => {
   };
 
   async function executeStep(step: Step) {
+    console.log("Executing step:", step);
     if (step.type === "action") {
       if (step.isError) {
         await expect(
