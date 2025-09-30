@@ -3,7 +3,9 @@ import { Track } from 'livekit-client';
 import { CardSlot } from '~/components/ui/card-slot';
 import { RollingNumber } from '~/components/ui/chip-animations';
 
-import { ParticipantTile, TrackToggle, useTracks, VideoTrack } from '@livekit/components-react';
+import {
+    LiveKitRoom, ParticipantTile, TrackToggle, useTracks, VideoTrack
+} from '@livekit/components-react';
 
 import type { SeatWithPlayer } from "~/server/api/routers/table";
 
@@ -15,6 +17,8 @@ interface SeatSectionProps {
     myUserId?: string | null;
     side: 'left' | 'right';
     gameState?: string;
+    lkToken?: string;
+    lkServerUrl?: string;
 }
 
 export function SeatSection({
@@ -24,7 +28,9 @@ export function SeatSection({
     bigBlindIdx,
     myUserId,
     side,
-    gameState
+    gameState,
+    lkToken,
+    lkServerUrl
 }: SeatSectionProps) {
     // Since seats array is now padded, array index matches seat number
     let displaySeats: (SeatWithPlayer | null)[] = [];
@@ -68,6 +74,8 @@ export function SeatSection({
                         myUserId={myUserId}
                         side={side}
                         gameState={gameState}
+                        lkToken={lkToken}
+                        lkServerUrl={lkServerUrl}
                     />
                 );
             })}
@@ -86,6 +94,8 @@ function SeatCard({
     myUserId,
     side,
     gameState,
+    lkToken,
+    lkServerUrl,
 }: {
     seat: SeatWithPlayer | null;
     index: number;
@@ -97,11 +107,9 @@ function SeatCard({
     myUserId?: string | null;
     side: 'left' | 'right';
     gameState?: string;
+    lkToken?: string;
+    lkServerUrl?: string;
 }) {
-    const trackRefs = useTracks([Track.Source.Camera]);
-    const videoTrackRef = seat ? trackRefs.find(
-        (t) => t.participant.identity === seat.player?.id && t.source === Track.Source.Camera
-    ) : null;
     const isSelf = !!myUserId && seat?.player?.id === myUserId;
 
     // Empty seat placeholder
@@ -147,53 +155,21 @@ function SeatCard({
                 boxShadow: isWinner ? "0 0 20px rgba(251, 191, 36, 0.5), 0 0 40px rgba(251, 191, 36, 0.3)" : undefined,
             }}
         >
-            {/* Video Feed - Scaled Down with Aspect Ratio */}
-            <div className="group relative h-full aspect-[4/3] overflow-hidden rounded-xl bg-black mb-3 -z-10">
-                {videoTrackRef ? (
-                    isSelf ? (
-                        <>
-                            <VideoTrack trackRef={videoTrackRef} />
-                            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
-                            <div className="pointer-events-auto absolute bottom-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                                <TrackToggle
-                                    source={Track.Source.Camera}
-                                    showIcon
-                                    className="rounded-md bg-white/90 text-xs font-medium text-black hover:bg-white"
-                                    aria-label="Toggle camera"
-                                    title="Toggle camera"
-                                />
-                                <TrackToggle
-                                    source={Track.Source.Microphone}
-                                    showIcon
-                                    className="rounded-md bg-white/90 text-xs font-medium text-black hover:bg-white"
-                                    aria-label="Toggle microphone"
-                                    title="Toggle microphone"
-                                />
-                            </div>
-                        </>
-                    ) : (
-                        <ParticipantTile trackRef={videoTrackRef}>
-                            <VideoTrack trackRef={videoTrackRef} />
-                        </ParticipantTile>
-                    )
-                ) : (
-                    <div className="flex h-full items-center justify-center text-sm text-zinc-500 font-medium">
-                        No Video
+            {Boolean(lkToken && lkServerUrl) ? (
+                <LiveKitRoom token={lkToken} serverUrl={lkServerUrl} connectOptions={{ autoSubscribe: true }}>
+                    <div className="group relative h-full aspect-[4/3] overflow-hidden rounded-xl bg-black mb-3 -z-10">
+                        <SeatVideoContent seat={seat} isSelf={isSelf} />
+                        {/* Big/Small Blind Overlay */}
+                        {small && (
+                            <div className="absolute top-2 left-2 rounded-lg bg-blue-600 px-2 py-1 text-xs font-semibold text-white shadow-lg border border-blue-500/50">S</div>
+                        )}
+                        {big && (
+                            <div className="absolute top-2 left-2 rounded-lg bg-red-600 px-2 py-1 text-xs font-semibold text-white shadow-lg border border-red-500/50">B</div>
+                        )}
                     </div>
-                )}
+                </LiveKitRoom>
+            ) : null}
 
-                {/* Big/Small Blind Overlay */}
-                {small && (
-                    <div className="absolute top-2 left-2 rounded-lg bg-blue-600 px-2 py-1 text-xs font-semibold text-white shadow-lg border border-blue-500/50">
-                        S
-                    </div>
-                )}
-                {big && (
-                    <div className="absolute top-2 left-2 rounded-lg bg-red-600 px-2 py-1 text-xs font-semibold text-white shadow-lg border border-red-500/50">
-                        B
-                    </div>
-                )}
-            </div>
 
             {/* Player Info and Cards Row */}
             <div className="flex items-center justify-between px-2 pb-2">
@@ -306,5 +282,49 @@ function SeatCard({
                 {seat.player?.name ?? "Player"}
             </div>
         </div>
+    );
+}
+
+function SeatVideoContent({ seat, isSelf }: { seat: SeatWithPlayer | null; isSelf: boolean }) {
+    const trackRefs = useTracks([Track.Source.Camera]);
+    const videoTrackRef = seat ? trackRefs.find(
+        (t) => t.participant.identity === seat.player?.id && t.source === Track.Source.Camera
+    ) : null;
+
+    if (!videoTrackRef) {
+        return (
+            <div className="flex h-full items-center justify-center text-sm text-zinc-500 font-medium">No Video</div>
+        );
+    }
+
+    if (isSelf) {
+        return (
+            <>
+                <VideoTrack trackRef={videoTrackRef} />
+                <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
+                <div className="pointer-events-auto absolute bottom-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                    <TrackToggle
+                        source={Track.Source.Camera}
+                        showIcon
+                        className="rounded-md bg-white/90 text-xs font-medium text-black hover:bg-white"
+                        aria-label="Toggle camera"
+                        title="Toggle camera"
+                    />
+                    <TrackToggle
+                        source={Track.Source.Microphone}
+                        showIcon
+                        className="rounded-md bg-white/90 text-xs font-medium text-black hover:bg-white"
+                        aria-label="Toggle microphone"
+                        title="Toggle microphone"
+                    />
+                </div>
+            </>
+        );
+    }
+
+    return (
+        <ParticipantTile trackRef={videoTrackRef}>
+            <VideoTrack trackRef={videoTrackRef} />
+        </ParticipantTile>
     );
 }

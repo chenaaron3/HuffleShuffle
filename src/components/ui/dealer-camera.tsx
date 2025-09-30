@@ -5,7 +5,7 @@ import { isDefaultClause } from 'typescript';
 import { CardImage } from '~/components/ui/card-img';
 import { RollingNumber } from '~/components/ui/chip-animations';
 
-import { ParticipantTile, useTracks, VideoTrack } from '@livekit/components-react';
+import { LiveKitRoom, ParticipantTile, useTracks, VideoTrack } from '@livekit/components-react';
 
 import { ActionButtons } from './action-buttons';
 import { VerticalRaiseControls } from './vertical-raise-controls';
@@ -32,6 +32,9 @@ interface DealerCameraProps {
     // Leave table props
     onLeaveTable?: () => void;
     isLeaving?: boolean;
+    // LiveKit creds (bubble down to avoid re-query)
+    lkToken?: string;
+    lkServerUrl?: string;
 }
 
 export function DealerCamera({
@@ -53,10 +56,10 @@ export function DealerCamera({
     bigBlind,
     maxBet,
     onLeaveTable,
-    isLeaving
+    isLeaving,
+    lkToken,
+    lkServerUrl
 }: DealerCameraProps) {
-    const tracks = useTracks([Track.Source.Camera]);
-    const dealerRef = tracks.find((t) => t.participant.identity === 'dealer-camera');
 
     // Check if it's the current user's turn
     const isPlayerTurn = gameStatus === 'BETTING' && currentUserSeatId === bettingActorSeatId;
@@ -78,11 +81,11 @@ export function DealerCamera({
 
     return (
         <div className="relative w-full overflow-hidden border border-white/10 rounded-lg bg-black aspect-video">
-            {/* Main Dealer Video */}
-            {dealerRef ? (
-                <ParticipantTile trackRef={dealerRef}>
-                    <VideoTrack trackRef={dealerRef} />
-                </ParticipantTile>
+            {/* Main Dealer Video - isolate LiveKit context/styles */}
+            {Boolean(lkToken && lkServerUrl) ? (
+                <LiveKitRoom token={lkToken} serverUrl={lkServerUrl} connectOptions={{ autoSubscribe: true }}>
+                    <DealerVideoContent />
+                </LiveKitRoom>
             ) : (
                 <div className="flex h-full items-center justify-center text-zinc-400">
                     Waiting for dealer camera...
@@ -211,5 +214,20 @@ export function DealerCamera({
             {/* Subtle gradient overlay for better text readability */}
             <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-black/10 pointer-events-none" />
         </div>
+    );
+}
+
+function DealerVideoContent() {
+    const tracks = useTracks([Track.Source.Camera]);
+    const dealerRef = tracks.find((t) => t.participant.identity === 'dealer-camera');
+
+    if (!dealerRef) {
+        return null;
+    }
+
+    return (
+        <ParticipantTile trackRef={dealerRef}>
+            <VideoTrack trackRef={dealerRef} />
+        </ParticipantTile>
     );
 }
