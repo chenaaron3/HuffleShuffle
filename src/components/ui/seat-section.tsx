@@ -107,9 +107,15 @@ function SeatCard({
     // Empty seat placeholder
     if (!seat) {
         return (
-            <div className="relative flex h-[22vh] flex-col rounded-xl border border-dashed border-zinc-700/50 bg-zinc-900/30 p-3 backdrop-blur-sm">
+            <div
+                className="relative flex h-[22vh] flex-col rounded-xl bg-zinc-900/30 backdrop-blur-sm"
+                style={{ borderWidth: 1, borderStyle: 'dashed', borderColor: 'rgba(113,113,122,0.5)', padding: 12 }}
+            >
                 {/* Empty Video Feed - Match Occupied Seat Dimensions */}
-                <div className="relative h-full aspect-[4/3] overflow-hidden rounded-lg bg-zinc-800/60 border border-zinc-700/40 mb-3">
+                <div
+                    className="relative h-full aspect-[4/3] overflow-hidden rounded-lg bg-zinc-800/60 mb-3"
+                    style={{ border: '1px solid rgba(113,113,122,0.4)' }}
+                >
                     <div className="flex h-full items-center justify-center text-sm text-zinc-500 font-medium">
                         Empty Seat
                     </div>
@@ -118,7 +124,10 @@ function SeatCard({
                 {/* Empty Player Info and Cards Row */}
                 <div className="flex items-center justify-between">
                     <div className="flex flex-col gap-1">
-                        <div className="rounded-full bg-zinc-700/40 px-3 py-1 text-xs font-medium text-zinc-400 border border-zinc-600/50 w-fit">
+                        <div
+                            className="rounded-full bg-zinc-700/40 text-xs font-medium text-zinc-400 w-fit"
+                            style={{ border: '1px solid rgba(82,82,91,0.5)', padding: '4px 12px' }}
+                        >
                             Seat {seatNumber}
                         </div>
                     </div>
@@ -136,15 +145,16 @@ function SeatCard({
     return (
         <div
             id={`seat-${seat.id}`}
-            className={`relative flex h-[22vh] flex-col rounded-xl border bg-zinc-900/60 backdrop-blur-sm ${isWinner ? 'shadow-2xl shadow-yellow-500/50' : ''
-                }`}
+            className={`relative flex h-[22vh] flex-col rounded-xl bg-zinc-900/60 backdrop-blur-sm ${isWinner ? 'shadow-2xl shadow-yellow-500/50' : ''}`}
             style={{
+                borderWidth: 1,
+                borderStyle: 'solid',
                 borderColor: isWinner
-                    ? "rgb(251 191 36 / 0.8)" // Gold border for winners
+                    ? 'rgb(251 191 36 / 0.8)'
                     : active
-                        ? "rgb(234 179 8 / 0.6)" // Yellow border for active
-                        : "rgb(113 113 122 / 0.3)", // Default gray border
-                boxShadow: isWinner ? "0 0 20px rgba(251, 191, 36, 0.5), 0 0 40px rgba(251, 191, 36, 0.3)" : undefined,
+                        ? 'rgb(234 179 8 / 0.6)'
+                        : 'rgb(113 113 122 / 0.3)',
+                boxShadow: isWinner ? '0 0 20px rgba(251, 191, 36, 0.5), 0 0 40px rgba(251, 191, 36, 0.3)' : undefined,
             }}
         >
             {/* Video Feed - Scaled Down with Aspect Ratio */}
@@ -196,24 +206,38 @@ function SeatCard({
             </div>
 
             {/* Player Info and Cards Row */}
-            <div className="flex items-center justify-between px-2 pb-2">
+            <div className="flex items-center justify-between" style={{ padding: '0 8px 8px' }}>
                 {/* Left Side - Total and Win Amount */}
                 <div className="flex flex-col gap-1">
                     {/* Win amount centered above total */}
                     {gameState === 'SHOWDOWN' && (seat?.winAmount ?? 0) > 0 && (
-                        <div className="w-fit mx-auto translate-y-1/3 rounded-full bg-green-600/30 px-3 py-1 text-xs font-medium text-green-300 border border-green-500/50 text-center shadow-lg">
+                        <div
+                            className="w-fit mx-auto translate-y-1/3 rounded-full text-xs font-medium text-center shadow-lg"
+                            style={{
+                                backgroundColor: '#00a5444d',
+                                border: '1px solid #00c75880',
+                                padding: '4px 12px',
+                                color: '#86efac'
+                            }}
+                        >
                             <RollingNumber
                                 value={seat.winAmount ?? 0}
-                                className="text-green-300"
                                 prefix="+$"
                             />
                         </div>
                     )}
                     {/* Total */}
-                    <div className="rounded-full z-10 bg-green-600/30 px-3 py-1 text-xs font-medium text-green-300 border border-green-500/50 shadow-lg">
+                    <div
+                        className="rounded-full z-10 text-xs font-medium shadow-lg"
+                        style={{
+                            backgroundColor: '#00a5444d',
+                            border: '1px solid #00c75880',
+                            padding: '4px 12px',
+                            color: '#86efac'
+                        }}
+                    >
                         <RollingNumber
                             value={seat.buyIn}
-                            className="text-green-300"
                             prefix="$"
                             suffix=" total"
                         />

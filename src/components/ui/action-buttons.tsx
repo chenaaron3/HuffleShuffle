@@ -37,11 +37,8 @@ export function ActionButtons({
     const [dealSuit, setDealSuit] = useState<string>('s');
     const [isDealerTurn, setIsDealerTurn] = useState<boolean>(false);
 
-    const isPlayerTurn = state === 'BETTING' && currentUserSeatId === bettingActorSeatId;
     useEffect(() => {
         if (state) {
-            console.log('isDealerTurn', isDealerTurn);
-            console.log('state', state);
             setIsDealerTurn(['DEAL_HOLE_CARDS', 'DEAL_FLOP', 'DEAL_TURN', 'DEAL_RIVER'].includes(state));
         }
     }, [state]);
@@ -86,10 +83,12 @@ export function ActionButtons({
     };
 
     if (isDealer) {
-        console.log('isDealerTurn', isDealerTurn);
         return (
             <div className="w-full">
-                <div className="bg-black/20 backdrop-blur-md rounded-2xl p-6 shadow-2xl border border-white/10">
+                <div
+                    className="backdrop-blur-md rounded-2xl shadow-2xl"
+                    style={{ backgroundColor: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', padding: 24 }}
+                >
                     <div className="flex flex-wrap items-center justify-center gap-4">
                         {/* Game Control Buttons */}
                         <Button
@@ -116,34 +115,6 @@ export function ActionButtons({
                             >
                                 {isLoading ? 'Dealing...' : 'Deal Random'}
                             </Button>
-                        )}
-                    </div>
-                </div>
-            </div>
-        );
-    }
-
-    // Player Action Buttons - Arc Layout around hand camera
-    if (!isPlayerTurn) {
-        return (
-            <div className="w-full">
-                <div className="bg-black/20 backdrop-blur-md rounded-2xl p-6 shadow-2xl border border-white/10">
-                    <div className="space-y-4">
-                        <div className="text-center text-white/80 font-medium">
-                            Waiting for your turn...
-                        </div>
-
-                        {/* Leave Button - Show when table is joinable */}
-                        {isJoinable && (
-                            <div className="pt-4 border-t border-white/20">
-                                <Button
-                                    onClick={() => onAction('LEAVE')}
-                                    disabled={isLoading}
-                                    className="bg-white/10 hover:bg-white/20 backdrop-blur-md text-white font-semibold px-6 py-2 rounded-xl transition-all duration-200 hover:scale-105 w-full border border-white/20 hover:border-white/30"
-                                >
-                                    {isLoading ? 'Leaving...' : 'Leave Table'}
-                                </Button>
-                            </div>
                         )}
                     </div>
                 </div>

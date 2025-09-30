@@ -131,7 +131,14 @@ export function DealerCamera({
 
             {/* Pot Total Overlay - Center Top */}
             <div id="pot-display" className="absolute top-4 right-4 transform z-40">
-                <div className="bg-zinc-900/95 backdrop-blur-sm rounded-xl px-6 py-3 shadow-2xl border border-zinc-700/50">
+                <div
+                    className="backdrop-blur-sm rounded-xl shadow-2xl"
+                    style={{
+                        backgroundColor: 'rgba(24,24,27,0.95)',
+                        border: '1px solid rgba(113,113,122,0.5)',
+                        padding: '12px 24px'
+                    }}
+                >
                     <div className="text-center">
                         <RollingNumber
                             value={potTotal}
