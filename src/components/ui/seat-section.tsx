@@ -297,15 +297,27 @@ function SeatCard({
                     >
                         <div className="relative">
                             {/* Chip shadow */}
-                            <div className="absolute inset-0 bg-black/30 rounded-full blur-sm scale-95"></div>
+                            <div
+                                className="absolute inset-0 rounded-full"
+                                style={{ backgroundColor: 'rgba(0,0,0,0.3)', filter: 'blur(4px)', transform: 'scale(0.95)' }}
+                            />
                             {/* Main chip */}
-                            <div className="relative w-14 h-14 rounded-full bg-gradient-to-br from-yellow-400 via-yellow-500 to-yellow-600 border-2 border-yellow-300 shadow-lg flex items-center justify-center">
+                            <div
+                                className="relative w-14 h-14 rounded-full border-2 shadow-lg flex items-center justify-center"
+                                style={{
+                                    backgroundImage: 'linear-gradient(135deg, rgba(250,204,21,1), rgba(234,179,8,1), rgba(202,138,4,1))',
+                                    borderColor: 'rgb(253,224,71)'
+                                }}
+                            >
                                 {/* Inner ring */}
-                                <div className="absolute inset-1 rounded-full border border-yellow-200/50"></div>
+                                <div
+                                    className="absolute inset-1 rounded-full border"
+                                    style={{ borderColor: 'rgba(254,240,138,0.5)' }}
+                                />
                                 {/* Chip value */}
                                 <RollingNumber
                                     value={seat.currentBet}
-                                    className="relative text-sm font-bold text-yellow-900 drop-shadow-sm"
+                                    className="relative text-sm font-bold"
                                     prefix="$"
                                 />
                             </div>
