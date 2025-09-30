@@ -46,6 +46,45 @@ export function ActionButtons({
         }
     }, [state]);
 
+    // Inline button styles to ensure colors/borders render correctly in prod
+    const btnBase: React.CSSProperties = {
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontWeight: 600,
+        padding: '12px 32px',
+        borderRadius: 12,
+        transition: 'transform 200ms ease, box-shadow 200ms ease',
+        borderWidth: 1,
+        borderStyle: 'solid',
+        cursor: 'pointer',
+        backdropFilter: 'blur(8px)'
+    };
+    const styleGreen: React.CSSProperties = {
+        ...btnBase,
+        color: '#fff',
+        backgroundColor: 'rgba(0,167,82,0.2)',
+        borderColor: 'rgba(5,223,114,0.3)'
+    };
+    const stylePurple: React.CSSProperties = {
+        ...btnBase,
+        color: '#fff',
+        backgroundColor: 'rgba(172,75,255,0.2)',
+        borderColor: 'rgba(192,126,255,0.3)'
+    };
+    const styleRed: React.CSSProperties = {
+        ...btnBase,
+        color: '#fff',
+        backgroundColor: 'rgba(251,44,54,0.2)',
+        borderColor: 'rgba(255,101,104,0.3)'
+    };
+    const styleOrange: React.CSSProperties = {
+        ...btnBase,
+        color: '#fff',
+        backgroundColor: 'rgba(254,110,0,0.2)',
+        borderColor: 'rgba(255,139,26,0.3)'
+    };
+
     if (isDealer) {
         console.log('isDealerTurn', isDealerTurn);
         return (
@@ -62,7 +101,8 @@ export function ActionButtons({
                                 }
                             }}
                             disabled={isLoading}
-                            className="!bg-green-500/20 hover:!bg-green-500/30 backdrop-blur-md !text-white font-semibold px-8 py-3 rounded-xl transition-all duration-200 hover:scale-105 !border !border-green-400/30 hover:!border-green-400/50"
+                            style={styleGreen}
+                            className="transition-all duration-200 hover:scale-105 shadow-2xl"
                         >
                             {isJoinable ? 'Start Game' : 'Reset Table'}
                         </Button>
@@ -71,7 +111,8 @@ export function ActionButtons({
                             <Button
                                 onClick={onRandomCard}
                                 disabled={isLoading || isJoinable || !isDealerTurn}
-                                className="!bg-purple-500/20 hover:!bg-purple-500/30 backdrop-blur-md !text-white font-semibold px-8 py-3 rounded-xl transition-all duration-200 hover:scale-105 !border !border-purple-400/30 hover:!border-purple-400/50"
+                                style={stylePurple}
+                                className="transition-all duration-200 hover:scale-105 shadow-2xl"
                             >
                                 {isLoading ? 'Dealing...' : 'Deal Random'}
                             </Button>
@@ -118,7 +159,8 @@ export function ActionButtons({
                 <Button
                     onClick={() => onAction('FOLD')}
                     disabled={isLoading}
-                    className="!bg-red-500/20 hover:!bg-red-500/30 backdrop-blur-md !text-white font-semibold px-8 py-4 rounded-2xl transition-all duration-200 hover:scale-105 min-w-[140px] shadow-2xl !border !border-red-400/30 hover:!border-red-400/50 flex items-center gap-2"
+                    style={styleRed}
+                    className="transition-all duration-200 hover:scale-105 min-w-[140px] shadow-2xl flex items-center gap-2"
                 >
                     <Hand className="w-4 h-4" />
                     {isLoading ? '...' : 'Fold'}
@@ -128,7 +170,8 @@ export function ActionButtons({
                 <Button
                     onClick={() => onAction('CHECK')}
                     disabled={isLoading}
-                    className="!bg-green-500/20 hover:!bg-green-500/30 backdrop-blur-md !text-white font-semibold px-10 py-4 rounded-2xl transition-all duration-200 hover:scale-105 min-w-[160px] shadow-2xl !border !border-green-400/30 hover:!border-green-400/50 flex items-center gap-2"
+                    style={styleGreen}
+                    className="transition-all duration-200 hover:scale-105 min-w-[160px] shadow-2xl flex items-center gap-2 px-10 py-4 rounded-2xl"
                 >
                     <CheckCircle className="w-4 h-4" />
                     {isLoading ? '...' : 'Check'}
@@ -139,7 +182,8 @@ export function ActionButtons({
                     <Button
                         onClick={onRaise}
                         disabled={isLoading}
-                        className="!bg-orange-500/20 hover:!bg-orange-500/30 backdrop-blur-md !text-white font-semibold px-8 py-4 rounded-2xl transition-all duration-200 hover:scale-105 min-w-[140px] shadow-2xl !border !border-orange-400/30 hover:!border-orange-400/50 flex items-center gap-2"
+                        style={styleOrange}
+                        className="transition-all duration-200 hover:scale-105 min-w-[140px] shadow-2xl flex items-center gap-2 px-8 py-4 rounded-2xl"
                     >
                         <TrendingUp className="w-4 h-4" />
                         {isLoading ? '...' : (
