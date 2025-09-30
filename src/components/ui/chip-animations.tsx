@@ -80,16 +80,19 @@ export function ChipStream({
                         y: toPosition.y - fromPosition.y - chip.y,
                         scale: 1,
                         rotate: chip.rotation + 360,
-                        opacity: 1
+                        opacity: [0, 1, 1, 0]
                     }}
                     transition={{
                         duration: 1.2 + Math.random() * 0.3, // Slightly faster, 1.2-1.5s
                         delay: chip.delay,
-                        ease: [0.05, 0.3, 0.9, 1], // Very slow start, very fast end
+                        ease: [0.05, 0.3, 0.99, 1], // Very slow start, very fast end
                     }}
                     onAnimationComplete={() => {
                         if (chip.id === chipCount - 1) {
-                            handleComplete();
+                            // Wait for .3 seconds before completing
+                            setTimeout(() => {
+                                handleComplete();
+                            }, 300);
                         }
                     }}
                 >
@@ -100,7 +103,6 @@ export function ChipStream({
                     </div>
                 </motion.div>
             ))}
-
         </div>
     );
 
@@ -160,8 +162,8 @@ export function RollingNumber({
     return (
         <motion.span
             className={className}
-            animate={isAnimating ? { scale: [1, 1.1, 1] } : {}}
-            transition={{ duration: 0.2, repeat: isAnimating ? Infinity : 0, repeatType: "reverse" }}
+            animate={isAnimating ? { scale: [1, 1.15, 1] } : {}}
+            transition={{ duration: 0.25, repeat: isAnimating ? Infinity : 0, repeatType: "reverse" }}
         >
             {prefix}{displayValue.toFixed(0)}{suffix}
         </motion.span>

@@ -206,7 +206,9 @@ export const games = createTable(
       .references(() => pokerTables.id),
     isCompleted: d.boolean().notNull().default(false),
     state: gameStateEnum("state").notNull().default("DEAL_HOLE_CARDS"),
-    dealerButtonSeatId: d.varchar({ length: 255 }).references(() => seats.id),
+    dealerButtonSeatId: d
+      .varchar({ length: 255 })
+      .references(() => seats.id, { onDelete: "set null" }),
     assignedSeatId: d
       .varchar({ length: 255 })
       .references(() => seats.id, { onDelete: "set null" }),

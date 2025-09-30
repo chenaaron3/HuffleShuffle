@@ -1,6 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { Track } from 'livekit-client';
-import { CardImage } from '~/components/ui/card-img';
 import { CardSlot } from '~/components/ui/card-slot';
 import { RollingNumber } from '~/components/ui/chip-animations';
 

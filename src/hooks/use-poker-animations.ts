@@ -22,10 +22,6 @@ export function usePokerAnimations({
   const previousSeatsRef = useRef<SeatWithPlayer[]>([]);
   const [chipStreams, setChipStreams] = useState<ChipStream[]>([]);
 
-  console.log("GAME STATE", gameState);
-  console.log("PREVIOUS SEATS", previousSeatsRef.current);
-  console.log("SEATS", seats);
-
   // Function to trigger chip stream
   const triggerChipStream = (
     from: { x: number; y: number },

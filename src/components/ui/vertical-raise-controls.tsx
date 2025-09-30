@@ -8,10 +8,9 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '~/components/ui/tooltip
 interface VerticalRaiseControlsProps {
     isLoading?: boolean;
     potTotal?: number;
-    currentBet?: number;
     playerBalance?: number;
     bigBlind?: number;
-    maxBet?: number;
+    minRaise: number;
     raiseAmount: number;
     onRaiseAmountChange: (amount: number) => void;
 }
@@ -19,10 +18,9 @@ interface VerticalRaiseControlsProps {
 export function VerticalRaiseControls({
     isLoading = false,
     potTotal = 0,
-    currentBet = 0,
     playerBalance = 1000,
     bigBlind = 20,
-    maxBet = 0,
+    minRaise,
     raiseAmount,
     onRaiseAmountChange
 }: VerticalRaiseControlsProps) {
@@ -43,9 +41,9 @@ export function VerticalRaiseControls({
     };
 
     // Check if options are below minimum allowed bet
-    const isHalfPotDisabled = halfPot < maxBet;
-    const isFullPotDisabled = fullPot < maxBet;
-    const isAllInDisabled = allIn < maxBet;
+    const isHalfPotDisabled = halfPot < minRaise;
+    const isFullPotDisabled = fullPot < minRaise;
+    const isAllInDisabled = allIn < minRaise;
 
     return (
         <div className="flex flex-col gap-3 w-full">
@@ -86,7 +84,7 @@ export function VerticalRaiseControls({
             <div className="w-full space-y-3">
                 {/* Min/Max Labels */}
                 <div className="flex justify-between w-full text-xs text-white/60">
-                    <span>${maxBet}</span>
+                    <span>${minRaise}</span>
                     <span>${playerBalance}</span>
                 </div>
 
@@ -96,9 +94,9 @@ export function VerticalRaiseControls({
                         <div className="w-full">
                             <Slider
                                 value={[raiseAmount]}
-                                onValueChange={(value) => onRaiseAmountChange(value[0] ?? maxBet)}
+                                onValueChange={(value) => onRaiseAmountChange(value[0] ?? 0)}
                                 max={playerBalance}
-                                min={maxBet}
+                                min={minRaise}
                                 step={bigBlind}
                                 orientation="horizontal"
                                 className="w-full [&_[data-slot=slider-track]]:bg-zinc-700/50 [&_[data-slot=slider-range]]:bg-orange-500 [&_[data-slot=slider-thumb]]:bg-orange-400 [&_[data-slot=slider-thumb]]:border-orange-300 [&_[data-slot=slider-thumb]]:hover:bg-orange-300 [&_[data-slot=slider-thumb]]:hover:scale-110"
@@ -106,7 +104,7 @@ export function VerticalRaiseControls({
                         </div>
                     </TooltipTrigger>
                     <TooltipContent side="top" className="bg-zinc-900/95 text-white border-zinc-700">
-                        <p className="font-medium"><RollingNumber value={raiseAmount} prefix="$" /></p>
+                        <p className="font-medium">${raiseAmount}</p>
                     </TooltipContent>
                 </Tooltip>
             </div>

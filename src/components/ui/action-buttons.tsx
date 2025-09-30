@@ -1,5 +1,5 @@
 import { CheckCircle, Coins, Hand, TrendingUp } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '~/components/ui/button';
 import { RollingNumber } from '~/components/ui/chip-animations';
 
@@ -35,10 +35,19 @@ export function ActionButtons({
 }: ActionButtonsProps) {
     const [dealRank, setDealRank] = useState<string>('A');
     const [dealSuit, setDealSuit] = useState<string>('s');
+    const [isDealerTurn, setIsDealerTurn] = useState<boolean>(false);
 
     const isPlayerTurn = state === 'BETTING' && currentUserSeatId === bettingActorSeatId;
+    useEffect(() => {
+        if (state) {
+            console.log('isDealerTurn', isDealerTurn);
+            console.log('state', state);
+            setIsDealerTurn(['DEAL_HOLE_CARDS', 'DEAL_FLOP', 'DEAL_TURN', 'DEAL_RIVER'].includes(state));
+        }
+    }, [state]);
 
     if (isDealer) {
+        console.log('isDealerTurn', isDealerTurn);
         return (
             <div className="w-full">
                 <div className="bg-black/20 backdrop-blur-md rounded-2xl p-6 shadow-2xl border border-white/10">
@@ -61,7 +70,7 @@ export function ActionButtons({
                         {onRandomCard && (
                             <Button
                                 onClick={onRandomCard}
-                                disabled={isLoading}
+                                disabled={isLoading || isJoinable || !isDealerTurn}
                                 className="bg-purple-500/20 hover:bg-purple-500/30 backdrop-blur-md text-white font-semibold px-8 py-3 rounded-xl transition-all duration-200 hover:scale-105 border border-purple-400/30 hover:border-purple-400/50"
                             >
                                 {isLoading ? 'Dealing...' : 'Deal Random'}

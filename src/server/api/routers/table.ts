@@ -184,8 +184,10 @@ async function resetGame(
     await tx
       .update(games)
       .set({
+        assignedSeatId: null,
         isCompleted: true,
         potTotal: 0,
+        state: "DEAL_HOLE_CARDS",
       })
       .where(eq(games.id, game.id));
   }
@@ -651,8 +653,8 @@ export const tableRouter = createTRPCRouter({
           await resetGame(tx, game ?? null, orderedSeats);
 
           // If there was a previous game, progress the dealer button
-          if (game) {
-            const prevButton = game.dealerButtonSeatId!;
+          const prevButton = game?.dealerButtonSeatId;
+          if (prevButton) {
             const prevIdx = orderedSeats.findIndex((s) => s.id === prevButton);
             dealerButtonSeatId =
               orderedSeats[pickNextIndex(prevIdx, orderedSeats.length)]!.id;

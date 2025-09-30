@@ -62,12 +62,12 @@ export function DealerCamera({
     const isPlayerTurn = gameStatus === 'BETTING' && currentUserSeatId === bettingActorSeatId;
 
     // State for raise amount
-    const [raiseAmount, setRaiseAmount] = useState<number>(bigBlind ?? 20);
+    const [raiseAmount, setRaiseAmount] = useState<number>(bigBlind ?? 10);
 
     // Update raise amount when big blind or max bet changes
     useEffect(() => {
         if (bigBlind && maxBet !== undefined) {
-            setRaiseAmount(Math.max(bigBlind, maxBet + bigBlind));
+            setRaiseAmount(maxBet + bigBlind);
         }
     }, [bigBlind, maxBet]);
 
@@ -115,7 +115,7 @@ export function DealerCamera({
                                 >
                                     <CardImage
                                         code={card}
-                                        size={60}
+                                        size={75}
                                         highlighted={isWinningCard}
                                     />
                                     <div className={`absolute inset-0 rounded-lg shadow-lg ring-2 ${isWinningCard
@@ -198,10 +198,9 @@ export function DealerCamera({
                         <VerticalRaiseControls
                             isLoading={isLoading ?? false}
                             potTotal={potTotal}
-                            currentBet={currentBet ?? 0}
                             playerBalance={playerBalance ?? 1000}
                             bigBlind={bigBlind ?? 20}
-                            maxBet={maxBet ?? 0}
+                            minRaise={(maxBet ?? 0) + (bigBlind ?? 0)}
                             raiseAmount={raiseAmount}
                             onRaiseAmountChange={setRaiseAmount}
                         />
