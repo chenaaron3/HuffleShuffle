@@ -86,8 +86,8 @@ export function ActionButtons({
         return (
             <div className="w-full">
                 <div
-                    className="backdrop-blur-md rounded-2xl shadow-2xl"
-                    style={{ backgroundColor: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', padding: 24 }}
+                    className="rounded-2xl shadow-2xl"
+                    style={{ backgroundColor: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', padding: 24, backdropFilter: 'blur(12px)' }}
                 >
                     <div className="flex flex-wrap items-center justify-center gap-4">
                         {/* Game Control Buttons */}
