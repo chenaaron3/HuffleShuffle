@@ -187,11 +187,20 @@ export function DealerCamera({
 
             {/* Leave Table Button - Bottom Left */}
             {isJoinable && onLeaveTable && (
-                <div className="absolute bottom-4 left-4">
+                <div className="absolute" style={{ bottom: 16, left: 16 }}>
                     <button
                         onClick={onLeaveTable}
                         disabled={isLeaving}
-                        className="bg-red-600/90 hover:bg-red-500/90 disabled:bg-red-600/50 text-white font-semibold px-4 py-2 rounded-lg transition-all duration-200 hover:scale-105 border border-red-500/50 hover:border-red-400/50 backdrop-blur-sm shadow-lg"
+                        style={{
+                            backgroundColor: 'rgba(228,0,20,0.9)',
+                            color: '#fff',
+                            fontWeight: 600,
+                            padding: '8px 16px',
+                            borderRadius: 10,
+                            border: '1px solid rgba(251,44,54,0.5)',
+                            backdropFilter: 'blur(8px)'
+                        }}
+                        className="transition-all duration-200 hover:scale-105 shadow-lg"
                     >
                         {isLeaving ? 'Leaving...' : 'Leave Table'}
                     </button>

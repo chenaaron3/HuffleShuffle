@@ -165,19 +165,6 @@ export function ActionButtons({
                     </Button>
                 )}
             </div>
-
-            {/* Leave Button - Bottom */}
-            {isJoinable && (
-                <div className="mt-4 flex justify-center">
-                    <Button
-                        onClick={() => onAction('LEAVE')}
-                        disabled={isLoading}
-                        className="bg-white/10 hover:bg-white/20 backdrop-blur-md text-white font-semibold px-6 py-2 rounded-xl transition-all duration-200 hover:scale-105 border border-white/20 hover:border-white/30"
-                    >
-                        {isLoading ? 'Leaving...' : 'Leave Table'}
-                    </Button>
-                </div>
-            )}
         </div>
     );
 }
