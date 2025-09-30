@@ -64,7 +64,7 @@ export function ActionButtons({
                                 }
                             }}
                             disabled={isLoading}
-                            className="bg-green-500/20 hover:bg-green-500/30 backdrop-blur-md text-white font-semibold px-8 py-3 rounded-xl transition-all duration-200 hover:scale-105 border border-green-400/30 hover:border-green-400/50"
+                            className="!bg-green-500/20 hover:!bg-green-500/30 backdrop-blur-md !text-white font-semibold px-8 py-3 rounded-xl transition-all duration-200 hover:scale-105 !border !border-green-400/30 hover:!border-green-400/50"
                         >
                             {isJoinable ? 'Start Game' : 'Reset Table'}
                         </Button>
@@ -75,7 +75,7 @@ export function ActionButtons({
                                 size="none"
                                 onClick={onRandomCard}
                                 disabled={isLoading || isJoinable || !isDealerTurn}
-                                className="bg-purple-500/20 hover:bg-purple-500/30 backdrop-blur-md text-white font-semibold px-8 py-3 rounded-xl transition-all duration-200 hover:scale-105 border border-purple-400/30 hover:border-purple-400/50"
+                                className="!bg-purple-500/20 hover:!bg-purple-500/30 backdrop-blur-md !text-white font-semibold px-8 py-3 rounded-xl transition-all duration-200 hover:scale-105 !border !border-purple-400/30 hover:!border-purple-400/50"
                             >
                                 {isLoading ? 'Dealing...' : 'Deal Random'}
                             </Button>
@@ -124,7 +124,7 @@ export function ActionButtons({
                     size="none"
                     onClick={() => onAction('FOLD')}
                     disabled={isLoading}
-                    className="bg-red-500/20 hover:bg-red-500/30 backdrop-blur-md text-white font-semibold px-8 py-4 rounded-2xl transition-all duration-200 hover:scale-105 min-w-[140px] shadow-2xl border border-red-400/30 hover:border-red-400/50 flex items-center gap-2"
+                    className="!bg-red-500/20 hover:!bg-red-500/30 backdrop-blur-md !text-white font-semibold px-8 py-4 rounded-2xl transition-all duration-200 hover:scale-105 min-w-[140px] shadow-2xl !border !border-red-400/30 hover:!border-red-400/50 flex items-center gap-2"
                 >
                     <Hand className="w-4 h-4" />
                     {isLoading ? '...' : 'Fold'}
@@ -136,7 +136,7 @@ export function ActionButtons({
                     size="none"
                     onClick={() => onAction('CHECK')}
                     disabled={isLoading}
-                    className="bg-green-500/20 hover:bg-green-500/30 backdrop-blur-md text-white font-semibold px-10 py-4 rounded-2xl transition-all duration-200 hover:scale-105 min-w-[160px] shadow-2xl border border-green-400/30 hover:border-green-400/50 flex items-center gap-2"
+                    className="!bg-green-500/20 hover:!bg-green-500/30 backdrop-blur-md !text-white font-semibold px-10 py-4 rounded-2xl transition-all duration-200 hover:scale-105 min-w-[160px] shadow-2xl !border !border-green-400/30 hover:!border-green-400/50 flex items-center gap-2"
                 >
                     <CheckCircle className="w-4 h-4" />
                     {isLoading ? '...' : 'Check'}
@@ -149,7 +149,7 @@ export function ActionButtons({
                         size="none"
                         onClick={onRaise}
                         disabled={isLoading}
-                        className="bg-orange-500/20 hover:bg-orange-500/30 backdrop-blur-md text-white font-semibold px-8 py-4 rounded-2xl transition-all duration-200 hover:scale-105 min-w-[140px] shadow-2xl border border-orange-400/30 hover:border-orange-400/50 flex items-center gap-2"
+                        className="!bg-orange-500/20 hover:!bg-orange-500/30 backdrop-blur-md !text-white font-semibold px-8 py-4 rounded-2xl transition-all duration-200 hover:scale-105 min-w-[140px] shadow-2xl !border !border-orange-400/30 hover:!border-orange-400/50 flex items-center gap-2"
                     >
                         <TrendingUp className="w-4 h-4" />
                         {isLoading ? '...' : (
