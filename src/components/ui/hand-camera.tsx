@@ -30,7 +30,16 @@ export function HandCamera({ tableId, roomName }: HandCameraProps) {
     }
 
     return (
-        <div className="w-64 h-fit rounded-xl border border-zinc-700/50 bg-zinc-900/50 backdrop-blur-sm overflow-hidden shadow-2xl">
+        <div
+            className="rounded-xl overflow-hidden shadow-2xl"
+            style={{
+                width: 256,
+                height: "fit-content",
+                border: '1px solid rgba(113,113,122,0.5)',
+                backgroundColor: 'rgba(24,24,27,0.5)',
+                backdropFilter: 'blur(8px)'
+            }}
+        >
             <HandCameraView tableId={tableId} roomName={roomName} />
         </div>
     );
@@ -59,7 +68,10 @@ function HandCameraVideoContent() {
 
     if (!cameraTrack) {
         return (
-            <div className="w-full h-40 flex items-center justify-center text-xs text-zinc-400">
+            <div
+                className="flex items-center justify-center text-xs"
+                style={{ width: '100%', height: 160, color: 'rgb(161,161,170)' }}
+            >
                 Waiting to see your hand...
             </div>
         );
