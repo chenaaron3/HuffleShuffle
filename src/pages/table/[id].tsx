@@ -1,5 +1,3 @@
-import '@livekit/components-styles';
-
 import { useSession } from 'next-auth/react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
