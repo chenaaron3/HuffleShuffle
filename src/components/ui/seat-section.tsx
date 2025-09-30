@@ -303,10 +303,12 @@ function SeatCard({
                             />
                             {/* Main chip */}
                             <div
-                                className="relative w-14 h-14 rounded-full border-2 shadow-lg flex items-center justify-center"
+                                className="relative rounded-full border-2 shadow-lg flex items-center justify-center"
                                 style={{
                                     backgroundImage: 'linear-gradient(135deg, rgba(250,204,21,1), rgba(234,179,8,1), rgba(202,138,4,1))',
-                                    borderColor: 'rgb(253,224,71)'
+                                    borderColor: 'rgb(253,224,71)',
+                                    width: 56,
+                                    height: 56
                                 }}
                             >
                                 {/* Inner ring */}
