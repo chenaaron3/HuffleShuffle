@@ -33,14 +33,16 @@ export function CardSlot({
             {isEmpty ? (
                 // Empty card placeholder - sized to match actual cards
                 <div
-                    className="rounded border border-zinc-700/40 bg-zinc-800/40 flex items-center justify-center"
+                    className="rounded flex items-center justify-center"
                     style={{
                         width: `${placeholderWidth}px`,
-                        height: `${placeholderHeight}px`
+                        height: `${placeholderHeight}px`,
+                        border: '1px solid rgba(113,113,122,0.4)',
+                        backgroundColor: 'rgba(39,39,42,0.4)'
                     }}
                 >
                     {/* Optional: Add a subtle indicator for empty slot */}
-                    <div className="w-2 h-2 rounded-full bg-zinc-600/30"></div>
+                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: 'rgba(82,82,91,0.3)' }}></div>
                 </div>
             ) : (
                 // Actual card with animation

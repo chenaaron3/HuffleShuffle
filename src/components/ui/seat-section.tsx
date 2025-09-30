@@ -108,13 +108,20 @@ function SeatCard({
     if (!seat) {
         return (
             <div
-                className="relative flex h-[22vh] flex-col rounded-xl bg-zinc-900/30 backdrop-blur-sm"
-                style={{ borderWidth: 1, borderStyle: 'dashed', borderColor: 'rgba(113,113,122,0.5)', padding: 12 }}
+                className="relative flex h-[22vh] flex-col rounded-xl"
+                style={{
+                    borderWidth: 1,
+                    borderStyle: 'dashed',
+                    borderColor: 'rgba(113,113,122,0.5)',
+                    padding: 12,
+                    backgroundColor: 'rgba(24,24,27,0.3)',
+                    backdropFilter: 'blur(8px)'
+                }}
             >
                 {/* Empty Video Feed - Match Occupied Seat Dimensions */}
                 <div
-                    className="relative h-full aspect-[4/3] overflow-hidden rounded-lg bg-zinc-800/60 mb-3"
-                    style={{ border: '1px solid rgba(113,113,122,0.4)' }}
+                    className="relative h-full aspect-[4/3] overflow-hidden rounded-lg mb-3"
+                    style={{ border: '1px solid rgba(113,113,122,0.4)', backgroundColor: 'rgba(39,39,42,0.6)' }}
                 >
                     <div className="flex h-full items-center justify-center text-sm text-zinc-500 font-medium">
                         Empty Seat
