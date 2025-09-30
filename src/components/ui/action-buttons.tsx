@@ -55,6 +55,7 @@ export function ActionButtons({
                         {/* Game Control Buttons */}
                         <Button
                             variant="plain"
+                            size="none"
                             onClick={() => {
                                 if (isJoinable) {
                                     onAction('START_GAME')
@@ -71,6 +72,7 @@ export function ActionButtons({
                         {onRandomCard && (
                             <Button
                                 variant="plain"
+                                size="none"
                                 onClick={onRandomCard}
                                 disabled={isLoading || isJoinable || !isDealerTurn}
                                 className="bg-purple-500/20 hover:bg-purple-500/30 backdrop-blur-md text-white font-semibold px-8 py-3 rounded-xl transition-all duration-200 hover:scale-105 border border-purple-400/30 hover:border-purple-400/50"
@@ -119,6 +121,7 @@ export function ActionButtons({
                 {/* Left Side - Negative Actions */}
                 <Button
                     variant="plain"
+                    size="none"
                     onClick={() => onAction('FOLD')}
                     disabled={isLoading}
                     className="bg-red-500/20 hover:bg-red-500/30 backdrop-blur-md text-white font-semibold px-8 py-4 rounded-2xl transition-all duration-200 hover:scale-105 min-w-[140px] shadow-2xl border border-red-400/30 hover:border-red-400/50 flex items-center gap-2"
@@ -130,6 +133,7 @@ export function ActionButtons({
                 {/* Center - Check/Call */}
                 <Button
                     variant="plain"
+                    size="none"
                     onClick={() => onAction('CHECK')}
                     disabled={isLoading}
                     className="bg-green-500/20 hover:bg-green-500/30 backdrop-blur-md text-white font-semibold px-10 py-4 rounded-2xl transition-all duration-200 hover:scale-105 min-w-[160px] shadow-2xl border border-green-400/30 hover:border-green-400/50 flex items-center gap-2"
@@ -142,6 +146,7 @@ export function ActionButtons({
                 {onRaise && (
                     <Button
                         variant="plain"
+                        size="none"
                         onClick={onRaise}
                         disabled={isLoading}
                         className="bg-orange-500/20 hover:bg-orange-500/30 backdrop-blur-md text-white font-semibold px-8 py-4 rounded-2xl transition-all duration-200 hover:scale-105 min-w-[140px] shadow-2xl border border-orange-400/30 hover:border-orange-400/50 flex items-center gap-2"
