@@ -200,7 +200,7 @@ export function DealerCamera({
 
             {/* Horizontal Raise Controls - Bottom Right */}
             {isPlayerTurn && onAction && (
-                <div className="absolute bottom-4 right-4">
+                <div className="absolute right-4" style={{ bottom: 12 }}>
                     <div
                         className="rounded-xl shadow-2xl"
                         style={{

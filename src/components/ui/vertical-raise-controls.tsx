@@ -135,7 +135,10 @@ export function VerticalRaiseControls({
                                 min={minRaise}
                                 step={bigBlind}
                                 orientation="horizontal"
-                                className="w-full [&_[data-slot=slider-track]]:bg-zinc-700/50 [&_[data-slot=slider-range]]:bg-orange-500 [&_[data-slot=slider-thumb]]:bg-orange-400 [&_[data-slot=slider-thumb]]:border-orange-300 [&_[data-slot=slider-thumb]]:hover:bg-orange-300 [&_[data-slot=slider-thumb]]:hover:scale-110"
+                                className="w-full"
+                                trackStyle={{ backgroundColor: 'rgba(63,63,70,0.5)' }}
+                                rangeStyle={{ backgroundColor: 'rgb(249,115,22)' }}
+                                thumbStyle={{ backgroundColor: 'rgb(251,146,60)', borderColor: 'rgb(253,186,116)' }}
                             />
                         </div>
                     </TooltipTrigger>
