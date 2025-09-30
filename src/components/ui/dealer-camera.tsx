@@ -202,8 +202,9 @@ export function DealerCamera({
             {isPlayerTurn && onAction && (
                 <div className="absolute bottom-4 right-4">
                     <div
-                        className="rounded-xl shadow-2xl w-64"
+                        className="rounded-xl shadow-2xl"
                         style={{
+                            width: 256,
                             backgroundColor: 'rgba(0,0,0,0.2)',
                             border: '1px solid rgba(255,255,255,0.1)',
                             padding: 12,
