@@ -222,10 +222,16 @@ export default function TableView() {
             <main className="h-screen bg-black text-white overflow-hidden">
                 {/* Table Status Indicator */}
                 {canRenderLivekit ? (
-                    <>
-                        {/* <RoomAudioRenderer /> */}
+                    <LiveKitRoom
+                        token={livekit.data!.token}
+                        serverUrl={livekit.data!.serverUrl}
+                        connectOptions={{ autoSubscribe: true }}
+                        video={true}
+                        audio={true}
+                    >
+                        <RoomAudioRenderer />
                         <div className="absolute z-10 right-0 flex max-w-7xl items-center gap-3 px-4">
-                            {/* <StartAudio label="Enable Audio" /> */}
+                            <StartAudio label="Enable Audio" />
                             {session?.user?.role === 'dealer' && (
                                 <button
                                     onClick={() => setShowSetup(true)}
@@ -247,8 +253,6 @@ export default function TableView() {
                                 myUserId={session?.user?.id ?? null}
                                 side="left"
                                 gameState={state}
-                                lkToken={livekit.data?.token}
-                                lkServerUrl={livekit.data?.serverUrl}
                             />
 
                             {/* Center area with dealer cam and player controls */}
@@ -311,7 +315,7 @@ export default function TableView() {
                             seats={originalSeats}
                             gameState={state ?? ''}
                         />
-                    </>
+                    </LiveKitRoom>
                 ) : (
                     <div className="flex min-h-screen items-center justify-center">
                         <div className="text-zinc-400">Connecting to table audio/video…</div>
