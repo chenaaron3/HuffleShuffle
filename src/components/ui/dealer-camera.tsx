@@ -201,7 +201,15 @@ export function DealerCamera({
             {/* Horizontal Raise Controls - Bottom Right */}
             {isPlayerTurn && onAction && (
                 <div className="absolute bottom-4 right-4">
-                    <div className="bg-black/20 backdrop-blur-md rounded-xl p-3 shadow-2xl border border-white/10 w-64">
+                    <div
+                        className="rounded-xl shadow-2xl w-64"
+                        style={{
+                            backgroundColor: 'rgba(0,0,0,0.2)',
+                            border: '1px solid rgba(255,255,255,0.1)',
+                            padding: 12,
+                            backdropFilter: 'blur(8px)'
+                        }}
+                    >
                         <VerticalRaiseControls
                             isLoading={isLoading ?? false}
                             potTotal={potTotal}

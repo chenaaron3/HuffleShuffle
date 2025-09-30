@@ -132,8 +132,13 @@ function SeatCard({
                 <div className="flex items-center justify-between">
                     <div className="flex flex-col gap-1">
                         <div
-                            className="rounded-full bg-zinc-700/40 text-xs font-medium text-zinc-400 w-fit"
-                            style={{ border: '1px solid rgba(82,82,91,0.5)', padding: '4px 12px' }}
+                            className="rounded-full text-xs font-medium w-fit"
+                            style={{
+                                border: '1px solid rgba(82,82,91,0.5)',
+                                padding: '4px 12px',
+                                backgroundColor: 'rgba(63,63,70,0.4)',
+                                color: 'rgb(161,161,170)'
+                            }}
                         >
                             Seat {seatNumber}
                         </div>

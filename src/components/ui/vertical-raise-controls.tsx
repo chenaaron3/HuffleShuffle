@@ -53,7 +53,19 @@ export function VerticalRaiseControls({
                 <Button
                     onClick={handleHalfPot}
                     disabled={isLoading || isHalfPotDisabled}
-                    className="bg-blue-500/20 hover:bg-blue-500/30 backdrop-blur-md text-white font-medium px-2 py-1 rounded-md border border-blue-400/30 hover:border-blue-400/50 flex items-center gap-1 text-xs flex-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                    style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontWeight: 500,
+                        padding: '4px 8px',
+                        borderRadius: 8,
+                        border: '1px solid rgba(48,128,255,0.5)',
+                        backgroundColor: 'rgba(48,128,255,0.2)',
+                        color: '#fff',
+                        backdropFilter: 'blur(8px)'
+                    }}
+                    className="flex items-center gap-1 text-xs flex-1 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                     <Target className="w-3 h-3" />
                     ½ Pot
@@ -63,7 +75,19 @@ export function VerticalRaiseControls({
                 <Button
                     onClick={handleFullPot}
                     disabled={isLoading || isFullPotDisabled}
-                    className="bg-purple-500/20 hover:bg-purple-500/30 backdrop-blur-md text-white font-medium px-2 py-1 rounded-md border border-purple-400/30 hover:border-purple-400/50 flex items-center gap-1 text-xs flex-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                    style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontWeight: 500,
+                        padding: '4px 8px',
+                        borderRadius: 8,
+                        border: '1px solid rgba(192,126,255,0.5)',
+                        backgroundColor: 'rgba(172,75,255,0.2)',
+                        color: '#fff',
+                        backdropFilter: 'blur(8px)'
+                    }}
+                    className="flex items-center gap-1 text-xs flex-1 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                     <Zap className="w-3 h-3" />
                     Pot
@@ -73,7 +97,19 @@ export function VerticalRaiseControls({
                 <Button
                     onClick={handleAllIn}
                     disabled={isLoading || isAllInDisabled}
-                    className="bg-yellow-500/20 hover:bg-yellow-500/30 backdrop-blur-md text-white font-medium px-2 py-1 rounded-md border border-yellow-400/30 hover:border-yellow-400/50 flex items-center gap-1 text-xs flex-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                    style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontWeight: 500,
+                        padding: '4px 8px',
+                        borderRadius: 8,
+                        border: '1px solid rgba(250,200,0,0.5)',
+                        backgroundColor: 'rgba(237,178,0,0.2)',
+                        color: '#fff',
+                        backdropFilter: 'blur(8px)'
+                    }}
+                    className="flex items-center gap-1 text-xs flex-1 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                     <Coins className="w-3 h-3" />
                     All In
@@ -103,7 +139,11 @@ export function VerticalRaiseControls({
                             />
                         </div>
                     </TooltipTrigger>
-                    <TooltipContent side="top" className="bg-zinc-900/95 text-white border-zinc-700">
+                    <TooltipContent
+                        side="top"
+                        className="text-white"
+                        style={{ backgroundColor: 'rgba(24,24,27,0.95)', border: '1px solid rgb(63,63,70)' }}
+                    >
                         <p className="font-medium">${raiseAmount}</p>
                     </TooltipContent>
                 </Tooltip>
