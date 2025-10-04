@@ -1,7 +1,5 @@
-import { and, asc, count, desc, eq, inArray, isNotNull, sql } from 'drizzle-orm';
-import { index } from 'drizzle-orm/pg-core';
+import { and, eq, sql } from 'drizzle-orm';
 import { AccessToken } from 'livekit-server-sdk';
-import { createRequire } from 'node:module';
 import { z } from 'zod';
 import { createTRPCRouter, protectedProcedure, publicProcedure } from '~/server/api/trpc';
 import { db } from '~/server/db';
@@ -18,11 +16,6 @@ import {
 import { evaluateBettingTransition } from '../hand-solver';
 
 import type { VideoGrant } from "livekit-server-sdk";
-const requireCjs = createRequire(import.meta.url);
-interface PokerHandStatic {
-  solve(cards: string[]): unknown;
-  winners(hands: unknown[]): unknown[];
-}
 
 const ensureDealerRole = (role: string | undefined) => {
   if (role !== "dealer") throw new Error("FORBIDDEN: dealer role required");
@@ -55,6 +48,10 @@ const summarizeTable = async (
   const table = await client.query.pokerTables.findFirst({
     where: eq(pokerTables.id, tableId),
   });
+  const game = await client.query.games.findFirst({
+    where: eq(games.tableId, tableId),
+    orderBy: (g, { desc }) => [desc(g.createdAt)],
+  });
   const tableSeats = await client.query.seats.findMany({
     where: eq(seats.tableId, tableId),
     orderBy: (s, { asc }) => [asc(s.seatNumber)],
@@ -66,10 +63,6 @@ const summarizeTable = async (
         },
       },
     },
-  });
-  const game = await client.query.games.findFirst({
-    where: eq(games.tableId, tableId),
-    orderBy: (g, { desc }) => [desc(g.createdAt)],
   });
   if (!table) throw new Error("Table not found");
   // Determine if table is joinable
@@ -722,14 +715,14 @@ export const tableRouter = createTRPCRouter({
             .set({
               buyIn: sql`${seats.buyIn} - ${total}`,
               currentBet: sql`${seats.currentBet} + ${total}`,
+              lastAction: "RAISE",
             })
             .where(eq(seats.id, actorSeat.id));
           actorSeat.buyIn -= total;
           actorSeat.currentBet += total;
           await logRaise(tx as any, input.tableId, game.id, {
             seatId: actorSeat.id,
-            amount,
-            added: total,
+            total,
           });
         } else if (input.action === "CHECK") {
           const need = maxBet - actorSeat.currentBet;
@@ -741,22 +734,29 @@ export const tableRouter = createTRPCRouter({
               .set({
                 buyIn: sql`${seats.buyIn} - ${need}`,
                 currentBet: sql`${seats.currentBet} + ${need}`,
+                lastAction: "CALL",
               })
               .where(eq(seats.id, actorSeat.id));
             actorSeat.buyIn -= need;
             actorSeat.currentBet += need;
             await logCall(tx as any, input.tableId, game.id, {
               seatId: actorSeat.id,
+              total: maxBet,
             });
           } else {
+            await tx
+              .update(seats)
+              .set({ lastAction: "CHECK" })
+              .where(eq(seats.id, actorSeat.id));
             await logCheck(tx as any, input.tableId, game.id, {
               seatId: actorSeat.id,
+              total: maxBet,
             });
           }
         } else if (input.action === "FOLD") {
           await tx
             .update(seats)
-            .set({ isActive: false })
+            .set({ isActive: false, lastAction: "FOLD" })
             .where(eq(seats.id, actorSeat.id));
           actorSeat.isActive = false;
           await logFold(tx as any, input.tableId, game.id, {

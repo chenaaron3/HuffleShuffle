@@ -109,6 +109,11 @@ export async function ensureHoleCardsProgression(
       requiredBetCount: activeCount,
     })
     .where(eq(games.id, gameObj.id));
+  // Clear lastAction for all seats at the start of the next betting round
+  for (const s of freshSeats) {
+    await tx.update(seats).set({ lastAction: null }).where(eq(seats.id, s.id));
+    s.lastAction = null as any;
+  }
   return {
     ...gameObj,
     state: "BETTING",
@@ -141,6 +146,11 @@ export async function ensurePostflopProgression(
       requiredBetCount: activeCount,
     })
     .where(eq(games.id, gameObj.id));
+  // Clear lastAction for all seats at the start of the next betting round
+  for (const s of freshSeats) {
+    await tx.update(seats).set({ lastAction: null }).where(eq(seats.id, s.id));
+    s.lastAction = null as any;
+  }
 }
 
 // Card dealing logic that can be shared between consumer and table router

@@ -12,15 +12,17 @@ const StartGameDetails = z.object({
 
 const RaiseDetails = z.object({
   seatId: z.string(),
-  amount: z.number().int().positive(),
-  added: z.number().int().nonnegative(),
+  total: z.number().int().positive(),
 });
 
 const CallDetails = z.object({
   seatId: z.string(),
+  total: z.number().int().nonnegative(),
 });
 
-const CheckDetails = z.object({ seatId: z.string() }).strict();
+const CheckDetails = z
+  .object({ seatId: z.string(), total: z.number().int().nonnegative() })
+  .strict();
 const FoldDetails = z.object({ seatId: z.string() }).strict();
 
 const StreetDetails = z.object({

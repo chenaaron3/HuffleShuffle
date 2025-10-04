@@ -165,6 +165,7 @@ export const seats = createTable(
       .text()
       .array()
       .default(sql`ARRAY[]::text[]`), // Cards that make up the winning hand
+    lastAction: d.varchar({ length: 16 }), // 'RAISE' | 'CALL' | 'CHECK' | 'FOLD' during current betting round
     createdAt: d
       .timestamp({ withTimezone: true })
       .default(sql`CURRENT_TIMESTAMP`)
