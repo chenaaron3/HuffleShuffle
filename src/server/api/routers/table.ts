@@ -10,9 +10,7 @@ import {
 import {
     logCall, logCheck, logEndGame, logFold, logRaise, logStartGame
 } from '../game-event-logger';
-import {
-    dealCard, fetchOrderedSeats, notifyTableUpdate, pickNextIndex, rotateToNextActiveSeatId
-} from '../game-logic';
+import { dealCard, getNextActiveSeatId, notifyTableUpdate } from '../game-logic';
 import { evaluateBettingTransition } from '../hand-solver';
 
 import type { VideoGrant } from "livekit-server-sdk";
@@ -99,13 +97,14 @@ function getBigAndSmallBlindSeats(
   orderedSeats: Array<SeatRow>,
   game: GameRow,
 ): { smallBlindSeat: SeatRow; bigBlindSeat: SeatRow } {
-  const dealerIdx = orderedSeats.findIndex(
-    (s) => s.id === game.dealerButtonSeatId,
+  const smallBlindSeat = getNextActiveSeatId(
+    orderedSeats,
+    game.dealerButtonSeatId!,
   );
-  const n = orderedSeats.length;
+  const bigBlindSeat = getNextActiveSeatId(orderedSeats, smallBlindSeat);
   return {
-    smallBlindSeat: orderedSeats[pickNextIndex(dealerIdx, n)]!,
-    bigBlindSeat: orderedSeats[pickNextIndex(dealerIdx + 1, n)]!,
+    smallBlindSeat: orderedSeats.find((s) => s.id === smallBlindSeat)!,
+    bigBlindSeat: orderedSeats.find((s) => s.id === bigBlindSeat)!,
   };
 }
 
@@ -611,9 +610,12 @@ export const tableRouter = createTRPCRouter({
         });
         if (!table) throw new Error("Table not found");
 
-        // Get all seats who still have money
+        // Get all seats who still have enough money to play
         const orderedSeats = await tx.query.seats.findMany({
-          where: and(eq(seats.tableId, input.tableId), gt(seats.buyIn, 0)),
+          where: and(
+            eq(seats.tableId, input.tableId),
+            gt(seats.buyIn, table.bigBlind),
+          ),
           orderBy: (s, { asc }) => [asc(s.seatNumber)],
         });
         const n = orderedSeats.length;
@@ -649,6 +651,7 @@ export const tableRouter = createTRPCRouter({
 
         if (input.action === "START_GAME") {
           if (!isDealerCaller) throw new Error("Only dealer can START_GAME");
+          // Default dealer is the first seat
           let dealerButtonSeatId = orderedSeats[0]!.id;
 
           // Reset all seats and mark current game as completed (if exists)
@@ -657,9 +660,7 @@ export const tableRouter = createTRPCRouter({
           // If there was a previous game, progress the dealer button
           const prevButton = game?.dealerButtonSeatId;
           if (prevButton) {
-            const prevIdx = orderedSeats.findIndex((s) => s.id === prevButton);
-            dealerButtonSeatId =
-              orderedSeats[pickNextIndex(prevIdx, orderedSeats.length)]!.id;
+            dealerButtonSeatId = getNextActiveSeatId(orderedSeats, prevButton);
           }
 
           game = await createNewGame(
@@ -774,7 +775,7 @@ export const tableRouter = createTRPCRouter({
           .set({ betCount: sql`${games.betCount} + 1` })
           .where(eq(games.id, game.id));
         game.betCount += 1;
-        const nextSeatId = rotateToNextActiveSeatId(orderedSeats, actorSeat.id);
+        const nextSeatId = getNextActiveSeatId(orderedSeats, actorSeat.id);
         await tx
           .update(games)
           .set({ assignedSeatId: nextSeatId })
@@ -821,18 +822,16 @@ export const tableRouter = createTRPCRouter({
         orderBy: (g, { desc }) => [desc(g.createdAt)],
       });
 
-      // Build where conditions: events for this table where
-      // (gameId is null OR gameId == activeGame.id). If no active game, include only table-level events.
-      const after = input.afterId ?? null;
+      if (!activeGame) {
+        return { events: [] };
+      }
 
+      const after = input.afterId ?? null;
       const rows = await db.query.gameEvents.findMany({
-        where: (ge, { eq: _eq, or, and: _and, isNull, gt }) =>
+        where: (ge, { eq: _eq, and: _and, gt }) =>
           _and(
             _eq(ge.tableId, input.tableId),
-            or(
-              isNull(ge.gameId),
-              activeGame ? _eq(ge.gameId, activeGame.id) : isNull(ge.gameId),
-            ),
+            _eq(ge.gameId, activeGame.id),
             after ? gt(ge.id, after) : _eq(ge.id, ge.id),
           ),
         orderBy: (ge, { asc }) => [asc(ge.id)],

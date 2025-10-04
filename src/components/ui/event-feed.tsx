@@ -27,9 +27,17 @@ export function EventFeed({
     events: EventRow[];
     seats: SeatWithPlayer[];
 }) {
+    const scrollRef = React.useRef<HTMLDivElement>(null);
+
+    React.useEffect(() => {
+        const el = scrollRef.current;
+        if (!el) return;
+        el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+    }, [events.length]);
+
     return (
         <div className="rounded-xl overflow-hidden shadow-2xl w-full h-40 border border-zinc-600/50 bg-zinc-900/50 backdrop-blur">
-            <div className="h-full w-full overflow-y-auto">
+            <div ref={scrollRef} className="h-full w-full overflow-y-auto">
                 <ul className="divide-y divide-zinc-800">
                     {events.map((ev) => (
                         <li key={ev.id} className="px-2 py-1 text-xs text-zinc-200">

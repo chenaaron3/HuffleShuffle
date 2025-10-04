@@ -10,10 +10,13 @@ type SeatRow = typeof seats.$inferSelect;
 type GameRow = typeof games.$inferSelect;
 
 // --- Helper utilities ---
-export const pickNextIndex = (currentIndex: number, total: number) =>
+const pickNextIndex = (currentIndex: number, total: number) =>
   (currentIndex + 1) % total;
 
-export const rotateToNextActiveSeatId = (
+// The input seats don't have to all be active since the
+// current seat can be inactive. This finds the first active
+// seat after the current seat.
+export const getNextActiveSeatId = (
   orderedSeats: Array<SeatRow>,
   currentSeatId: string,
 ) => {
@@ -30,12 +33,13 @@ export const rotateToNextActiveSeatId = (
   return orderedSeats[idx]!.id;
 };
 
-export const fetchOrderedSeats = async (
+// Fetch all seats to be safe and filter by actives later
+export const fetchAllSeatsInOrder = async (
   tx: { query: typeof db.query; update: typeof db.update },
   tableId: string,
 ): Promise<SeatRow[]> => {
   return await tx.query.seats.findMany({
-    where: and(eq(seats.tableId, tableId), eq(seats.isActive, true)),
+    where: eq(seats.tableId, tableId),
     orderBy: (s, { asc }) => [asc(s.seatNumber)],
   });
 };
@@ -75,82 +79,81 @@ export async function mergeBetsIntoPotGeneric(
   };
 }
 
+// Check if more players needs cards. If so, rotate to the next player
+// After all hole cards are dealt, start a new betting round
+// Player after big blind starts first
 export async function ensureHoleCardsProgression(
   tx: { query: typeof db.query; update: typeof db.update },
   tableId: string,
   gameObj: GameRow,
+  orderedSeats: SeatRow[],
   currentSeatId: string,
-  dealerButtonSeatId: string,
-  n: number,
-): Promise<GameRow> {
-  const freshSeats = await fetchOrderedSeats(tx, tableId);
-  const allHaveTwo = freshSeats.every((s: SeatRow) => s.cards.length >= 2);
+): Promise<void> {
+  // Check if all active players have two cards
+  const allHaveTwo = orderedSeats
+    .filter((s: SeatRow) => s.isActive)
+    .every((s: SeatRow) => s.cards.length >= 2);
   if (!allHaveTwo) {
-    const nextSeatId = rotateToNextActiveSeatId(freshSeats, currentSeatId);
+    const nextSeatId = getNextActiveSeatId(orderedSeats, currentSeatId);
     await tx
       .update(games)
       .set({ assignedSeatId: nextSeatId })
       .where(eq(games.id, gameObj.id));
-    return { ...gameObj, assignedSeatId: nextSeatId };
+  } else {
+    // Initialize betting round with non-contiguous active seats:
+    // small blind is next active after dealer, big blind next after small blind,
+    // first to act (UTG) is next active after big blind.
+    const smallBlindSeatId = getNextActiveSeatId(
+      orderedSeats,
+      gameObj.dealerButtonSeatId!,
+    );
+    const bigBlindSeatId = getNextActiveSeatId(orderedSeats, smallBlindSeatId);
+    const firstToActId = getNextActiveSeatId(orderedSeats, bigBlindSeatId);
+    await startBettingRound(tx, tableId, gameObj, orderedSeats, firstToActId);
   }
-  // Initialize betting round: preflop first actor is left of big blind
-  const dealerIdx = freshSeats.findIndex(
-    (s: SeatRow) => s.id === dealerButtonSeatId,
-  );
-  const bigBlindIdx = (dealerIdx + 2) % n;
-  const firstToAct = freshSeats[(bigBlindIdx + 1) % n]!;
-  const activeCount = activeCountOf(freshSeats);
-  await tx
-    .update(games)
-    .set({
-      state: "BETTING",
-      assignedSeatId: firstToAct.id,
-      betCount: 0,
-      requiredBetCount: activeCount,
-    })
-    .where(eq(games.id, gameObj.id));
-  // Clear lastAction for all seats at the start of the next betting round
-  for (const s of freshSeats) {
-    await tx.update(seats).set({ lastAction: null }).where(eq(seats.id, s.id));
-    s.lastAction = null as any;
-  }
-  return {
-    ...gameObj,
-    state: "BETTING",
-    assignedSeatId: firstToAct.id,
-    betCount: 0,
-    requiredBetCount: activeCount,
-  };
 }
 
+// After flop, turn, or river is dealt, start a new betting round
+// The person after the dealer always starts
 export async function ensurePostflopProgression(
   tx: { query: typeof db.query; update: typeof db.update },
   tableId: string,
   gameObj: GameRow,
-  dealerButtonSeatId: string,
-  n: number,
+  orderedSeats: Array<SeatRow>,
 ): Promise<void> {
-  const freshSeats = await fetchOrderedSeats(tx, tableId);
-  // Postflop: start left of dealer button
-  const dealerIdx = freshSeats.findIndex(
-    (s: SeatRow) => s.id === dealerButtonSeatId,
+  // Postflop: start with next active seat left of dealer button
+  const firstToActId = getNextActiveSeatId(
+    orderedSeats,
+    gameObj.dealerButtonSeatId!,
   );
-  const firstToAct = freshSeats[(dealerIdx + 1) % n]!;
-  const activeCount = activeCountOf(freshSeats);
+  await startBettingRound(tx, tableId, gameObj, orderedSeats, firstToActId);
+}
+
+// Start the betting round by transitioning the state
+// and resetting the betting count
+// Also reset the last action for fresh bet statuses
+async function startBettingRound(
+  tx: { query: typeof db.query; update: typeof db.update },
+  tableId: string,
+  gameObj: GameRow,
+  orderedSeats: Array<SeatRow>,
+  firstToActId: string,
+): Promise<void> {
+  const activeCount = activeCountOf(orderedSeats);
   await tx
     .update(games)
     .set({
       state: "BETTING",
-      assignedSeatId: firstToAct.id,
+      assignedSeatId: firstToActId,
       betCount: 0,
       requiredBetCount: activeCount,
     })
     .where(eq(games.id, gameObj.id));
   // Clear lastAction for all seats at the start of the next betting round
-  for (const s of freshSeats) {
-    await tx.update(seats).set({ lastAction: null }).where(eq(seats.id, s.id));
-    s.lastAction = null as any;
-  }
+  await tx
+    .update(seats)
+    .set({ lastAction: null })
+    .where(eq(seats.tableId, tableId));
 }
 
 // Card dealing logic that can be shared between consumer and table router
@@ -160,16 +163,16 @@ export async function dealCard(
   game: GameRow,
   cardCode: string,
 ): Promise<void> {
-  const orderedSeats = await fetchOrderedSeats(tx, tableId);
-
+  // Must be dealing cards to active seats
+  const orderedSeats = await fetchAllSeatsInOrder(tx, tableId);
   // Check if card already dealt
   const seen = new Set<string>();
   orderedSeats.forEach((s) => s.cards.forEach((c) => seen.add(c)));
   (game.communityCards ?? []).forEach((c) => seen.add(c));
   if (seen.has(cardCode)) throw new Error("Card already dealt");
 
-  const n = orderedSeats.length;
   if (game.state === "DEAL_HOLE_CARDS") {
+    // Get the assigned seat to deal to
     if (!game.assignedSeatId) {
       throw new Error("No assigned seat for dealing hole cards");
     }
@@ -177,67 +180,53 @@ export async function dealCard(
     if (!seat) {
       throw new Error("Assigned seat not found in ordered seats");
     }
+
+    // Add a card to the seat and also update it in memory
     await tx
       .update(seats)
       .set({ cards: sql`array_append(${seats.cards}, ${cardCode})` })
       .where(eq(seats.id, seat.id));
+    seat.cards.push(cardCode);
 
-    await ensureHoleCardsProgression(
-      tx,
-      tableId,
-      game,
-      seat.id,
-      game.dealerButtonSeatId!,
-      n,
-    );
-    return;
-  }
-
-  if (
+    // Continue to next player or move to betting round
+    await ensureHoleCardsProgression(tx, tableId, game, orderedSeats, seat.id);
+  } else if (
     game.state === "DEAL_FLOP" ||
     game.state === "DEAL_TURN" ||
     game.state === "DEAL_RIVER"
   ) {
-    const results = await tx
+    // Update the community card and also update it in memory
+    await tx
       .update(games)
       .set({
         communityCards: sql`array_append(${games.communityCards}, ${cardCode})`,
       })
-      .where(eq(games.id, game.id))
-      .returning();
+      .where(eq(games.id, game.id));
+    game.communityCards.push(cardCode);
 
-    const updatedGame = results?.[0];
-    if (!updatedGame) throw new Error("Failed to update game");
-
-    const cc = updatedGame.communityCards.length;
+    // After reaching a certain number of cards, enter betting round
+    const cc = game.communityCards.length;
     if (
-      (updatedGame.state === "DEAL_FLOP" && cc >= 3) ||
-      (updatedGame.state === "DEAL_TURN" && cc >= 4) ||
-      (updatedGame.state === "DEAL_RIVER" && cc >= 5)
+      (game.state === "DEAL_FLOP" && cc == 3) ||
+      (game.state === "DEAL_TURN" && cc == 4) ||
+      (game.state === "DEAL_RIVER" && cc == 5)
     ) {
       // Emit FLOP/TURN/RIVER event with full community cards
       const payload = {
-        communityAll: updatedGame.communityCards,
+        communityAll: game.communityCards,
       };
-      if (updatedGame.state === "DEAL_FLOP") {
-        await logFlop(tx as any, tableId, updatedGame.id, payload);
-      } else if (updatedGame.state === "DEAL_TURN") {
-        await logTurn(tx as any, tableId, updatedGame.id, payload);
+      if (game.state === "DEAL_FLOP") {
+        await logFlop(tx as any, tableId, game.id, payload);
+      } else if (game.state === "DEAL_TURN") {
+        await logTurn(tx as any, tableId, game.id, payload);
       } else {
-        await logRiver(tx as any, tableId, updatedGame.id, payload);
+        await logRiver(tx as any, tableId, game.id, payload);
       }
-      await ensurePostflopProgression(
-        tx,
-        tableId,
-        updatedGame,
-        updatedGame.dealerButtonSeatId!,
-        n,
-      );
+      await ensurePostflopProgression(tx, tableId, game, orderedSeats);
     }
-    return;
+  } else {
+    throw new Error("DEAL_CARD not valid in current state");
   }
-
-  throw new Error("DEAL_CARD not valid in current state");
 }
 
 // Shared function to notify clients of table state changes

@@ -2,7 +2,7 @@ import { and, desc, eq, sql } from 'drizzle-orm';
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { createCaller } from '~/server/api/root';
 import { db } from '~/server/db';
-import { games, pokerTables, seats, users } from '~/server/db/schema';
+import { gameEvents, games, pokerTables, seats, users } from '~/server/db/schema';
 
 type ActionName =
   | "START_GAME"
@@ -121,6 +121,7 @@ describe("table scenario harness", () => {
       where: eq(pokerTables.dealerId, dealerId),
     });
     for (const t of tables) {
+      await db.delete(gameEvents).where(eq(gameEvents.tableId, t.id));
       await db.delete(games).where(eq(games.tableId, t.id));
       await db.delete(seats).where(eq(seats.tableId, t.id));
       await db.delete(pokerTables).where(eq(pokerTables.id, t.id));

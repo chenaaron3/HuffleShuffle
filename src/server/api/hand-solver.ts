@@ -2,7 +2,7 @@ import { eq, sql } from 'drizzle-orm';
 
 import { games, seats } from '../db/schema';
 import { logEndGame } from './game-event-logger';
-import { allActiveBetsEqual, fetchOrderedSeats, mergeBetsIntoPotGeneric } from './game-logic';
+import { allActiveBetsEqual, fetchAllSeatsInOrder, mergeBetsIntoPotGeneric } from './game-logic';
 
 const { Hand: PokerHand } = require("pokersolver");
 
@@ -109,12 +109,14 @@ export function findPokerWinners(hands: PokerHandResult[]): PokerHandResult[] {
   }));
 }
 
+// Betting round is finished if there is only one player left
+// or if all bets are equal
 export async function evaluateBettingTransition(
   tx: { query: typeof db.query; update: typeof db.update },
   tableId: string,
   gameObj: GameRow,
 ): Promise<void> {
-  const freshSeats = await fetchOrderedSeats(tx, tableId);
+  const freshSeats = await fetchAllSeatsInOrder(tx, tableId);
   const activeSeats = freshSeats.filter((s: SeatRow) => s.isActive);
   const singleActive = activeSeats.length === 1;
   const allEqual = allActiveBetsEqual(freshSeats);
