@@ -43,34 +43,37 @@ const summarizeTable = async (
   client: DB,
   tableId: string,
 ): Promise<TableSnapshot> => {
-  const table = await client.query.pokerTables.findFirst({
+  const snapshot = await client.query.pokerTables.findFirst({
     where: eq(pokerTables.id, tableId),
-  });
-  const game = await client.query.games.findFirst({
-    where: eq(games.tableId, tableId),
-    orderBy: (g, { desc }) => [desc(g.createdAt)],
-  });
-  const tableSeats = await client.query.seats.findMany({
-    where: eq(seats.tableId, tableId),
-    orderBy: (s, { asc }) => [asc(s.seatNumber)],
     with: {
-      player: {
-        columns: {
-          id: true,
-          name: true,
+      games: {
+        orderBy: (g, { desc }) => [desc(g.createdAt)],
+        limit: 1,
+      },
+      seats: {
+        orderBy: (s, { asc }) => [asc(s.seatNumber)],
+        with: {
+          player: {
+            columns: {
+              id: true,
+              name: true,
+            },
+          },
         },
       },
     },
   });
-  if (!table) throw new Error("Table not found");
+  if (!snapshot) throw new Error("Table not found");
+  const latestGame = snapshot.games[0] ?? null;
+  const tableSeats = snapshot.seats;
   // Determine if table is joinable
-  const isJoinable = !game || game.isCompleted;
-  const availableSeats = table?.maxSeats - tableSeats.length;
+  const isJoinable = !latestGame || latestGame.isCompleted;
+  const availableSeats = snapshot.maxSeats - tableSeats.length;
 
   return {
-    table: table,
+    table: snapshot,
     seats: tableSeats,
-    game: game ?? null,
+    game: latestGame,
     isJoinable,
     availableSeats,
   };
@@ -328,35 +331,29 @@ export const tableRouter = createTRPCRouter({
   list: publicProcedure.query(async () => {
     const rows = await db.query.pokerTables.findMany({
       orderBy: (t, { asc }) => [asc(t.createdAt)],
+      with: {
+        games: { orderBy: (g, { desc }) => [desc(g.createdAt)], limit: 1 },
+        seats: { columns: { id: true } },
+      },
     });
 
-    return Promise.all(
-      rows.map(async (t) => {
-        // Get current game and seat count for each table
-        const game = await db.query.games.findFirst({
-          where: eq(games.tableId, t.id),
-          orderBy: (g, { desc }) => [desc(g.createdAt)],
-        });
+    return rows.map((t) => {
+      const latestGame = t.games[0] ?? null;
+      const isJoinable = !latestGame || latestGame.isCompleted;
+      const playerCount = t.seats.length;
+      const availableSeats = t.maxSeats - playerCount;
 
-        const seatCount = await db.query.seats.findMany({
-          where: eq(seats.tableId, t.id),
-        });
-
-        const isJoinable = !game || game.isCompleted;
-        const availableSeats = t.maxSeats - seatCount.length;
-
-        return {
-          id: t.id,
-          name: t.name,
-          smallBlind: t.smallBlind,
-          bigBlind: t.bigBlind,
-          maxSeats: t.maxSeats,
-          isJoinable,
-          availableSeats,
-          playerCount: seatCount.length,
-        };
-      }),
-    );
+      return {
+        id: t.id,
+        name: t.name,
+        smallBlind: t.smallBlind,
+        bigBlind: t.bigBlind,
+        maxSeats: t.maxSeats,
+        isJoinable,
+        availableSeats,
+        playerCount,
+      };
+    });
   }),
   create: protectedProcedure
     .input(
@@ -413,24 +410,21 @@ export const tableRouter = createTRPCRouter({
       });
       if (!user) throw new Error("User not found");
       const result = await db.transaction(async (tx) => {
-        const table = await tx.query.pokerTables.findFirst({
+        const snapshot = await tx.query.pokerTables.findFirst({
           where: eq(pokerTables.id, input.tableId),
+          with: {
+            games: { orderBy: (g, { desc }) => [desc(g.createdAt)], limit: 1 },
+            seats: { columns: { seatNumber: true } },
+          },
         });
-        if (!table) throw new Error("Table not found");
-
-        const activeGame = await tx.query.games.findFirst({
-          where: and(
-            eq(games.tableId, input.tableId),
-            eq(games.isCompleted, false),
-          ),
-        });
-        if (activeGame) throw new Error("Cannot join: game already active");
+        if (!snapshot) throw new Error("Table not found");
+        const latestGame = snapshot.games[0] ?? null;
+        if (latestGame && !latestGame.isCompleted)
+          throw new Error("Cannot join: game already active");
 
         // Seat auto-assign: next index based on count
-        const existingSeats = await tx.query.seats.findMany({
-          where: eq(seats.tableId, input.tableId),
-        });
-        if (existingSeats.length >= table.maxSeats)
+        const existingSeats = snapshot.seats;
+        if (existingSeats.length >= snapshot.maxSeats)
           throw new Error("Table is full");
 
         if (user.balance < input.buyIn)
@@ -441,7 +435,7 @@ export const tableRouter = createTRPCRouter({
           existingSeats.map((seat) => seat.seatNumber),
         );
         let seatNumber = -1;
-        for (let i = 0; i < table.maxSeats; i++) {
+        for (let i = 0; i < snapshot.maxSeats; i++) {
           if (!occupiedSeatNumbers.has(i)) {
             seatNumber = i;
             break;
@@ -554,15 +548,13 @@ export const tableRouter = createTRPCRouter({
         });
         if (!seat) throw new Error("Seat not found");
 
-        const active = await tx.query.games.findFirst({
-          where: and(
-            eq(games.tableId, input.tableId),
-            eq(games.isCompleted, false),
-          ),
+        const latest = await tx.query.games.findFirst({
+          where: eq(games.tableId, input.tableId),
+          orderBy: (g, { desc }) => [desc(g.createdAt)],
         });
         // Allow leaving if table is joinable (no active game or game is completed)
         // This matches the isJoinable logic: !game || game.isCompleted
-        if (active && active.isCompleted === false) {
+        if (latest && latest.isCompleted === false) {
           throw new Error("Cannot leave during an active hand");
         }
 
@@ -605,31 +597,27 @@ export const tableRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
       await db.transaction(async (tx) => {
-        const table = await tx.query.pokerTables.findFirst({
+        const snapshot = await tx.query.pokerTables.findFirst({
           where: eq(pokerTables.id, input.tableId),
+          with: {
+            games: { orderBy: (g, { desc }) => [desc(g.createdAt)], limit: 1 },
+            seats: { orderBy: (s, { asc }) => [asc(s.seatNumber)] },
+          },
         });
-        if (!table) throw new Error("Table not found");
-
-        // Get all seats who still have enough money to play
-        const orderedSeats = await tx.query.seats.findMany({
-          where: and(
-            eq(seats.tableId, input.tableId),
-            gt(seats.buyIn, table.bigBlind),
-          ),
-          orderBy: (s, { asc }) => [asc(s.seatNumber)],
-        });
+        if (!snapshot) throw new Error("Table not found");
+        const orderedSeats = snapshot.seats.filter(
+          (s) => s.buyIn > snapshot.bigBlind,
+        );
         const n = orderedSeats.length;
         if (n < 2 && input.action === "START_GAME")
           throw new Error("Need at least 2 players to start");
 
-        let game = await tx.query.games.findFirst({
-          where: and(
-            eq(games.tableId, input.tableId),
-            eq(games.isCompleted, false),
-          ),
-        });
+        let game =
+          snapshot.games[0] && !snapshot.games[0].isCompleted
+            ? snapshot.games[0]
+            : null;
 
-        const isDealerCaller = table.dealerId === userId;
+        const isDealerCaller = snapshot.dealerId === userId;
 
         const toCardCode = (rank?: string, suit?: string) => {
           if (!rank || !suit) throw new Error("rank and suit required");
@@ -665,7 +653,7 @@ export const tableRouter = createTRPCRouter({
 
           game = await createNewGame(
             tx,
-            table,
+            snapshot,
             orderedSeats,
             dealerButtonSeatId,
           );

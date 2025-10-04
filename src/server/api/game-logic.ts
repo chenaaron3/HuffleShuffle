@@ -5,7 +5,6 @@ import { pusher } from '~/server/pusher';
 
 import { logFlop, logRiver, logTurn } from './game-event-logger';
 
-type DB = typeof db;
 type SeatRow = typeof seats.$inferSelect;
 type GameRow = typeof games.$inferSelect;
 

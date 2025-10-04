@@ -267,10 +267,7 @@ export const gameEvents = createTable(
       .default(sql`CURRENT_TIMESTAMP`),
   }),
   (t) => [
-    index("game_event_table_order_idx").on(t.tableId, t.id),
-    index("game_event_game_order_idx").on(t.gameId, t.id),
     index("game_event_table_game_order_idx").on(t.tableId, t.gameId, t.id),
-    index("game_event_type_idx").on(t.type),
   ],
 );
 
