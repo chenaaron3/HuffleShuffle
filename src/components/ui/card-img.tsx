@@ -50,9 +50,6 @@ export function CardImage({
     const src = cardCodeToFilename(code, compact);
     if (!src) return null;
 
-    // Scale size by 1.2 if compact is true
-    const scaledSize = compact ? Math.round(size * 1.2) : size;
-
     const baseClasses = "select-none rounded-sm shadow [image-rendering:auto]";
     const highlightedClasses = highlighted
         ? "ring-2 ring-yellow-400 ring-opacity-75 shadow-lg shadow-yellow-400/50"
@@ -67,8 +64,8 @@ export function CardImage({
             <img
                 src={src}
                 alt={code}
-                width={scaledSize}
-                height={Math.round(scaledSize * 1.4)}
+                width={size}
+                height={Math.round(size * 1.4)}
                 className={`${baseClasses} ${highlightedClasses} ${className ?? ''}`}
                 draggable={false}
             />
