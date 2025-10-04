@@ -1,4 +1,4 @@
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq, gt, isNull, or, sql } from 'drizzle-orm';
 import { AccessToken } from 'livekit-server-sdk';
 import { z } from 'zod';
 import { createTRPCRouter, protectedProcedure, publicProcedure } from '~/server/api/trpc';
@@ -611,7 +611,11 @@ export const tableRouter = createTRPCRouter({
         });
         if (!table) throw new Error("Table not found");
 
-        const orderedSeats = await fetchOrderedSeats(tx, input.tableId);
+        // Get all seats who still have money
+        const orderedSeats = await tx.query.seats.findMany({
+          where: and(eq(seats.tableId, input.tableId), gt(seats.buyIn, 0)),
+          orderBy: (s, { asc }) => [asc(s.seatNumber)],
+        });
         const n = orderedSeats.length;
         if (n < 2 && input.action === "START_GAME")
           throw new Error("Need at least 2 players to start");
@@ -795,5 +799,45 @@ export const tableRouter = createTRPCRouter({
     .query(async ({ ctx, input }) => {
       const snapshot = await summarizeTable(db, input.tableId);
       return redactSnapshotForUser(snapshot, ctx.session.user.id);
+    }),
+
+  // Returns a delta of events since `afterId` (exclusive) for the latest active game on the table,
+  // plus table-level events (gameId null). If afterId is null, returns all events for the latest active game
+  // and table-level events.
+  eventsDelta: protectedProcedure
+    .input(
+      z.object({
+        tableId: z.string(),
+        afterId: z.number().int().positive().nullable().optional(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      // Latest active game for the table (may be null)
+      const activeGame = await db.query.games.findFirst({
+        where: and(
+          eq(games.tableId, input.tableId),
+          eq(games.isCompleted, false),
+        ),
+        orderBy: (g, { desc }) => [desc(g.createdAt)],
+      });
+
+      // Build where conditions: events for this table where
+      // (gameId is null OR gameId == activeGame.id). If no active game, include only table-level events.
+      const after = input.afterId ?? null;
+
+      const rows = await db.query.gameEvents.findMany({
+        where: (ge, { eq: _eq, or, and: _and, isNull, gt }) =>
+          _and(
+            _eq(ge.tableId, input.tableId),
+            or(
+              isNull(ge.gameId),
+              activeGame ? _eq(ge.gameId, activeGame.id) : isNull(ge.gameId),
+            ),
+            after ? gt(ge.id, after) : _eq(ge.id, ge.id),
+          ),
+        orderBy: (ge, { asc }) => [asc(ge.id)],
+      });
+
+      return { events: rows };
     }),
 });

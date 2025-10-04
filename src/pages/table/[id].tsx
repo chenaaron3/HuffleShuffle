@@ -5,8 +5,10 @@ import * as React from 'react';
 import { TableAnimation } from '~/components/TableAnimation';
 import { TableSetupModal } from '~/components/TableSetupModal';
 import { DealerCamera } from '~/components/ui/dealer-camera';
+import { EventFeed } from '~/components/ui/event-feed';
 import { HandCamera } from '~/components/ui/hand-camera';
 import { SeatSection } from '~/components/ui/seat-section';
+import { useTableEvents } from '~/hooks/use-table-events';
 import { api } from '~/utils/api';
 import { rsaDecryptBase64 } from '~/utils/crypto';
 import { disconnectPusherClient, getPusherClient } from '~/utils/pusher-client';
@@ -74,6 +76,9 @@ export default function TableView() {
 
     const currentSeat = originalSeats.find((s: SeatWithPlayer) => s.playerId === session?.user?.id) as SeatWithPlayer | undefined;
     const [handRoomName, setHandRoomName] = React.useState<string | null>(null);
+
+    // --- Event feed managed by hook ---
+    const { events } = useTableEvents({ tableId: id, activeGameId: snapshot?.game?.id ?? null });
 
     // Memoize winning cards calculation to prevent unnecessary re-renders
     const allWinningCards = React.useMemo(() => {
@@ -292,11 +297,17 @@ export default function TableView() {
                                     isLeaving={leaveMutation.isPending}
                                 />
 
-                                {/* Hand Camera - Centered */}
-                                <HandCamera
-                                    tableId={tableIdStr}
-                                    roomName={handRoomName}
-                                />
+                                {/* Hand area: grid layout -> [1fr auto 1fr]; camera centered by auto column */}
+                                <div className="grid w-full grid-cols-[1fr_auto_1fr] items-start gap-3">
+                                    <div className="min-w-0">
+                                        <EventFeed events={events} seats={originalSeats as any} />
+                                    </div>
+                                    <HandCamera
+                                        tableId={tableIdStr}
+                                        roomName={handRoomName}
+                                    />
+                                    <div />
+                                </div>
                             </div>
 
                             {/* Right side seats (5, 6, 7, 8) */}
