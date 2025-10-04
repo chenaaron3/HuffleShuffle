@@ -271,6 +271,7 @@ function SeatCard({
                                 gameState={gameState}
                                 winningCards={seat.winningCards ?? undefined}
                                 seatId={seat.id}
+                                compact={true}
                             />
                         );
                     })}

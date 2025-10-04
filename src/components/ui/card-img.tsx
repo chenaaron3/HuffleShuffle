@@ -1,5 +1,5 @@
 
-export function cardCodeToFilename(code: string): string | null {
+export function cardCodeToFilename(code: string, compact: boolean = false): string | null {
     if (!code || code.length < 2) return null;
     // Facedown placeholder
     if (code === "FD") return "/cards/facedown-of-blue.svg";
@@ -29,7 +29,9 @@ export function cardCodeToFilename(code: string): string | null {
     const r = rankMap[rank ?? ""];
     const s = suitMap[suit ?? ""];
     if (!r || !s) return null;
-    return `/cards/${r}-of-${s}.svg`;
+    const folder = compact ? "compact_cards" : "cards";
+    const extension = compact ? "png" : "svg";
+    return `/${folder}/${r}-of-${s}.${extension}`;
 }
 
 export function CardImage({
@@ -37,14 +39,19 @@ export function CardImage({
     size = 28,
     className,
     highlighted = false,
+    compact = false,
 }: {
     code: string;
     size?: number;
     className?: string;
     highlighted?: boolean;
+    compact?: boolean;
 }) {
-    const src = cardCodeToFilename(code);
+    const src = cardCodeToFilename(code, compact);
     if (!src) return null;
+
+    // Scale size by 1.2 if compact is true
+    const scaledSize = compact ? Math.round(size * 1.2) : size;
 
     const baseClasses = "select-none rounded-sm shadow [image-rendering:auto]";
     const highlightedClasses = highlighted
@@ -60,8 +67,8 @@ export function CardImage({
             <img
                 src={src}
                 alt={code}
-                width={size}
-                height={Math.round(size * 1.4)}
+                width={scaledSize}
+                height={Math.round(scaledSize * 1.4)}
                 className={`${baseClasses} ${highlightedClasses} ${className ?? ''}`}
                 draggable={false}
             />

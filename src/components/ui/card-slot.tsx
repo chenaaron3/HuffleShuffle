@@ -10,6 +10,7 @@ interface CardSlotProps {
     gameState?: string;
     winningCards?: string[];
     seatId?: string;
+    compact?: boolean;
 }
 
 export function CardSlot({
@@ -19,7 +20,8 @@ export function CardSlot({
     highlighted = false,
     gameState,
     winningCards,
-    seatId
+    seatId,
+    compact = false
 }: CardSlotProps) {
     const isEmpty = !card;
 
@@ -64,6 +66,7 @@ export function CardSlot({
                             highlighted={highlighted || (gameState === 'SHOWDOWN' &&
                                 Array.isArray(winningCards) &&
                                 winningCards.some(wc => wc.toUpperCase() === card.toUpperCase()))}
+                            compact={compact}
                         />
                     </motion.div>
                 </AnimatePresence>
