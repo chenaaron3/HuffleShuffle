@@ -1,6 +1,7 @@
 import { eq, sql } from 'drizzle-orm';
 
 import { games, seats } from '../db/schema';
+import { logEndGame } from './game-event-logger';
 import { allActiveBetsEqual, fetchOrderedSeats, mergeBetsIntoPotGeneric } from './game-logic';
 
 const { Hand: PokerHand } = require("pokersolver");
@@ -214,6 +215,16 @@ export async function evaluateBettingTransition(
         })
         .where(eq(seats.id, handData.seatId));
     }
+
+    // Emit End Game event with winners
+    await logEndGame(tx as any, tableId, updatedGame.id, {
+      winners: winnerSeatIds.map((sid, i) => ({
+        seatId: sid,
+        amount: share,
+        handType: winners[i % winners.length]?.name,
+        cards: winners[i % winners.length]?.cards,
+      })),
+    });
 
     // Set game to showdown state
     await tx

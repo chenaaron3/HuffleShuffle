@@ -233,6 +233,46 @@ export const games = createTable(
   ],
 );
 
+// --- Game events (append-only log) ---
+export const gameEventEnum = pgEnum("game_event_type", [
+  "START_GAME",
+  "RAISE",
+  "CALL",
+  "CHECK",
+  "FOLD",
+  "FLOP",
+  "TURN",
+  "RIVER",
+  "END_GAME",
+]);
+
+export const gameEvents = createTable(
+  "game_event",
+  (d) => ({
+    id: d.bigserial({ mode: "number" }).primaryKey(),
+    tableId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => pokerTables.id),
+    gameId: d.varchar({ length: 255 }).references(() => games.id),
+    type: gameEventEnum("type").notNull(),
+    details: d
+      .jsonb()
+      .notNull()
+      .default(sql`'{}'::jsonb`),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP`),
+  }),
+  (t) => [
+    index("game_event_table_order_idx").on(t.tableId, t.id),
+    index("game_event_game_order_idx").on(t.gameId, t.id),
+    index("game_event_table_game_order_idx").on(t.tableId, t.gameId, t.id),
+    index("game_event_type_idx").on(t.type),
+  ],
+);
+
 // Relations
 export const pokerTablesRelations = relations(pokerTables, ({ one, many }) => ({
   dealer: one(users, {

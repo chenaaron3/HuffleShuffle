@@ -10,7 +10,10 @@ import {
 } from '~/server/db/schema';
 
 import {
-    dealCard, notifyTableUpdate, pickNextIndex, rotateToNextActiveSeatId
+    logCall, logCheck, logEndGame, logFold, logRaise, logStartGame
+} from '../game-event-logger';
+import {
+    dealCard, fetchOrderedSeats, notifyTableUpdate, pickNextIndex, rotateToNextActiveSeatId
 } from '../game-logic';
 import { evaluateBettingTransition } from '../hand-solver';
 
@@ -198,7 +201,7 @@ async function createNewGame(
   table: TableRow,
   orderedSeats: Array<SeatRow>,
   dealerButtonSeatId: string,
-): Promise<void> {
+): Promise<GameRow> {
   // Validate that all players have enough chips to participate
   const minimumBet = table.bigBlind; // Players need at least the big blind amount
   const playersWithInsufficientChips = orderedSeats.filter(
@@ -251,6 +254,7 @@ async function createNewGame(
       assignedSeatId: smallBlindSeat.id,
     })
     .where(eq(games.id, game.id));
+  return game;
 }
 
 export const tableRouter = createTRPCRouter({
@@ -614,10 +618,7 @@ export const tableRouter = createTRPCRouter({
         });
         if (!table) throw new Error("Table not found");
 
-        const orderedSeats = await tx.query.seats.findMany({
-          where: eq(seats.tableId, input.tableId),
-          orderBy: (s, { asc }) => [asc(s.seatNumber)],
-        });
+        const orderedSeats = await fetchOrderedSeats(tx, input.tableId);
         const n = orderedSeats.length;
         if (n < 2 && input.action === "START_GAME")
           throw new Error("Need at least 2 players to start");
@@ -641,6 +642,10 @@ export const tableRouter = createTRPCRouter({
           // If there was a previous game, mark it as complete
           if (game) {
             await resetGame(tx, game, orderedSeats, true); // Reset buyIn to startingBalance
+            // End game with no winners
+            await logEndGame(tx, input.tableId, game.id, {
+              winners: [],
+            });
           }
           return { ok: true } as const;
         }
@@ -660,7 +665,15 @@ export const tableRouter = createTRPCRouter({
               orderedSeats[pickNextIndex(prevIdx, orderedSeats.length)]!.id;
           }
 
-          await createNewGame(tx, table, orderedSeats, dealerButtonSeatId);
+          game = await createNewGame(
+            tx,
+            table,
+            orderedSeats,
+            dealerButtonSeatId,
+          );
+          await logStartGame(tx as any, input.tableId, game.id, {
+            dealerButtonSeatId,
+          });
           return { ok: true } as const;
         }
 
@@ -678,6 +691,8 @@ export const tableRouter = createTRPCRouter({
         // Player actions require assigned seat
         const actorSeat = orderedSeats.find((s) => s.playerId === userId);
         if (!actorSeat) throw new Error("Actor has no seat at this table");
+        if (!actorSeat.isActive)
+          throw new Error("Seat is inactive and cannot act");
 
         if (game.state !== "BETTING")
           throw new Error("Player actions only allowed in BETTING");
@@ -711,6 +726,11 @@ export const tableRouter = createTRPCRouter({
             .where(eq(seats.id, actorSeat.id));
           actorSeat.buyIn -= total;
           actorSeat.currentBet += total;
+          await logRaise(tx as any, input.tableId, game.id, {
+            seatId: actorSeat.id,
+            amount,
+            added: total,
+          });
         } else if (input.action === "CHECK") {
           const need = maxBet - actorSeat.currentBet;
           if (need > 0) {
@@ -725,6 +745,13 @@ export const tableRouter = createTRPCRouter({
               .where(eq(seats.id, actorSeat.id));
             actorSeat.buyIn -= need;
             actorSeat.currentBet += need;
+            await logCall(tx as any, input.tableId, game.id, {
+              seatId: actorSeat.id,
+            });
+          } else {
+            await logCheck(tx as any, input.tableId, game.id, {
+              seatId: actorSeat.id,
+            });
           }
         } else if (input.action === "FOLD") {
           await tx
@@ -732,6 +759,9 @@ export const tableRouter = createTRPCRouter({
             .set({ isActive: false })
             .where(eq(seats.id, actorSeat.id));
           actorSeat.isActive = false;
+          await logFold(tx as any, input.tableId, game.id, {
+            seatId: actorSeat.id,
+          });
         }
 
         // Increment betCount and rotate assigned player

@@ -1,7 +1,9 @@
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq, isNotNull, sql } from 'drizzle-orm';
 import { db } from '~/server/db';
 import { games, seats } from '~/server/db/schema';
 import { pusher } from '~/server/pusher';
+
+import { logFlop, logRiver, logTurn } from './game-event-logger';
 
 type DB = typeof db;
 type SeatRow = typeof seats.$inferSelect;
@@ -33,7 +35,7 @@ export const fetchOrderedSeats = async (
   tableId: string,
 ): Promise<SeatRow[]> => {
   return await tx.query.seats.findMany({
-    where: eq(seats.tableId, tableId),
+    where: and(eq(seats.tableId, tableId), eq(seats.isActive, true)),
     orderBy: (s, { asc }) => [asc(s.seatNumber)],
   });
 };
@@ -157,7 +159,6 @@ export async function dealCard(
   if (seen.has(cardCode)) throw new Error("Card already dealt");
 
   const n = orderedSeats.length;
-
   if (game.state === "DEAL_HOLE_CARDS") {
     if (!game.assignedSeatId) {
       throw new Error("No assigned seat for dealing hole cards");
@@ -204,6 +205,17 @@ export async function dealCard(
       (updatedGame.state === "DEAL_TURN" && cc >= 4) ||
       (updatedGame.state === "DEAL_RIVER" && cc >= 5)
     ) {
+      // Emit FLOP/TURN/RIVER event with full community cards
+      const payload = {
+        communityAll: updatedGame.communityCards,
+      };
+      if (updatedGame.state === "DEAL_FLOP") {
+        await logFlop(tx as any, tableId, updatedGame.id, payload);
+      } else if (updatedGame.state === "DEAL_TURN") {
+        await logTurn(tx as any, tableId, updatedGame.id, payload);
+      } else {
+        await logRiver(tx as any, tableId, updatedGame.id, payload);
+      }
       await ensurePostflopProgression(
         tx,
         tableId,
@@ -219,6 +231,7 @@ export async function dealCard(
 }
 
 // Shared function to notify clients of table state changes
+// Used in TRPC API and also consumer
 export async function notifyTableUpdate(tableId: string): Promise<void> {
   if (!pusher) {
     console.warn("Pusher not configured, skipping table update notification");
