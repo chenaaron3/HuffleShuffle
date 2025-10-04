@@ -14,15 +14,7 @@ export function HandCamera({ tableId, roomName }: HandCameraProps) {
     if (!roomName) {
         return (
             <div
-                className="flex items-center justify-center shadow-2xl"
-                style={{
-                    width: 256,
-                    height: 160,
-                    borderRadius: 14,
-                    border: '1px solid rgba(63,63,70,0.5)',
-                    backgroundColor: 'rgba(24,24,27,0.5)',
-                    backdropFilter: 'blur(8px)'
-                }}
+                className="flex items-center justify-center shadow-2xl w-64 h-40 rounded-xl border border-zinc-600/50 bg-zinc-900/50 backdrop-blur"
             >
                 {/* This means the player doesn't have the local RSA key. They need to rejoin from the same device */}
                 <div className="text-sm text-zinc-500 font-medium text-center">Unable to see your hand</div>
@@ -32,14 +24,7 @@ export function HandCamera({ tableId, roomName }: HandCameraProps) {
 
     return (
         <div
-            className="rounded-xl overflow-hidden shadow-2xl"
-            style={{
-                width: 256,
-                height: "fit-content",
-                border: '1px solid rgba(113,113,122,0.5)',
-                backgroundColor: 'rgba(24,24,27,0.5)',
-                backdropFilter: 'blur(8px)'
-            }}
+            className="rounded-xl overflow-hidden shadow-2xl w-64 h-auto border border-zinc-500/50 bg-zinc-900/50 backdrop-blur"
         >
             <HandCameraView tableId={tableId} roomName={roomName} />
         </div>
@@ -70,8 +55,7 @@ function HandCameraVideoContent() {
     if (!cameraTrack) {
         return (
             <div
-                className="flex items-center justify-center text-sm font-medium"
-                style={{ width: '100%', height: 160, color: 'rgb(161,161,170)' }}
+                className="flex items-center justify-center text-sm font-medium w-full h-40 text-zinc-400"
             >
                 Waiting to see your hand...
             </div>

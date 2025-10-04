@@ -43,51 +43,13 @@ export function ActionButtons({
         }
     }, [state]);
 
-    // Inline button styles to ensure colors/borders render correctly in prod
-    const btnBase: React.CSSProperties = {
-        display: 'inline-flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontWeight: 600,
-        padding: '12px 32px',
-        borderRadius: 12,
-        transition: 'transform 200ms ease, box-shadow 200ms ease',
-        borderWidth: 1,
-        borderStyle: 'solid',
-        cursor: 'pointer',
-        backdropFilter: 'blur(8px)'
-    };
-    const styleGreen: React.CSSProperties = {
-        ...btnBase,
-        color: '#fff',
-        backgroundColor: 'rgba(0,167,82,0.2)',
-        borderColor: 'rgba(5,223,114,0.3)'
-    };
-    const stylePurple: React.CSSProperties = {
-        ...btnBase,
-        color: '#fff',
-        backgroundColor: 'rgba(172,75,255,0.2)',
-        borderColor: 'rgba(192,126,255,0.3)'
-    };
-    const styleRed: React.CSSProperties = {
-        ...btnBase,
-        color: '#fff',
-        backgroundColor: 'rgba(251,44,54,0.2)',
-        borderColor: 'rgba(255,101,104,0.3)'
-    };
-    const styleOrange: React.CSSProperties = {
-        ...btnBase,
-        color: '#fff',
-        backgroundColor: 'rgba(254,110,0,0.2)',
-        borderColor: 'rgba(255,139,26,0.3)'
-    };
+    // Using Tailwind palette utilities for button styling
 
     if (isDealer) {
         return (
             <div className="w-full">
                 <div
-                    className="rounded-2xl shadow-2xl"
-                    style={{ backgroundColor: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', padding: 24, backdropFilter: 'blur(12px)' }}
+                    className="rounded-2xl shadow-2xl bg-black/20 border border-white/10 p-6 backdrop-blur-md"
                 >
                     <div className="flex flex-wrap items-center justify-center gap-4">
                         {/* Game Control Buttons */}
@@ -100,8 +62,7 @@ export function ActionButtons({
                                 }
                             }}
                             disabled={isLoading}
-                            style={styleGreen}
-                            className="transition-all duration-200 hover:scale-105 shadow-2xl"
+                            className="transition-all duration-200 hover:scale-105 shadow-2xl inline-flex items-center justify-center font-semibold px-8 py-3 rounded-xl border text-white bg-green-600/20 border-green-400/30 backdrop-blur"
                         >
                             {isJoinable ? 'Start Game' : 'Reset Table'}
                         </Button>
@@ -110,8 +71,7 @@ export function ActionButtons({
                             <Button
                                 onClick={onRandomCard}
                                 disabled={isLoading || isJoinable || !isDealerTurn}
-                                style={stylePurple}
-                                className="transition-all duration-200 hover:scale-105 shadow-2xl"
+                                className="transition-all duration-200 hover:scale-105 shadow-2xl inline-flex items-center justify-center font-semibold px-8 py-3 rounded-xl border text-white bg-purple-500/20 border-purple-400/30 backdrop-blur"
                             >
                                 {isLoading ? 'Dealing...' : 'Deal Random'}
                             </Button>
@@ -130,8 +90,7 @@ export function ActionButtons({
                 <Button
                     onClick={() => onAction('FOLD')}
                     disabled={isLoading}
-                    style={styleRed}
-                    className="transition-all duration-200 hover:scale-105 min-w-[140px] shadow-2xl flex items-center gap-2"
+                    className="transition-all duration-200 hover:scale-105 min-w-[140px] shadow-2xl flex items-center gap-2 border text-white font-semibold bg-red-600/20 border-red-400/30 backdrop-blur"
                 >
                     <Hand className="w-4 h-4" />
                     {isLoading ? '...' : 'Fold'}
@@ -141,8 +100,7 @@ export function ActionButtons({
                 <Button
                     onClick={() => onAction('CHECK')}
                     disabled={isLoading}
-                    style={styleGreen}
-                    className="transition-all duration-200 hover:scale-105 min-w-[160px] shadow-2xl flex items-center gap-2 px-10 py-4 rounded-2xl"
+                    className="transition-all duration-200 hover:scale-105 min-w-[160px] shadow-2xl flex items-center gap-2 px-10 py-4 rounded-2xl border text-white font-semibold bg-green-600/20 border-green-400/30 backdrop-blur"
                 >
                     <CheckCircle className="w-4 h-4" />
                     {isLoading ? '...' : 'Check'}
@@ -153,13 +111,12 @@ export function ActionButtons({
                     <Button
                         onClick={onRaise}
                         disabled={isLoading}
-                        style={styleOrange}
-                        className="transition-all duration-200 hover:scale-105 min-w-[140px] shadow-2xl flex items-center gap-2 px-8 py-4 rounded-2xl"
+                        className="transition-all duration-200 hover:scale-105 min-w-[140px] shadow-2xl flex items-center gap-2 px-8 py-4 rounded-2xl border text-white font-semibold bg-orange-500/20 border-orange-400/30 backdrop-blur"
                     >
                         <TrendingUp className="w-4 h-4" />
                         {isLoading ? '...' : (
                             <>
-                                Raise <RollingNumber value={raiseAmount} prefix="$" className="font-semibold" />
+                                Raise to <RollingNumber value={raiseAmount} prefix="$" className="font-semibold" />
                             </>
                         )}
                     </Button>

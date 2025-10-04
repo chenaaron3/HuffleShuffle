@@ -53,19 +53,7 @@ export function VerticalRaiseControls({
                 <Button
                     onClick={handleHalfPot}
                     disabled={isLoading || isHalfPotDisabled}
-                    style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontWeight: 500,
-                        padding: '4px 8px',
-                        borderRadius: 8,
-                        border: '1px solid rgba(48,128,255,0.5)',
-                        backgroundColor: 'rgba(48,128,255,0.2)',
-                        color: '#fff',
-                        backdropFilter: 'blur(8px)'
-                    }}
-                    className="flex items-center gap-1 text-xs flex-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="inline-flex items-center gap-1 text-xs flex-1 disabled:opacity-50 disabled:cursor-not-allowed justify-center font-medium px-2 py-1 rounded-lg border border-blue-400/50 bg-blue-500/20 text-white backdrop-blur"
                 >
                     <Target className="w-3 h-3" />
                     ½ Pot
@@ -75,19 +63,7 @@ export function VerticalRaiseControls({
                 <Button
                     onClick={handleFullPot}
                     disabled={isLoading || isFullPotDisabled}
-                    style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontWeight: 500,
-                        padding: '4px 8px',
-                        borderRadius: 8,
-                        border: '1px solid rgba(192,126,255,0.5)',
-                        backgroundColor: 'rgba(172,75,255,0.2)',
-                        color: '#fff',
-                        backdropFilter: 'blur(8px)'
-                    }}
-                    className="flex items-center gap-1 text-xs flex-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="inline-flex items-center gap-1 text-xs flex-1 disabled:opacity-50 disabled:cursor-not-allowed justify-center font-medium px-2 py-1 rounded-lg border border-purple-400/50 bg-purple-500/20 text-white backdrop-blur"
                 >
                     <Zap className="w-3 h-3" />
                     Pot
@@ -97,19 +73,7 @@ export function VerticalRaiseControls({
                 <Button
                     onClick={handleAllIn}
                     disabled={isLoading || isAllInDisabled}
-                    style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontWeight: 500,
-                        padding: '4px 8px',
-                        borderRadius: 8,
-                        border: '1px solid rgba(250,200,0,0.5)',
-                        backgroundColor: 'rgba(237,178,0,0.2)',
-                        color: '#fff',
-                        backdropFilter: 'blur(8px)'
-                    }}
-                    className="flex items-center gap-1 text-xs flex-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="inline-flex items-center gap-1 text-xs flex-1 disabled:opacity-50 disabled:cursor-not-allowed justify-center font-medium px-2 py-1 rounded-lg border border-yellow-400/50 bg-yellow-500/20 text-white backdrop-blur"
                 >
                     <Coins className="w-3 h-3" />
                     All In
@@ -135,17 +99,13 @@ export function VerticalRaiseControls({
                                 min={minRaise}
                                 step={bigBlind}
                                 orientation="horizontal"
-                                className="w-full"
-                                trackStyle={{ backgroundColor: 'rgba(63,63,70,0.5)' }}
-                                rangeStyle={{ backgroundColor: 'rgb(249,115,22)' }}
-                                thumbStyle={{ backgroundColor: 'rgb(251,146,60)', borderColor: 'rgb(253,186,116)' }}
+                                className="w-full [&_[data-slot=slider-track]]:bg-zinc-700/50 [&_[data-slot=slider-range]]:bg-orange-500 [&_[data-slot=slider-thumb]]:bg-orange-400 [&_[data-slot=slider-thumb]]:border-orange-300"
                             />
                         </div>
                     </TooltipTrigger>
                     <TooltipContent
                         side="top"
-                        className="text-white"
-                        style={{ backgroundColor: 'rgba(24,24,27,0.95)', border: '1px solid rgb(63,63,70)' }}
+                        className="text-white bg-zinc-900/95 border border-zinc-700"
                     >
                         <p className="font-medium">${raiseAmount}</p>
                     </TooltipContent>

@@ -132,12 +132,7 @@ export function DealerCamera({
             {/* Pot Total Overlay - Center Top */}
             <div id="pot-display" className="absolute top-4 right-4 transform z-40">
                 <div
-                    className="backdrop-blur-sm rounded-xl shadow-2xl"
-                    style={{
-                        backgroundColor: 'rgba(24,24,27,0.95)',
-                        border: '1px solid rgba(113,113,122,0.5)',
-                        padding: '12px 24px'
-                    }}
+                    className="backdrop-blur-sm rounded-xl shadow-2xl bg-zinc-900/95 border border-zinc-500/50 px-6 py-3"
                 >
                     <div className="text-center">
                         <RollingNumber
@@ -187,20 +182,11 @@ export function DealerCamera({
 
             {/* Leave Table Button - Bottom Left */}
             {isJoinable && onLeaveTable && (
-                <div className="absolute" style={{ bottom: 16, left: 16 }}>
+                <div className="absolute bottom-4 left-4">
                     <button
                         onClick={onLeaveTable}
                         disabled={isLeaving}
-                        style={{
-                            backgroundColor: 'rgba(228,0,20,0.9)',
-                            color: '#fff',
-                            fontWeight: 600,
-                            padding: '8px 16px',
-                            borderRadius: 10,
-                            border: '1px solid rgba(251,44,54,0.5)',
-                            backdropFilter: 'blur(8px)'
-                        }}
-                        className="transition-all duration-200 hover:scale-105 shadow-lg"
+                        className="transition-all duration-200 hover:scale-105 shadow-lg bg-red-600/90 text-white font-semibold px-4 py-2 rounded-lg border border-red-500/50 backdrop-blur"
                     >
                         {isLeaving ? 'Leaving...' : 'Leave Table'}
                     </button>
@@ -209,16 +195,9 @@ export function DealerCamera({
 
             {/* Horizontal Raise Controls - Bottom Right */}
             {isPlayerTurn && onAction && (
-                <div className="absolute right-4" style={{ bottom: 12 }}>
+                <div className="absolute right-4 bottom-3">
                     <div
-                        className="rounded-xl shadow-2xl"
-                        style={{
-                            width: 256,
-                            backgroundColor: 'rgba(0,0,0,0.2)',
-                            border: '1px solid rgba(255,255,255,0.1)',
-                            padding: 12,
-                            backdropFilter: 'blur(8px)'
-                        }}
+                        className="rounded-xl shadow-2xl w-64 bg-black/20 border border-white/10 p-3 backdrop-blur"
                     >
                         <VerticalRaiseControls
                             isLoading={isLoading ?? false}

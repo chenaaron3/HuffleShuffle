@@ -108,20 +108,11 @@ function SeatCard({
     if (!seat) {
         return (
             <div
-                className="relative flex h-[22vh] flex-col rounded-xl"
-                style={{
-                    borderWidth: 1,
-                    borderStyle: 'dashed',
-                    borderColor: 'rgba(113,113,122,0.5)',
-                    padding: 12,
-                    backgroundColor: 'rgba(24,24,27,0.3)',
-                    backdropFilter: 'blur(8px)'
-                }}
+                className="relative flex h-[22vh] flex-col rounded-xl border border-dashed border-zinc-500/50 p-3 bg-zinc-900/30 backdrop-blur"
             >
                 {/* Empty Video Feed - Match Occupied Seat Dimensions */}
                 <div
-                    className="relative h-full aspect-[4/3] overflow-hidden rounded-lg mb-3"
-                    style={{ border: '1px solid rgba(113,113,122,0.4)', backgroundColor: 'rgba(39,39,42,0.6)' }}
+                    className="relative h-full aspect-[4/3] overflow-hidden rounded-lg mb-3 border border-zinc-500/40 bg-zinc-800/60"
                 >
                     <div className="flex h-full items-center justify-center text-sm text-zinc-500 font-medium">
                         Empty Seat
@@ -132,13 +123,7 @@ function SeatCard({
                 <div className="flex items-center justify-between">
                     <div className="flex flex-col gap-1">
                         <div
-                            className="rounded-full text-xs font-medium w-fit"
-                            style={{
-                                border: '1px solid rgba(82,82,91,0.5)',
-                                padding: '4px 12px',
-                                backgroundColor: 'rgba(63,63,70,0.4)',
-                                color: 'rgb(161,161,170)'
-                            }}
+                            className="rounded-full text-xs font-medium w-fit border border-zinc-700/50 px-3 py-1 bg-zinc-700/40 text-zinc-400"
                         >
                             Seat {seatNumber}
                         </div>
@@ -157,17 +142,7 @@ function SeatCard({
     return (
         <div
             id={`seat-${seat.id}`}
-            className={`relative flex h-[22vh] flex-col rounded-xl bg-zinc-900/60 backdrop-blur-sm ${isWinner ? 'shadow-2xl shadow-yellow-500/50' : ''}`}
-            style={{
-                borderWidth: 1,
-                borderStyle: 'solid',
-                borderColor: isWinner
-                    ? 'rgb(251 191 36 / 0.8)'
-                    : active
-                        ? 'rgb(234 179 8 / 0.6)'
-                        : 'rgb(113 113 122 / 0.3)',
-                boxShadow: isWinner ? '0 0 20px rgba(251, 191, 36, 0.5), 0 0 40px rgba(251, 191, 36, 0.3)' : undefined,
-            }}
+            className={`relative flex h-[22vh] flex-col rounded-xl bg-zinc-900/60 backdrop-blur-sm border ${isWinner ? 'border-yellow-400/80 shadow-2xl shadow-yellow-500/50' : active ? 'border-yellow-400/60' : 'border-zinc-500/30'}`}
         >
             {/* Video Feed - Scaled Down with Aspect Ratio */}
             <div className="group relative h-full aspect-[4/3] overflow-hidden rounded-xl bg-black mb-3 -z-10">
@@ -206,7 +181,7 @@ function SeatCard({
 
                 {/* Big/Small Blind Overlay */}
                 {small && (
-                    <div className="absolute top-2 left-2 rounded-lg bg-blue-600 px-2 py-1 text-xs font-semibold text-white shadow-lg border border-blue-500/50">
+                    <div className="absolute top-2 left-2 rounded-lg bg-blue-600 px-2 py-1 text-xs font-semibold text-white shadow-lg border border-green-500/30">
                         S
                     </div>
                 )}
@@ -218,19 +193,13 @@ function SeatCard({
             </div>
 
             {/* Player Info and Cards Row */}
-            <div className="flex items-center justify-between" style={{ padding: '0 8px 8px' }}>
+            <div className="flex items-center justify-between px-2 pb-2">
                 {/* Left Side - Total and Win Amount */}
                 <div className="flex flex-col gap-1">
                     {/* Win amount centered above total */}
                     {gameState === 'SHOWDOWN' && (seat?.winAmount ?? 0) > 0 && (
                         <div
-                            className="w-fit mx-auto translate-y-1/3 rounded-full text-xs font-medium text-center shadow-lg"
-                            style={{
-                                backgroundColor: '#00a5444d',
-                                border: '1px solid #00c75880',
-                                padding: '4px 12px',
-                                color: '#86efac'
-                            }}
+                            className="w-fit mx-auto translate-y-1/3 rounded-full text-xs font-medium text-center shadow-lg bg-green-600/30 border border-green-400/50 px-3 py-1 text-green-300"
                         >
                             <RollingNumber
                                 value={seat.winAmount ?? 0}
@@ -240,13 +209,7 @@ function SeatCard({
                     )}
                     {/* Total */}
                     <div
-                        className="rounded-full z-10 text-xs font-medium shadow-lg"
-                        style={{
-                            backgroundColor: '#00a5444d',
-                            border: '1px solid #00c75880',
-                            padding: '4px 12px',
-                            color: '#86efac'
-                        }}
+                        className="rounded-full z-10 text-xs font-medium shadow-lg bg-green-600/30 border border-green-400/50 px-3 py-1 text-green-300"
                     >
                         <RollingNumber
                             value={seat.buyIn}
@@ -298,25 +261,13 @@ function SeatCard({
                     >
                         <div className="relative">
                             {/* Chip shadow */}
-                            <div
-                                className="absolute inset-0 rounded-full"
-                                style={{ backgroundColor: 'rgba(0,0,0,0.3)', filter: 'blur(4px)', transform: 'scale(0.95)' }}
-                            />
+                            <div className="absolute inset-0 rounded-full bg-black/30 blur-sm scale-95" />
                             {/* Main chip */}
                             <div
-                                className="relative rounded-full border-2 shadow-lg flex items-center justify-center"
-                                style={{
-                                    backgroundImage: 'linear-gradient(135deg, rgba(250,204,21,1), rgba(234,179,8,1), rgba(202,138,4,1))',
-                                    borderColor: 'rgb(253,224,71)',
-                                    width: 56,
-                                    height: 56
-                                }}
+                                className="relative rounded-full border-2 shadow-lg flex items-center justify-center bg-gradient-to-br from-yellow-400 via-yellow-500 to-yellow-600 border-yellow-300 w-14 h-14"
                             >
                                 {/* Inner ring */}
-                                <div
-                                    className="absolute inset-1 rounded-full border"
-                                    style={{ borderColor: 'rgba(254,240,138,0.5)' }}
-                                />
+                                <div className="absolute inset-1 rounded-full border border-yellow-200/50" />
                                 {/* Chip value */}
                                 <RollingNumber
                                     value={seat.currentBet}
@@ -342,10 +293,7 @@ function SeatCard({
                         <div className={`relative px-3 py-1 rounded-full text-xs font-bold shadow-lg flex items-center justify-center ${isWinner
                             ? 'bg-gradient-to-r from-yellow-400 via-yellow-500 to-yellow-600 text-black shadow-yellow-500/50'
                             : 'bg-gradient-to-r from-blue-400 via-blue-500 to-blue-600 text-white'
-                            }`}
-                            style={{
-                                boxShadow: isWinner ? "0 0 15px rgba(251, 191, 36, 0.7), 0 0 30px rgba(251, 191, 36, 0.5)" : undefined,
-                            }}>
+                            }`}>
                             {seat.handType}
                         </div>
                     </div>
