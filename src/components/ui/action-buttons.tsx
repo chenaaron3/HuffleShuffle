@@ -88,7 +88,7 @@ export function ActionButtons({
                 <Button
                     onClick={() => onAction('FOLD')}
                     disabled={isLoading}
-                    className="transition-all duration-200 hover:scale-105 min-w-[140px] shadow-2xl flex items-center gap-2 border text-white font-semibold bg-red-600/20 border-red-400/30 backdrop-blur"
+                    className="transition-all duration-200 hover:scale-105 min-w-[140px] shadow-2xl flex items-center gap-2  px-10 py-4 rounded-2xl border text-white font-semibold bg-red-600/20 border-red-400/30 backdrop-blur"
                 >
                     <Hand className="w-4 h-4" />
                     {isLoading ? '...' : 'Fold'}

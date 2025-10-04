@@ -67,9 +67,8 @@ function EventLine({ ev, seats }: { ev: EventRow; seats: SeatWithPlayer[] }) {
     }
 
     if (t === 'START_GAME') {
-        const name = seatName(d.dealerButtonSeatId, seats);
         return (
-            <span className="text-zinc-300">New hand starts. Dealer: <span className="font-medium text-zinc-100">{name}</span></span>
+            <span className="text-zinc-300">New hand starts</span>
         );
     }
 
@@ -95,7 +94,7 @@ function EventLine({ ev, seats }: { ev: EventRow; seats: SeatWithPlayer[] }) {
         const amt = typeof d.total === 'number' ? d.total : undefined;
         return (
             <span>
-                <span className="font-medium text-red-400">{name}</span> raises{typeof amt === 'number' ? ` ${amt}` : ''}
+                <span className="font-medium text-red-400">{name}</span> raises{typeof amt === 'number' ? ` to ${amt}` : ''}
             </span>
         );
     }

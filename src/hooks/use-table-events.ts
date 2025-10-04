@@ -2,15 +2,12 @@ import * as React from 'react';
 import { api } from '~/utils/api';
 import { getPusherClient } from '~/utils/pusher-client';
 
-import type { RouterOutputs } from "~/utils/api";
+import type { gameEvents } from "~/server/db/schema";
 
-type EventRow = RouterOutputs["table"]["eventsDelta"]["events"][number];
+type EventRow = typeof gameEvents.$inferSelect;
 
-export function useTableEvents(params: {
-  tableId: string | undefined;
-  activeGameId: string | null | undefined;
-}) {
-  const { tableId, activeGameId } = params;
+export function useTableEvents(params: { tableId: string | undefined }) {
+  const { tableId } = params;
   const utils = api.useUtils();
 
   const [events, setEvents] = React.useState<EventRow[]>([]);
@@ -35,6 +32,10 @@ export function useTableEvents(params: {
     },
     [tableId, utils.table.eventsDelta],
   );
+
+  React.useEffect(() => {
+    void fetchEvents(null);
+  }, [tableId, fetchEvents]);
 
   // Pusher-triggered delta pulls
   React.useEffect(() => {

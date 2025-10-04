@@ -726,7 +726,7 @@ export const tableRouter = createTRPCRouter({
           actorSeat.currentBet += total;
           await logRaise(tx as any, input.tableId, game.id, {
             seatId: actorSeat.id,
-            total,
+            total: amount,
           });
         } else if (input.action === "CHECK") {
           const need = maxBet - actorSeat.currentBet;

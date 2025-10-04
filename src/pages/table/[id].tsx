@@ -78,7 +78,7 @@ export default function TableView() {
     const [handRoomName, setHandRoomName] = React.useState<string | null>(null);
 
     // --- Event feed managed by hook ---
-    const { events } = useTableEvents({ tableId: id, activeGameId: snapshot?.game?.id ?? null });
+    const { events } = useTableEvents({ tableId: id });
 
     // Memoize winning cards calculation to prevent unnecessary re-renders
     const allWinningCards = React.useMemo(() => {
@@ -261,7 +261,7 @@ export default function TableView() {
                             />
 
                             {/* Center area with dealer cam and player controls */}
-                            <div className="flex flex-1 flex-col items-center gap-6">
+                            <div className="flex flex-1 flex-col items-center gap-3">
                                 {/* Dealer Camera with Community Cards Overlay */}
                                 <DealerCamera
                                     communityCards={snapshot?.game?.communityCards ?? []}
