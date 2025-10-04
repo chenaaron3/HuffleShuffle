@@ -24,7 +24,8 @@ export function HandCamera({ tableId, roomName }: HandCameraProps) {
                     backdropFilter: 'blur(8px)'
                 }}
             >
-                <div className="text-sm text-zinc-500 font-medium">No hand camera</div>
+                {/* This means the player doesn't have the local RSA key. They need to rejoin from the same device */}
+                <div className="text-sm text-zinc-500 font-medium text-center">Unable to see your hand</div>
             </div>
         );
     }
@@ -69,7 +70,7 @@ function HandCameraVideoContent() {
     if (!cameraTrack) {
         return (
             <div
-                className="flex items-center justify-center text-xs"
+                className="flex items-center justify-center text-sm font-medium"
                 style={{ width: '100%', height: 160, color: 'rgb(161,161,170)' }}
             >
                 Waiting to see your hand...
