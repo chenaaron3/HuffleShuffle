@@ -52,7 +52,7 @@ export function CardImage({
 
     const baseClasses = "select-none rounded-sm shadow [image-rendering:auto]";
     const highlightedClasses = highlighted
-        ? "ring-2 ring-yellow-400 ring-opacity-75 shadow-lg shadow-yellow-400/50"
+        ? "ring-2 ring-yellow-400 ring-opacity-75 shadow-lg shadow-yellow-400/50 animate-subtle-bounce"
         : "";
 
     return (

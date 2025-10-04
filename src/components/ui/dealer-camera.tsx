@@ -118,10 +118,6 @@ export function DealerCamera({
                                         size={75}
                                         highlighted={isWinningCard}
                                     />
-                                    <div className={`absolute inset-0 rounded-lg shadow-lg ring-2 ${isWinningCard
-                                        ? 'ring-yellow-400/75 shadow-yellow-400/50'
-                                        : 'ring-white/20'
-                                        }`} />
                                 </motion.div>
                             );
                         })}
@@ -167,14 +163,13 @@ export function DealerCamera({
                             isDealer={isDealer ?? false}
                             isJoinable={isJoinable ?? false}
                             state={gameStatus}
-                            currentUserSeatId={currentUserSeatId}
-                            bettingActorSeatId={bettingActorSeatId}
                             isLoading={isLoading ?? false}
                             onAction={onAction ?? (() => { })}
                             onDealCard={onDealCard}
                             onRandomCard={onRandomCard}
                             raiseAmount={raiseAmount}
                             onRaise={isPlayerTurn ? handleRaise : undefined}
+                            maxBet={maxBet}
                         />
                     </div>
                 </div>

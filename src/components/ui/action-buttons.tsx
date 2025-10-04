@@ -9,8 +9,6 @@ interface ActionButtonsProps {
     isDealer: boolean;
     isJoinable: boolean;
     state?: string;
-    currentUserSeatId?: string | null;
-    bettingActorSeatId?: string | null;
     isLoading?: boolean;
     onAction: (action: GameAction, params?: any) => void;
     onDealCard?: (rank: string, suit: string) => void;
@@ -18,20 +16,20 @@ interface ActionButtonsProps {
     // Props for raise functionality
     raiseAmount?: number;
     onRaise?: () => void;
+    maxBet?: number;
 }
 
 export function ActionButtons({
     isDealer,
     isJoinable,
     state,
-    currentUserSeatId,
-    bettingActorSeatId,
     isLoading = false,
     onAction,
     onDealCard,
     onRandomCard,
     raiseAmount = 0,
-    onRaise
+    onRaise,
+    maxBet
 }: ActionButtonsProps) {
     const [dealRank, setDealRank] = useState<string>('A');
     const [dealSuit, setDealSuit] = useState<string>('s');
@@ -103,7 +101,7 @@ export function ActionButtons({
                     className="transition-all duration-200 hover:scale-105 min-w-[160px] shadow-2xl flex items-center gap-2 px-10 py-4 rounded-2xl border text-white font-semibold bg-green-600/20 border-green-400/30 backdrop-blur"
                 >
                     <CheckCircle className="w-4 h-4" />
-                    {isLoading ? '...' : 'Check'}
+                    {isLoading ? '...' : (maxBet ? 'Call' : 'Check')}
                 </Button>
 
                 {/* Right Side - Raise */}

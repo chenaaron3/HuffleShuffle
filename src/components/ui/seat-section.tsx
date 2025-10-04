@@ -242,38 +242,56 @@ function SeatCard({
             </div>
 
             <AnimatePresence>
-                {/* Wager Chip - Edge Positioned */}
-                {seat.currentBet > 0 && (
+                {/* Fold replaces chip entirely during betting */}
+                {gameState === 'BETTING' && seat.lastAction === 'FOLD' && (
                     <motion.div
-                        className={`absolute top-1/2 transform -translate-y-1/2 ${side === 'right'
-                            ? 'left-0 -translate-x-1/2'
-                            : 'right-0 translate-x-1/2'
-                            }`}
+                        className={`absolute top-1/2 transform -translate-y-1/2 ${side === 'right' ? 'left-0 -translate-x-1/2' : 'right-0 translate-x-1/2'}`}
                         initial={{ scale: 0, opacity: 0, rotate: -180 }}
                         animate={{ scale: 1, opacity: 1, rotate: 0 }}
                         exit={{ scale: 0, opacity: 0, rotate: 180 }}
-                        transition={{
-                            type: "spring",
-                            stiffness: 300,
-                            damping: 20,
-                            duration: 0.6
-                        }}
+                        transition={{ type: 'spring', stiffness: 300, damping: 20, duration: 0.6 }}
                     >
                         <div className="relative">
+                            <div className="absolute inset-0 rounded-full bg-black/30 blur-sm scale-95" />
+                            <div className="relative rounded-full border-2 shadow-lg flex items-center justify-center bg-zinc-700 border-zinc-400 w-14 h-14">
+                                <span className="text-[10px] font-semibold text-zinc-200">FOLD</span>
+                            </div>
+                        </div>
+                    </motion.div>
+                )}
+
+                {/* Wager Chip with action banner above (raise/call/check) */}
+                {seat.currentBet > 0 && (gameState !== 'BETTING' || seat.lastAction !== 'FOLD') && (
+                    <motion.div
+                        className={`absolute top-1/2 transform -translate-y-1/2 ${side === 'right' ? 'left-0 -translate-x-1/2' : 'right-0 translate-x-1/2'}`}
+                        initial={{ scale: 0, opacity: 0, rotate: -180 }}
+                        animate={{ scale: 1, opacity: 1, rotate: 0 }}
+                        exit={{ scale: 0, opacity: 0, rotate: 180 }}
+                        transition={{ type: 'spring', stiffness: 300, damping: 20, duration: 0.6 }}
+                    >
+                        <div className="relative">
+                            {/* Action banner (BETTING only) */}
+                            {gameState === 'BETTING' && seat.lastAction && seat.lastAction !== 'FOLD' && (
+                                <div className="absolute -top-5 left-1/2 -translate-x-1/2">
+                                    <div className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border shadow ${seat.lastAction === 'RAISE'
+                                        ? 'bg-red-600/80 text-white border-red-300/60'
+                                        : seat.lastAction === 'CALL'
+                                            ? 'bg-green-600/80 text-white border-green-300/60'
+                                            : 'bg-blue-600/80 text-white border-blue-300/60'
+                                        }`}>
+                                        {seat.lastAction}
+                                    </div>
+                                </div>
+                            )}
+
                             {/* Chip shadow */}
                             <div className="absolute inset-0 rounded-full bg-black/30 blur-sm scale-95" />
                             {/* Main chip */}
-                            <div
-                                className="relative rounded-full border-2 shadow-lg flex items-center justify-center bg-gradient-to-br from-yellow-400 via-yellow-500 to-yellow-600 border-yellow-300 w-14 h-14"
-                            >
+                            <div className="relative rounded-full border-2 shadow-lg flex items-center justify-center bg-gradient-to-br from-yellow-400 via-yellow-500 to-yellow-600 border-yellow-300 w-14 h-14">
                                 {/* Inner ring */}
                                 <div className="absolute inset-1 rounded-full border border-yellow-200/50" />
                                 {/* Chip value */}
-                                <RollingNumber
-                                    value={seat.currentBet}
-                                    className="relative text-sm font-bold"
-                                    prefix="$"
-                                />
+                                <RollingNumber value={seat.currentBet} className="relative text-sm font-bold" prefix="$" />
                             </div>
                         </div>
                     </motion.div>
