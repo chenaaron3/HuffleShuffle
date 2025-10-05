@@ -304,7 +304,7 @@ export async function runScannerDaemon(): Promise<void> {
       console.log(`[scanner-daemon] publishing scan: ${barcode}`);
 
       // Send message to SQS FIFO queue
-      sqs.send(
+      await sqs.send(
         new SendMessageCommand({
           QueueUrl: queueUrl,
           MessageBody: JSON.stringify({
