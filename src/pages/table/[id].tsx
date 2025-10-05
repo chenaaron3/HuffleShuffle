@@ -12,6 +12,7 @@ import { useTableEvents } from '~/hooks/use-table-events';
 import { api } from '~/utils/api';
 import { generateRsaKeyPairForTable, rsaDecryptBase64 } from '~/utils/crypto';
 import { disconnectPusherClient, getPusherClient } from '~/utils/pusher-client';
+import { SIGNALS } from '~/utils/signal-constants';
 
 import { LiveKitRoom, RoomAudioRenderer, StartAudio } from '@livekit/components-react';
 
@@ -84,7 +85,6 @@ export default function TableView() {
     }, [snapshot?.table?.maxSeats, snapshot?.seats]);
 
     const seats = paddedSeats; // For rendering (includes nulls for empty seats)
-    debugger;
     const originalSeats = snapshot?.seats ?? []; // For calculations (only actual seats)
 
     const state: string | undefined = snapshot?.game?.state as any;
@@ -164,7 +164,7 @@ export default function TableView() {
 
         const channel = pusher.subscribe(id);
 
-        channel.bind('table-updated', async () => {
+        channel.bind(SIGNALS.TABLE_UPDATED, async () => {
             console.log('Table update received, refetching data...');
             tableQuery.refetch();
             refreshEventFeed();

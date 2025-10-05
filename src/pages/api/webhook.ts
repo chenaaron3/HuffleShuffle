@@ -4,7 +4,9 @@ import { WebhookReceiver } from 'livekit-server-sdk';
 import { env } from '~/env';
 import { db } from '~/server/db';
 import { piDevices, seats } from '~/server/db/schema';
-import { pusher } from '~/server/pusher';
+import {
+    endDealerStream, endHandStream, startDealerStream, startHandStream
+} from '~/server/signal';
 
 const receiver = new WebhookReceiver(
   env.LIVEKIT_API_KEY,
@@ -59,9 +61,8 @@ export default async function handler(
       if (!pi?.serial) return res.status(200).json({ ok: true });
 
       // Send start-stream only if we have an encrypted nonce
-      const client = pusher;
-      if (seat.encryptedPiNonce && client) {
-        await client.trigger(`device-${pi.serial}`, "start-stream", {
+      if (seat.encryptedPiNonce) {
+        await startHandStream(pi.serial, {
           tableId,
           seatNumber: seat.seatNumber,
           encNonce: seat.encryptedPiNonce,
@@ -75,12 +76,8 @@ export default async function handler(
           eq(piDevices.type, "dealer"),
         ),
       });
-      if (dealer?.serial && client) {
-        await client.trigger(
-          `device-${dealer.serial}`,
-          "dealer-start-stream",
-          {},
-        );
+      if (dealer?.serial) {
+        await startDealerStream(dealer.serial);
       }
       return res.status(200).json({ ok: true });
     }
@@ -98,9 +95,8 @@ export default async function handler(
           eq(piDevices.seatNumber, seat.seatNumber),
         ),
       });
-      const client = pusher;
-      if (pi?.serial && client) {
-        await client.trigger(`device-${pi.serial}`, "stop-stream", {});
+      if (pi?.serial) {
+        await endHandStream(pi.serial);
       }
       return res.status(200).json({ ok: true });
     }
@@ -113,13 +109,8 @@ export default async function handler(
           eq(piDevices.type, "dealer"),
         ),
       });
-      const client = pusher;
-      if (client && device?.serial) {
-        await client.trigger(
-          `device-${device.serial}`,
-          "dealer-start-stream",
-          {},
-        );
+      if (device?.serial) {
+        await startDealerStream(device.serial);
       }
       return res.status(200).json({ ok: true });
     }
@@ -129,16 +120,11 @@ export default async function handler(
       const devices = await db.query.piDevices.findMany({
         where: and(eq(piDevices.tableId, tableId), eq(piDevices.type, "card")),
       });
-      const client = pusher;
-      if (client) {
-        await Promise.all(
-          devices.map((d) =>
-            d.serial
-              ? client.trigger(`device-${d.serial}`, "stop-stream", {})
-              : Promise.resolve(),
-          ),
-        );
-      }
+      await Promise.all(
+        devices.map((d) =>
+          d.serial ? endHandStream(d.serial) : Promise.resolve(),
+        ),
+      );
 
       // Also stop dealer camera(s)
       const dealer = await db.query.piDevices.findFirst({
@@ -147,13 +133,8 @@ export default async function handler(
           eq(piDevices.type, "dealer"),
         ),
       });
-      const dealerClient = pusher;
-      if (dealerClient && dealer?.serial) {
-        await dealerClient.trigger(
-          `device-${dealer.serial}`,
-          "dealer-stop-stream",
-          {},
-        );
+      if (dealer?.serial) {
+        await endDealerStream(dealer.serial);
       }
       return res.status(200).json({ ok: true });
     }

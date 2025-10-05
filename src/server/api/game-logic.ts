@@ -1,9 +1,8 @@
 import { and, eq, isNotNull, sql } from 'drizzle-orm';
+import { logFlop, logRiver, logTurn } from '~/server/api/game-event-logger';
 import { db } from '~/server/db';
 import { games, seats } from '~/server/db/schema';
-import { pusher } from '~/server/pusher';
-
-import { logFlop, logRiver, logTurn } from './game-event-logger';
+import { updateTable } from '~/server/signal';
 
 type SeatRow = typeof seats.$inferSelect;
 type GameRow = typeof games.$inferSelect;
@@ -231,18 +230,5 @@ export async function dealCard(
 // Shared function to notify clients of table state changes
 // Used in TRPC API and also consumer
 export async function notifyTableUpdate(tableId: string): Promise<void> {
-  if (!pusher) {
-    console.warn("Pusher not configured, skipping table update notification");
-    return;
-  }
-
-  try {
-    await pusher.trigger(tableId, "table-updated", {
-      tableId,
-      timestamp: new Date().toISOString(),
-    });
-  } catch (error) {
-    console.error("Failed to send table update notification:", error);
-    // Don't throw - this is a notification, not critical to the main flow
-  }
+  await updateTable(tableId);
 }

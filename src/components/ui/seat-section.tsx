@@ -167,7 +167,7 @@ function SeatCard({
                         <div
                             className="rounded-full text-xs font-medium w-fit border border-zinc-700/50 px-3 py-1 bg-zinc-700/40 text-zinc-400"
                         >
-                            Seat {seatNumber}
+                            Seat {seatNumber + 1}
                         </div>
                     </div>
 
@@ -333,8 +333,13 @@ function SeatCard({
             )}
 
             {/* Player Name - Top Right */}
-            <div className="absolute top-2 right-2 rounded-lg bg-black/80 px-3 py-1 text-xs font-medium text-white backdrop-blur-sm border border-white/10">
-                {seat.player?.name ?? "Player"}
+            <div
+                className={`absolute top-2 right-2 rounded-lg px-3 py-1 text-xs font-semibold backdrop-blur-sm border ${isSelf
+                    ? 'bg-emerald-600/20 border-emerald-400/50 text-emerald-200'
+                    : 'bg-black/80 border-white/10 text-white'
+                    }`}
+            >
+                {isSelf ? 'You' : (seat.player?.name ?? 'Player')}
             </div>
         </div>
     );

@@ -6,6 +6,7 @@ import { db } from '~/server/db';
 import {
     games, MAX_SEATS_PER_TABLE, piDevices, pokerTables, seats, users
 } from '~/server/db/schema';
+import { endHandStream, startHandStream } from '~/server/signal';
 import { rsaEncryptB64 } from '~/utils/crypto';
 
 import {
@@ -551,7 +552,7 @@ export const tableRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
       ensurePlayerRole(ctx.session.user.role);
-      await db.transaction(async (tx) => {
+      const result = await db.transaction(async (tx) => {
         // Verify table exists, is joinable, and batch seats + pi devices
         const table = await tx.query.pokerTables.findFirst({
           where: eq(pokerTables.id, input.tableId),
@@ -565,7 +566,9 @@ export const tableRouter = createTRPCRouter({
                 buyIn: true,
               },
             },
-            piDevices: { columns: { seatNumber: true, publicKey: true } },
+            piDevices: {
+              columns: { seatNumber: true, publicKey: true, serial: true },
+            },
           },
         });
 
@@ -592,6 +595,9 @@ export const tableRouter = createTRPCRouter({
         );
         if (!toPi) throw new Error("Target seat has no Pi device");
         if (!toPi.publicKey) throw new Error("Target Pi has no public key");
+        const fromPi =
+          table.piDevices.find((d) => d.seatNumber === fromSeat.seatNumber) ??
+          null;
 
         // Persist the newly generated user public key for this table
         await tx
@@ -613,12 +619,33 @@ export const tableRouter = createTRPCRouter({
           playerId: userId,
           seatNumber: input.toSeatNumber,
           buyIn: fromSeat.buyIn,
-          nonce: nonce,
           encryptedUserNonce: encUser,
           encryptedPiNonce: encPi,
         });
-        return { ok: true } as const;
+        return {
+          ok: true,
+          fromPiSerial: fromPi?.serial ?? null,
+          toPiSerial: toPi.serial ?? null,
+          toSeatNumber: input.toSeatNumber,
+          encPiNonce: encPi,
+        } as const;
       });
+
+      // Post-commit device signaling
+      try {
+        if (result.fromPiSerial) {
+          await endHandStream(result.fromPiSerial);
+        }
+        if (result.toPiSerial && result.encPiNonce) {
+          await startHandStream(result.toPiSerial, {
+            tableId: input.tableId,
+            seatNumber: result.toSeatNumber,
+            encNonce: result.encPiNonce,
+          });
+        }
+      } catch (e) {
+        console.error("Seat-change device signaling failed", e);
+      }
 
       // Notify and return fresh snapshot
       await notifyTableUpdate(input.tableId);
