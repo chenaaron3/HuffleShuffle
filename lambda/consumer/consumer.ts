@@ -103,8 +103,8 @@ async function handleScan(msg: ScanMessage): Promise<void> {
 
     // Use shared game logic instead of duplicating code
     await dealCard(tx, tableId, game, code);
-    await notifyTableUpdate(tableId);
   });
+  await notifyTableUpdate(device.tableId);
 }
 
 async function processRecord(
