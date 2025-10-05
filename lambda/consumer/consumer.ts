@@ -1,6 +1,6 @@
 // Load environment variables from .env file
 import { config } from 'dotenv';
-import { eq, sql } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import { drizzle, PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 
@@ -99,7 +99,7 @@ async function handleScan(msg: ScanMessage): Promise<void> {
       where: eq(schema.games.tableId, tableId),
       orderBy: (games, { desc }) => [desc(games.createdAt)],
     });
-    if (!game) throw new Error("No active game");
+    if (!game || game.isCompleted) throw new Error("No active game");
 
     // Use shared game logic instead of duplicating code
     await dealCard(tx, tableId, game, code);
@@ -130,17 +130,18 @@ async function processRecord(
     console.log(`[lambda] processed and deleted scan: ${body.barcode}`);
     return { success: true, messageId: record.messageId };
   } catch (error) {
-    const errorMessage =
-      error instanceof Error ? error.message : "Unknown error";
     console.error(
       `[lambda] error processing message ${record.messageId}:`,
       error,
     );
-    return {
-      success: false,
-      messageId: record.messageId,
-      error: errorMessage,
-    };
+    // Silenty fail so we don't clog up the queue
+    const sqsClient = getSqs();
+    await sqsClient.send(
+      new DeleteMessageCommand({
+        QueueUrl: process.env.SQS_QUEUE_URL!,
+        ReceiptHandle: record.receiptHandle,
+      }),
+    );
   }
 }
 
