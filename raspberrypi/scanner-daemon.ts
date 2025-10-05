@@ -315,11 +315,12 @@ export async function runScannerDaemon(): Promise<void> {
           MessageGroupId: info.tableId, // Ensures FIFO ordering per table
           MessageDeduplicationId: `${info.tableId}-${barcode}`, // Prevents duplicates
         }),
-      );
-
-      lastDealtAt = now;
-      console.log(
-        `[scanner-daemon] published ${barcode} to SQS (${Date.now() - started}ms)`,
+        () => {
+          lastDealtAt = now;
+          console.log(
+            `[scanner-daemon] published ${barcode} to SQS (${Date.now() - started}ms)`,
+          );
+        },
       );
     } catch (e) {
       console.error("[scanner-daemon] publish failed", e);
