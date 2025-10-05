@@ -147,7 +147,7 @@ function SeatCard({
                         </div>
                     ) : (
                         <>
-                            <div className="flex h-full items-center justify-center text-sm font-medium transition-opacity duration-150 text-zinc-500 group-hover:opacity-0">
+                            <div className="flex h-full items-center justify-center text-sm font-medium transition-opacity duration-150 text-zinc-500">
                                 Empty Seat
                             </div>
                             {canMoveSeat && (

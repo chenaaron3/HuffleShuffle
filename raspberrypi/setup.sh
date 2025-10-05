@@ -50,6 +50,11 @@ sudo udevadm trigger
 # Add pi user to necessary groups
 sudo usermod -a -G input pi
 
+echo "[setup] Ensuring Huffle data directory exists at /home/pi/.huffle/keys"
+mkdir -p /home/pi/.huffle/keys
+# Ensure ownership in case it was created by root previously
+sudo chown -R pi:pi /home/pi/.huffle
+
 echo "[setup] Setting up systemd service for auto-startup"
 # Make startup script executable
 chmod +x startup.sh
