@@ -313,7 +313,7 @@ export async function runScannerDaemon(): Promise<void> {
             ts,
           }),
           MessageGroupId: info.tableId, // Ensures FIFO ordering per table
-          MessageDeduplicationId: `${info.tableId}-${barcode}`, // Prevents duplicates
+          MessageDeduplicationId: `${info.tableId}-${barcode}-${ts}`, // Prevents duplicates
         }),
         () => {
           lastDealtAt = now;
