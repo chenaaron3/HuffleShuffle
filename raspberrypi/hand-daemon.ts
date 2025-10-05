@@ -129,7 +129,7 @@ export async function runHandDaemon(): Promise<void> {
       console.error("[hand-daemon] stop error", e);
     }
   });
-  console.log("[hand-daemon] started");
+  console.log(`[hand-daemon] started listening to channel ${channel.name}`);
 
   // Ensure child group is killed if daemon exits
   process.on("SIGINT", () => {
