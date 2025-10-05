@@ -335,10 +335,12 @@ export default function TableView() {
                                     <div className="min-w-0">
                                         <EventFeed events={events} seats={originalSeats as any} />
                                     </div>
-                                    <HandCamera
-                                        tableId={tableIdStr}
-                                        roomName={handRoomName}
-                                    />
+                                    <div className="flex flex-col justify-center h-full">
+                                        <HandCamera
+                                            tableId={tableIdStr}
+                                            roomName={handRoomName}
+                                        />
+                                    </div>
                                     <div />
                                 </div>
                             </div>

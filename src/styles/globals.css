@@ -7,4 +7,6 @@
 
 @layer utilities {
   .animate-subtle-bounce { animation: subtle-bounce 1.8s ease-in-out infinite; }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 }

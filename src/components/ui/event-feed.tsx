@@ -37,7 +37,7 @@ export function EventFeed({
 
     return (
         <div className="rounded-xl overflow-hidden shadow-2xl w-full h-40 border border-zinc-600/50 bg-zinc-900/50 backdrop-blur">
-            <div ref={scrollRef} className="h-full w-full overflow-y-auto">
+            <div ref={scrollRef} className="h-full w-full overflow-y-auto no-scrollbar">
                 <ul className="divide-y divide-zinc-800">
                     {events.map((ev) => (
                         <li key={ev.id} className="px-2 py-1 text-xs text-zinc-200">

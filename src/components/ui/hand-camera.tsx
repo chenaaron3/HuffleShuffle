@@ -34,7 +34,7 @@ export function HandCamera({ tableId, roomName }: HandCameraProps) {
 function HandCameraView({ tableId, roomName }: { tableId: string; roomName: string }) {
     // Get token for the hand camera room using roomName override
     const tokenQuery = api.table.livekitToken.useQuery({ tableId, roomName }, { enabled: !!tableId && !!roomName });
-    if (!tokenQuery.data) return null;
+    if (!tokenQuery.data) return <NullState />;;
 
     return (
         <LiveKitRoom
@@ -53,13 +53,7 @@ function HandCameraVideoContent() {
     const cameraTrack = tracks[0];
 
     if (!cameraTrack) {
-        return (
-            <div
-                className="flex items-center justify-center text-sm font-medium w-full h-40 text-zinc-400"
-            >
-                Waiting to see your hand...
-            </div>
-        );
+        return <NullState />;
     }
 
     return (
@@ -67,6 +61,14 @@ function HandCameraVideoContent() {
             <ParticipantTile trackRef={cameraTrack}>
                 <VideoTrack trackRef={cameraTrack} />
             </ParticipantTile>
+        </div>
+    );
+}
+
+function NullState() {
+    return (
+        <div className="flex items-center justify-center text-sm font-medium w-full h-40 text-zinc-400">
+            Loading Your Hand...
         </div>
     );
 }
