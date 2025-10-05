@@ -91,3 +91,44 @@ export async function rsaDecryptBase64(
   const dec = new TextDecoder();
   return dec.decode(pt);
 }
+
+// --- Isomorphic RSA helpers for server/client ---
+
+function b64ToUint8Array(b64: string): Uint8Array {
+  if (typeof window === "undefined") {
+    // Server (Node)
+    const buf = Buffer.from(b64, "base64");
+    return new Uint8Array(buf);
+  }
+  // Browser
+  const bin = atob(b64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return bytes;
+}
+
+export async function importRsaSpkiPem(pem: string): Promise<CryptoKey> {
+  const b64 = pem.replace(/-----[^-]+-----/g, "").replace(/\s+/g, "");
+  const der = b64ToUint8Array(b64);
+  return await (crypto as any).subtle.importKey(
+    "spki",
+    der,
+    { name: "RSA-OAEP", hash: "SHA-256" },
+    true,
+    ["encrypt"],
+  );
+}
+
+export async function rsaEncryptB64(
+  publicPem: string,
+  data: string,
+): Promise<string> {
+  const key = await importRsaSpkiPem(publicPem);
+  const enc = new TextEncoder();
+  const ct = await (crypto as any).subtle.encrypt(
+    { name: "RSA-OAEP" },
+    key,
+    enc.encode(data),
+  );
+  return Buffer.from(new Uint8Array(ct)).toString("base64");
+}

@@ -10,7 +10,7 @@ import { HandCamera } from '~/components/ui/hand-camera';
 import { SeatSection } from '~/components/ui/seat-section';
 import { useTableEvents } from '~/hooks/use-table-events';
 import { api } from '~/utils/api';
-import { rsaDecryptBase64 } from '~/utils/crypto';
+import { generateRsaKeyPairForTable, rsaDecryptBase64 } from '~/utils/crypto';
 import { disconnectPusherClient, getPusherClient } from '~/utils/pusher-client';
 
 import { LiveKitRoom, RoomAudioRenderer, StartAudio } from '@livekit/components-react';
@@ -45,6 +45,23 @@ export default function TableView() {
         }
     });
 
+    const utils = api.useUtils();
+    const changeSeat = api.table.changeSeat.useMutation({
+        onSuccess: (data) => {
+            if (data) {
+                // Keep local state and cache in sync
+                setSnapshot(data);
+                utils.table.get.setData({ tableId: id ?? '' }, data);
+            }
+        },
+        onError: (error) => {
+            console.error('Change seat failed:', error);
+        },
+        onSettled: () => {
+            setMovingSeat(null);
+        }
+    });
+
     const leaveMutation = api.table.leave.useMutation({
         onSuccess: () => {
             // Redirect to lobby after successfully leaving
@@ -53,6 +70,7 @@ export default function TableView() {
     });
 
     const [showSetup, setShowSetup] = React.useState<boolean>(false);
+    const [movingSeat, setMovingSeat] = React.useState<number | null>(null);
 
     // Create padded seats array on client side - array index matches seat number
     const paddedSeats = React.useMemo(() => {
@@ -66,6 +84,7 @@ export default function TableView() {
     }, [snapshot?.table?.maxSeats, snapshot?.seats]);
 
     const seats = paddedSeats; // For rendering (includes nulls for empty seats)
+    debugger;
     const originalSeats = snapshot?.seats ?? []; // For calculations (only actual seats)
 
     const state: string | undefined = snapshot?.game?.state as any;
@@ -78,7 +97,7 @@ export default function TableView() {
     const [handRoomName, setHandRoomName] = React.useState<string | null>(null);
 
     // --- Event feed managed by hook ---
-    const { events } = useTableEvents({ tableId: id });
+    const { events, refreshEvents: refreshEventFeed } = useTableEvents({ tableId: id });
 
     // Memoize winning cards calculation to prevent unnecessary re-renders
     const allWinningCards = React.useMemo(() => {
@@ -145,9 +164,10 @@ export default function TableView() {
 
         const channel = pusher.subscribe(id);
 
-        channel.bind('table-updated', () => {
+        channel.bind('table-updated', async () => {
             console.log('Table update received, refetching data...');
-            void tableQuery.refetch();
+            tableQuery.refetch();
+            refreshEventFeed();
         });
 
         return () => {
@@ -258,6 +278,19 @@ export default function TableView() {
                                 myUserId={session?.user?.id ?? null}
                                 side="left"
                                 gameState={state}
+                                canMoveSeat={Boolean(snapshot?.isJoinable && currentUserSeatId)}
+                                movingSeatNumber={movingSeat}
+                                onMoveSeat={async (seatNumber) => {
+                                    if (!id || movingSeat !== null) return;
+                                    try {
+                                        setMovingSeat(seatNumber);
+                                        const { publicKeyPem } = await generateRsaKeyPairForTable(id);
+                                        await changeSeat.mutateAsync({ tableId: id, toSeatNumber: seatNumber, userPublicKey: publicKeyPem });
+                                    } catch (e) {
+                                        console.error('Failed to generate keypair for seat move', e);
+                                        setMovingSeat(null);
+                                    }
+                                }}
                             />
 
                             {/* Center area with dealer cam and player controls */}
@@ -320,6 +353,19 @@ export default function TableView() {
                                 myUserId={session?.user?.id ?? null}
                                 side="right"
                                 gameState={state}
+                                canMoveSeat={Boolean(snapshot?.isJoinable && currentUserSeatId)}
+                                movingSeatNumber={movingSeat}
+                                onMoveSeat={async (seatNumber) => {
+                                    if (!id || movingSeat !== null) return;
+                                    try {
+                                        setMovingSeat(seatNumber);
+                                        const { publicKeyPem } = await generateRsaKeyPairForTable(id);
+                                        await changeSeat.mutateAsync({ tableId: id, toSeatNumber: seatNumber, userPublicKey: publicKeyPem });
+                                    } catch (e) {
+                                        console.error('Failed to generate keypair for seat move', e);
+                                        setMovingSeat(null);
+                                    }
+                                }}
                             />
                         </div>
                         <TableAnimation

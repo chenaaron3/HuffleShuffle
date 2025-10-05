@@ -6,6 +6,7 @@ import { db } from '~/server/db';
 import {
     games, MAX_SEATS_PER_TABLE, piDevices, pokerTables, seats, users
 } from '~/server/db/schema';
+import { rsaEncryptB64 } from '~/utils/crypto';
 
 import {
     logCall, logCheck, logEndGame, logFold, logRaise, logStartGame
@@ -452,12 +453,28 @@ export const tableRouter = createTRPCRouter({
           .set({ publicKey: input.userPublicKey })
           .where(eq(users.id, userId));
 
-        // Deduct balance and create seat
+        // Deduct balance
         await tx
           .update(users)
           .set({ balance: sql`${users.balance} - ${input.buyIn}` })
           .where(eq(users.id, userId));
-        const seatRows = await tx
+
+        // Generate ephemeral nonce and encrypt for user + seat's mapped Pi (if any)
+        const nonce = crypto.randomUUID();
+        const encUser = await rsaEncryptB64(input.userPublicKey, nonce);
+        // Find seat-mapped Pi (type 'card' with matching seatNumber)
+        const pi = await tx.query.piDevices.findFirst({
+          where: and(
+            eq(piDevices.tableId, input.tableId),
+            eq(piDevices.type, "card"),
+            eq(piDevices.seatNumber, seatNumber),
+          ),
+        });
+        if (!pi || !pi.publicKey) throw new Error("Pi not found");
+        const encPi = await rsaEncryptB64(pi.publicKey, nonce);
+
+        // Create seat with encrypted nonce
+        const updatedSeatRows = await tx
           .insert(seats)
           .values({
             tableId: input.tableId,
@@ -466,62 +483,11 @@ export const tableRouter = createTRPCRouter({
             buyIn: input.buyIn,
             startingBalance: input.buyIn, // Set startingBalance to initial buyIn amount
             isActive: true,
+            encryptedUserNonce: encUser,
+            encryptedPiNonce: encPi,
           })
           .returning();
-        const seat = seatRows?.[0];
-        if (!seat) throw new Error("Failed to create seat");
 
-        // Generate ephemeral nonce and encrypt for user + seat's mapped Pi (if any)
-        const nonce = crypto.randomUUID();
-
-        async function importRsaSpkiPem(pem: string): Promise<CryptoKey> {
-          const b64 = pem.replace(/-----[^-]+-----/g, "").replace(/\s+/g, "");
-          const der = Buffer.from(b64, "base64");
-          return await (crypto as any).subtle.importKey(
-            "spki",
-            der,
-            { name: "RSA-OAEP", hash: "SHA-256" },
-            true,
-            ["encrypt"],
-          );
-        }
-        async function rsaEncryptB64(
-          publicPem: string,
-          data: string,
-        ): Promise<string> {
-          const key = await importRsaSpkiPem(publicPem);
-          const enc = new TextEncoder();
-          const ct = await (crypto as any).subtle.encrypt(
-            { name: "RSA-OAEP" },
-            key,
-            enc.encode(data),
-          );
-          return Buffer.from(new Uint8Array(ct)).toString("base64");
-        }
-
-        const encUser = await rsaEncryptB64(input.userPublicKey, nonce);
-
-        // Find seat-mapped Pi (type 'card' with matching seatNumber)
-        const pi = await tx.query.piDevices.findFirst({
-          where: and(
-            eq(piDevices.tableId, input.tableId),
-            eq(piDevices.type, "card"),
-            eq(piDevices.seatNumber, seat.seatNumber),
-          ),
-        });
-        let encPi: string | null = null;
-        if (pi?.publicKey) {
-          try {
-            encPi = await rsaEncryptB64(pi.publicKey, nonce);
-          } catch {
-            encPi = null;
-          }
-        }
-        const updatedSeatRows = await tx
-          .update(seats)
-          .set({ encryptedUserNonce: encUser, encryptedPiNonce: encPi })
-          .where(eq(seats.id, seat.id))
-          .returning();
         if (!updatedSeatRows || updatedSeatRows.length === 0)
           throw new Error("Failed to update seat");
         const updatedSeat = updatedSeatRows[0]!;
@@ -571,6 +537,93 @@ export const tableRouter = createTRPCRouter({
         return { ok: true } as const;
       });
       return result;
+    }),
+
+  // Change seats for the acting player when the table is joinable
+  changeSeat: protectedProcedure
+    .input(
+      z.object({
+        tableId: z.string(),
+        toSeatNumber: z.number().int().nonnegative(),
+        userPublicKey: z.string().min(1),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+      ensurePlayerRole(ctx.session.user.role);
+      await db.transaction(async (tx) => {
+        // Verify table exists, is joinable, and batch seats + pi devices
+        const table = await tx.query.pokerTables.findFirst({
+          where: eq(pokerTables.id, input.tableId),
+          with: {
+            games: { orderBy: (g, { desc }) => [desc(g.createdAt)], limit: 1 },
+            seats: {
+              columns: {
+                id: true,
+                playerId: true,
+                seatNumber: true,
+                buyIn: true,
+              },
+            },
+            piDevices: { columns: { seatNumber: true, publicKey: true } },
+          },
+        });
+
+        // Validate seat is valid and timing is correct
+        if (!table) throw new Error("Table not found");
+        const latestGame = table.games[0] ?? null;
+        if (latestGame && !latestGame.isCompleted)
+          throw new Error("Cannot change seats during an active hand");
+
+        if (input.toSeatNumber < 0 || input.toSeatNumber >= table.maxSeats)
+          throw new Error("Seat number out of range");
+
+        const occupied = new Set(table.seats.map((s) => s.seatNumber));
+        if (occupied.has(input.toSeatNumber))
+          throw new Error("Target seat is occupied");
+
+        // Find caller's current seat locally
+        const fromSeat = table.seats.find((s) => s.playerId === userId);
+        if (!fromSeat) throw new Error("You are not seated at this table");
+
+        // Encrypt for Pi device mapped to the target seat (from batched relation)
+        const toPi = table.piDevices.find(
+          (d) => d.seatNumber === input.toSeatNumber,
+        );
+        if (!toPi) throw new Error("Target seat has no Pi device");
+        if (!toPi.publicKey) throw new Error("Target Pi has no public key");
+
+        // Persist the newly generated user public key for this table
+        await tx
+          .update(users)
+          .set({ publicKey: input.userPublicKey })
+          .where(eq(users.id, userId));
+
+        // Remove old seat first to satisfy unique constraints
+        await tx.delete(seats).where(eq(seats.id, fromSeat.id));
+
+        // Generate fresh nonce and encrypt for user and mapped Pi (if any)
+        const nonce = crypto.randomUUID();
+        const encUser = await rsaEncryptB64(input.userPublicKey, nonce);
+        const encPi = await rsaEncryptB64(toPi.publicKey, nonce);
+
+        // Create new seat at target seatNumber with carried funds
+        await (tx as any).insert(seats).values({
+          tableId: input.tableId,
+          playerId: userId,
+          seatNumber: input.toSeatNumber,
+          buyIn: fromSeat.buyIn,
+          nonce: nonce,
+          encryptedUserNonce: encUser,
+          encryptedPiNonce: encPi,
+        });
+        return { ok: true } as const;
+      });
+
+      // Notify and return fresh snapshot
+      await notifyTableUpdate(input.tableId);
+      const snapshot = await summarizeTable(db, input.tableId);
+      return redactSnapshotForUser(snapshot, userId);
     }),
 
   action: protectedProcedure
@@ -801,30 +854,17 @@ export const tableRouter = createTRPCRouter({
       }),
     )
     .query(async ({ ctx, input }) => {
-      // Latest active game for the table (may be null)
-      const activeGame = await db.query.games.findFirst({
-        where: and(
-          eq(games.tableId, input.tableId),
-          eq(games.isCompleted, false),
-        ),
-        orderBy: (g, { desc }) => [desc(g.createdAt)],
-      });
-
-      if (!activeGame) {
-        return { events: [] };
-      }
-
       const after = input.afterId ?? null;
+      // Fetch the latest events for the table
       const rows = await db.query.gameEvents.findMany({
         where: (ge, { eq: _eq, and: _and, gt }) =>
           _and(
             _eq(ge.tableId, input.tableId),
-            _eq(ge.gameId, activeGame.id),
             after ? gt(ge.id, after) : _eq(ge.id, ge.id),
           ),
-        orderBy: (ge, { asc }) => [asc(ge.id)],
+        orderBy: (ge, { desc }) => [desc(ge.id)],
+        limit: 25,
       });
-
       return { events: rows };
     }),
 });

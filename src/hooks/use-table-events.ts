@@ -1,6 +1,5 @@
 import * as React from 'react';
 import { api } from '~/utils/api';
-import { getPusherClient } from '~/utils/pusher-client';
 
 import type { gameEvents } from "~/server/db/schema";
 
@@ -12,6 +11,11 @@ export function useTableEvents(params: { tableId: string | undefined }) {
 
   const [events, setEvents] = React.useState<EventRow[]>([]);
   const [lastEventId, setLastEventId] = React.useState<number | null>(null);
+  const lastEventIdRef = React.useRef<number | null>(null);
+
+  React.useEffect(() => {
+    lastEventIdRef.current = lastEventId;
+  }, [lastEventId]);
 
   const fetchEvents = React.useCallback(
     async (after: number | null) => {
@@ -23,8 +27,9 @@ export function useTableEvents(params: { tableId: string | undefined }) {
         });
         const delta = res?.events ?? [];
         if (delta.length) {
-          setEvents((prev) => [...prev, ...delta]);
-          setLastEventId(delta[delta.length - 1]!.id as number);
+          const ascending = [...delta].reverse();
+          setEvents((prev) => [...prev, ...ascending]);
+          setLastEventId(ascending[ascending.length - 1]!.id as number);
         }
       } catch (e) {
         console.error("Failed to fetch event delta", e);
@@ -37,23 +42,9 @@ export function useTableEvents(params: { tableId: string | undefined }) {
     void fetchEvents(null);
   }, [tableId, fetchEvents]);
 
-  // Pusher-triggered delta pulls
-  React.useEffect(() => {
-    if (!tableId) return;
-    const pusher = getPusherClient();
-    if (!pusher) return;
-    const channel = pusher.subscribe(tableId);
-    const handler = () => {
-      void fetchEvents(lastEventId);
-    };
-    channel.bind("table-updated", handler);
-    return () => {
-      channel.unbind("table-updated", handler);
-      pusher.unsubscribe(tableId);
-    };
-    // We intentionally exclude fetchEvents from deps to avoid re-subscribing each render
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tableId, lastEventId]);
+  const refreshEvents = React.useCallback(() => {
+    fetchEvents(lastEventIdRef.current);
+  }, [fetchEvents]);
 
-  return { events };
+  return { events, refreshEvents };
 }

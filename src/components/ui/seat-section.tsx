@@ -15,6 +15,9 @@ interface SeatSectionProps {
     myUserId?: string | null;
     side: 'left' | 'right';
     gameState?: string;
+    canMoveSeat?: boolean;
+    onMoveSeat?: (seatNumber: number) => void;
+    movingSeatNumber?: number | null;
 }
 
 export function SeatSection({
@@ -24,7 +27,10 @@ export function SeatSection({
     bigBlindIdx,
     myUserId,
     side,
-    gameState
+    gameState,
+    canMoveSeat,
+    onMoveSeat,
+    movingSeatNumber,
 }: SeatSectionProps) {
     // Since seats array is now padded, array index matches seat number
     let displaySeats: (SeatWithPlayer | null)[] = [];
@@ -40,12 +46,13 @@ export function SeatSection({
         ];
     } else {
         // Right side: seats 4-7 (seat numbers) from top to bottom
+        // Parent passes a slice(4, 8), so use indices 0..3 here
         // Display order: seat 4, seat 5, seat 6, seat 7
         displaySeats = [
-            seats[4] ?? null, // seat 4
-            seats[5] ?? null, // seat 5
-            seats[6] ?? null, // seat 6
-            seats[7] ?? null, // seat 7
+            seats[0] ?? null, // seat 4
+            seats[1] ?? null, // seat 5
+            seats[2] ?? null, // seat 6
+            seats[3] ?? null, // seat 7
         ];
     }
 
@@ -68,6 +75,9 @@ export function SeatSection({
                         myUserId={myUserId}
                         side={side}
                         gameState={gameState}
+                        canMoveSeat={canMoveSeat}
+                        onMoveSeat={onMoveSeat}
+                        isMoving={movingSeatNumber === seatNumber}
                     />
                 );
             })}
@@ -86,6 +96,9 @@ function SeatCard({
     myUserId,
     side,
     gameState,
+    canMoveSeat,
+    onMoveSeat,
+    isMoving,
 }: {
     seat: SeatWithPlayer | null;
     index: number;
@@ -97,6 +110,9 @@ function SeatCard({
     myUserId?: string | null;
     side: 'left' | 'right';
     gameState?: string;
+    canMoveSeat?: boolean;
+    onMoveSeat?: (seatNumber: number) => void;
+    isMoving?: boolean;
 }) {
     const trackRefs = useTracks([Track.Source.Camera]);
     const videoTrackRef = seat ? trackRefs.find(
@@ -108,15 +124,41 @@ function SeatCard({
     if (!seat) {
         return (
             <div
-                className="relative flex h-[22vh] flex-col rounded-xl border border-dashed border-zinc-500/50 p-3 bg-zinc-900/30 backdrop-blur"
+                className="group relative flex h-[22vh] flex-col rounded-xl border border-dashed border-zinc-500/50 p-3 bg-zinc-900/30 backdrop-blur"
             >
                 {/* Empty Video Feed - Match Occupied Seat Dimensions */}
                 <div
-                    className="relative h-full aspect-[4/3] overflow-hidden rounded-lg mb-3 border border-zinc-500/40 bg-zinc-800/60"
+                    onClick={() => {
+                        if (!isMoving && canMoveSeat) onMoveSeat?.(seatNumber);
+                    }}
+                    className={`relative h-full aspect-[4/3] overflow-hidden rounded-lg mb-3 border bg-zinc-800/60 ${isMoving
+                        ? 'border-zinc-400/60 cursor-wait'
+                        : canMoveSeat
+                            ? 'border-zinc-500/40 group-hover:border-zinc-300/70 cursor-pointer'
+                            : 'border-zinc-500/40'
+                        }`}
+                    aria-label={canMoveSeat ? 'Move to this seat' : 'Empty seat'}
+                    title={canMoveSeat ? 'Move to this seat' : 'Empty seat'}
                 >
-                    <div className="flex h-full items-center justify-center text-sm text-zinc-500 font-medium">
-                        Empty Seat
-                    </div>
+                    {/* Centered text with hover feedback */}
+                    {isMoving ? (
+                        <div className="flex h-full items-center justify-center text-sm font-medium text-zinc-300">
+                            Moving…
+                        </div>
+                    ) : (
+                        <>
+                            <div className="flex h-full items-center justify-center text-sm font-medium transition-opacity duration-150 text-zinc-500 group-hover:opacity-0">
+                                Empty Seat
+                            </div>
+                            {canMoveSeat && (
+                                <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                                    <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-150 text-sm font-semibold text-white bg-white/10 border border-white/20 rounded-md px-3 py-1 backdrop-blur-sm">
+                                        Move Here
+                                    </div>
+                                </div>
+                            )}
+                        </>
+                    )}
                 </div>
 
                 {/* Empty Player Info and Cards Row */}

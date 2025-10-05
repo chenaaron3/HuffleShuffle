@@ -272,14 +272,7 @@ export const gameEvents = createTable(
 );
 
 // Relations
-export const pokerTablesRelations = relations(pokerTables, ({ one, many }) => ({
-  dealer: one(users, {
-    fields: [pokerTables.dealerId],
-    references: [users.id],
-  }),
-  seats: many(seats),
-  games: many(games),
-}));
+// (moved below piDevices definition to ensure relation inference has complete context)
 
 export const seatsRelations = relations(seats, ({ one }) => ({
   table: one(pokerTables, {
@@ -327,3 +320,21 @@ export const piDevices = createTable(
   }),
   (t) => [index("pi_device_table_id_idx").on(t.tableId)],
 );
+
+// Relations (now that all tables are declared)
+export const pokerTablesRelations = relations(pokerTables, ({ one, many }) => ({
+  dealer: one(users, {
+    fields: [pokerTables.dealerId],
+    references: [users.id],
+  }),
+  seats: many(seats),
+  games: many(games),
+  piDevices: many(piDevices),
+}));
+
+export const piDevicesRelations = relations(piDevices, ({ one }) => ({
+  table: one(pokerTables, {
+    fields: [piDevices.tableId],
+    references: [pokerTables.id],
+  }),
+}));

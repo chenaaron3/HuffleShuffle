@@ -76,7 +76,7 @@ function EventLine({ ev, seats }: { ev: EventRow; seats: SeatWithPlayer[] }) {
 
     if (t === 'START_GAME') {
         return (
-            <span className="text-zinc-300">New hand starts</span>
+            <span className="text-zinc-300">New hand starts.</span>
         );
     }
 
