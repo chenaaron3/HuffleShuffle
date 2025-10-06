@@ -6,7 +6,7 @@ import postgres from 'postgres';
 
 import { DeleteMessageCommand, SQSClient } from '@aws-sdk/client-sqs';
 
-import { dealCard, notifyTableUpdate } from './link/game-logic';
+import { dealCard, notifyTableUpdate, parseBarcodeToRankSuit } from './link/game-logic';
 import * as schema from './link/schema';
 
 import type {
@@ -40,39 +40,6 @@ function getSqs() {
 
 type ScanMessage = { serial: string; barcode: string; ts: number };
 
-function parseBarcodeToRankSuit(barcode: string): {
-  rank: string;
-  suit: string;
-} {
-  const suitCode = barcode.slice(0, 1);
-  const rankCode = barcode.slice(1);
-  const suitMap: Record<string, string> = {
-    "1": "s",
-    "2": "h",
-    "3": "c",
-    "4": "d",
-  };
-  const rankMap: Record<string, string> = {
-    "010": "A",
-    "020": "2",
-    "030": "3",
-    "040": "4",
-    "050": "5",
-    "060": "6",
-    "070": "7",
-    "080": "8",
-    "090": "9",
-    "100": "T",
-    "110": "J",
-    "120": "Q",
-    "130": "K",
-  };
-  const suit = suitMap[suitCode];
-  const rank = rankMap[rankCode];
-  if (!suit || !rank) throw new Error("Invalid barcode");
-  return { rank, suit };
-}
-
 async function handleScan(msg: ScanMessage): Promise<void> {
   const { serial, barcode, ts } = msg;
   const database = getDb();
@@ -99,10 +66,9 @@ async function handleScan(msg: ScanMessage): Promise<void> {
       where: eq(schema.games.tableId, tableId),
       orderBy: (games, { desc }) => [desc(games.createdAt)],
     });
-    if (!game || game.isCompleted) throw new Error("No active game");
 
     // Use shared game logic instead of duplicating code
-    await dealCard(tx, tableId, game, code);
+    await dealCard(tx, tableId, game ?? null, code);
   });
   await notifyTableUpdate(device.tableId);
 }
@@ -128,7 +94,6 @@ async function processRecord(
     );
 
     console.log(`[lambda] processed and deleted scan: ${body.barcode}`);
-    return { success: true, messageId: record.messageId };
   } catch (error) {
     console.error(
       `[lambda] error processing message ${record.messageId}:`,
@@ -143,6 +108,7 @@ async function processRecord(
       }),
     );
   }
+  return { success: true, messageId: record.messageId };
 }
 
 // Lambda handler for SQS Event Source

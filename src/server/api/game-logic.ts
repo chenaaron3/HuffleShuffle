@@ -1,11 +1,14 @@
+import { table } from 'console';
 import { and, eq, isNotNull, sql } from 'drizzle-orm';
 import { logFlop, logRiver, logTurn } from '~/server/api/game-event-logger';
 import { db } from '~/server/db';
-import { games, seats } from '~/server/db/schema';
+import { games, pokerTables, seats } from '~/server/db/schema';
 import { updateTable } from '~/server/signal';
 
+type DB = typeof db;
 type SeatRow = typeof seats.$inferSelect;
 type GameRow = typeof games.$inferSelect;
+type TableRow = typeof pokerTables.$inferSelect;
 
 // --- Helper utilities ---
 const pickNextIndex = (currentIndex: number, total: number) =>
@@ -158,9 +161,20 @@ async function startBettingRound(
 export async function dealCard(
   tx: { query: typeof db.query; update: typeof db.update },
   tableId: string,
-  game: GameRow,
+  game: GameRow | null,
   cardCode: string,
 ): Promise<void> {
+  // Start a new game on card deal
+  if (game === null || game.isCompleted) {
+    const table = await tx.query.pokerTables.findFirst({
+      where: eq(pokerTables.id, tableId),
+    });
+    if (!table) throw new Error("Table not found");
+
+    const orderedSeats = await fetchAllSeatsInOrder(tx, tableId);
+    game = await createNewGame(tx, table, orderedSeats, game);
+  }
+
   // Must be dealing cards to active seats
   const orderedSeats = await fetchAllSeatsInOrder(tx, tableId);
   // Check if card already dealt
@@ -225,6 +239,177 @@ export async function dealCard(
   } else {
     throw new Error("DEAL_CARD not valid in current state");
   }
+}
+
+export async function createNewGame(
+  tx: { query: typeof db.query; update: typeof db.update },
+  table: TableRow,
+  orderedSeats: Array<SeatRow>,
+  previousGame: GameRow | null,
+): Promise<GameRow> {
+  // Validate that all players have enough chips to participate
+  const minimumBet = table.bigBlind; // Players need at least the big blind amount
+  const playersWithInsufficientChips = orderedSeats.filter(
+    (seat) => seat.buyIn < minimumBet,
+  );
+
+  if (playersWithInsufficientChips.length > 0) {
+    const playerNames = playersWithInsufficientChips
+      .map((seat) => `Player at seat ${seat.seatNumber} (${seat.buyIn} chips)`)
+      .join(", ");
+    throw new Error(
+      `Cannot start game: ${playerNames} have insufficient chips. Minimum required: ${minimumBet} chips (big blind amount)`,
+    );
+  }
+
+  // Update startingBalance to current buyIn for all players before starting new game
+  for (const seat of orderedSeats) {
+    await tx
+      .update(seats)
+      .set({ startingBalance: seat.buyIn })
+      .where(eq(seats.id, seat.id));
+    seat.startingBalance = seat.buyIn; // Update in-memory object too
+  }
+
+  // Create a new game object
+  let dealerButtonSeatId = orderedSeats[0]!.id;
+  if (previousGame) {
+    // If there was a previous game, progress the dealer button
+    const prevButton = previousGame.dealerButtonSeatId!;
+    dealerButtonSeatId = getNextActiveSeatId(orderedSeats, prevButton);
+  }
+  const createdRows = await (tx as DB)
+    .insert(games)
+    .values({
+      tableId: table.id,
+      isCompleted: false,
+      state: "DEAL_HOLE_CARDS",
+      dealerButtonSeatId,
+      communityCards: [],
+      potTotal: 0,
+      betCount: 0,
+      requiredBetCount: 0,
+    })
+    .returning();
+  const game = createdRows?.[0];
+  if (!game) throw new Error("Failed to create game");
+
+  // Collect big and small blind
+  await collectBigAndSmallBlind(tx, table, orderedSeats, game);
+  const { smallBlindSeat } = getBigAndSmallBlindSeats(orderedSeats, game);
+
+  // Small blind gets the first turn
+  await tx
+    .update(games)
+    .set({
+      assignedSeatId: smallBlindSeat.id,
+    })
+    .where(eq(games.id, game.id));
+  game.assignedSeatId = smallBlindSeat.id;
+  return game;
+}
+
+export function getBigAndSmallBlindSeats(
+  orderedSeats: Array<SeatRow>,
+  game: GameRow,
+): { smallBlindSeat: SeatRow; bigBlindSeat: SeatRow } {
+  const smallBlindSeat = getNextActiveSeatId(
+    orderedSeats,
+    game.dealerButtonSeatId!,
+  );
+  const bigBlindSeat = getNextActiveSeatId(orderedSeats, smallBlindSeat);
+  return {
+    smallBlindSeat: orderedSeats.find((s) => s.id === smallBlindSeat)!,
+    bigBlindSeat: orderedSeats.find((s) => s.id === bigBlindSeat)!,
+  };
+}
+
+async function collectBigAndSmallBlind(
+  tx: { query: typeof db.query; update: typeof db.update },
+  table: TableRow,
+  orderedSeats: Array<SeatRow>,
+  game: GameRow,
+): Promise<void> {
+  const { smallBlindSeat, bigBlindSeat } = getBigAndSmallBlindSeats(
+    orderedSeats,
+    game,
+  );
+  // Transfer buy-in into bets for big and small blind
+  await tx
+    .update(seats)
+    .set({
+      currentBet: sql`${table.smallBlind}`,
+      buyIn: sql`${seats.buyIn} - ${table.smallBlind}`,
+    })
+    .where(eq(seats.id, smallBlindSeat.id));
+  await tx
+    .update(seats)
+    .set({
+      currentBet: sql`${table.bigBlind}`,
+      buyIn: sql`${seats.buyIn} - ${table.bigBlind}`,
+    })
+    .where(eq(seats.id, bigBlindSeat.id));
+}
+
+export function parseBarcodeToRankSuit(barcode: string): {
+  rank: string;
+  suit: string;
+} {
+  const suitCode = barcode.slice(0, 1);
+  const rankCode = barcode.slice(1);
+  const suitMap: Record<string, string> = {
+    "1": "s",
+    "2": "h",
+    "3": "c",
+    "4": "d",
+  };
+  const rankMap: Record<string, string> = {
+    "010": "A",
+    "020": "2",
+    "030": "3",
+    "040": "4",
+    "050": "5",
+    "060": "6",
+    "070": "7",
+    "080": "8",
+    "090": "9",
+    "100": "T",
+    "110": "J",
+    "120": "Q",
+    "130": "K",
+  };
+  const suit = suitMap[suitCode];
+  const rank = rankMap[rankCode];
+  if (!suit || !rank) throw new Error("Invalid barcode");
+  return { rank, suit };
+}
+
+export function parseRankSuitToBarcode(rank: string, suit: string): string {
+  const suitMap: Record<string, string> = {
+    s: "1",
+    h: "2",
+    c: "3",
+    d: "4",
+  };
+  const rankMap: Record<string, string> = {
+    A: "010",
+    "2": "020",
+    "3": "030",
+    "4": "040",
+    "5": "050",
+    "6": "060",
+    "7": "070",
+    "8": "080",
+    "9": "090",
+    T: "100",
+    J: "110",
+    Q: "120",
+    K: "130",
+  };
+  const suitCode = suitMap[suit];
+  const rankCode = rankMap[rank];
+  if (!suitCode || !rankCode) throw new Error("Invalid rank or suit");
+  return `${suitCode}${rankCode}`;
 }
 
 // Shared function to notify clients of table state changes

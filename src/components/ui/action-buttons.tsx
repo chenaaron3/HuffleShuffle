@@ -68,7 +68,7 @@ export function ActionButtons({
                         {onRandomCard && (
                             <Button
                                 onClick={onRandomCard}
-                                disabled={isLoading || isJoinable || !isDealerTurn}
+                                disabled={isLoading || (!isJoinable && !isDealerTurn)}
                                 className="transition-all duration-200 hover:scale-105 shadow-2xl inline-flex items-center justify-center font-semibold px-8 py-3 rounded-xl border text-white bg-purple-500/20 border-purple-400/30 backdrop-blur"
                             >
                                 {isLoading ? 'Dealing...' : 'Deal Random'}

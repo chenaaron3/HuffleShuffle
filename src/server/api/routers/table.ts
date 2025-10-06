@@ -1,5 +1,6 @@
 import { and, eq, gt, isNull, or, sql } from 'drizzle-orm';
 import { AccessToken } from 'livekit-server-sdk';
+import ts from 'typescript';
 import { z } from 'zod';
 import { createTRPCRouter, protectedProcedure, publicProcedure } from '~/server/api/trpc';
 import { db } from '~/server/db';
@@ -9,14 +10,18 @@ import {
 import { endHandStream, startHandStream } from '~/server/signal';
 import { rsaEncryptB64 } from '~/utils/crypto';
 
+import { SendMessageCommand, SQSClient } from '@aws-sdk/client-sqs';
+
 import {
     logCall, logCheck, logEndGame, logFold, logRaise, logStartGame
 } from '../game-event-logger';
-import { dealCard, getNextActiveSeatId, notifyTableUpdate } from '../game-logic';
+import {
+    createNewGame, dealCard, getNextActiveSeatId, notifyTableUpdate, parseRankSuitToBarcode
+} from '../game-logic';
 import { evaluateBettingTransition } from '../hand-solver';
 
 import type { VideoGrant } from "livekit-server-sdk";
-
+import type { info } from "console";
 const ensureDealerRole = (role: string | undefined) => {
   if (role !== "dealer") throw new Error("FORBIDDEN: dealer role required");
 };
@@ -98,48 +103,6 @@ function redactSnapshotForUser(
   return { ...snapshot, seats: redactedSeats };
 }
 
-function getBigAndSmallBlindSeats(
-  orderedSeats: Array<SeatRow>,
-  game: GameRow,
-): { smallBlindSeat: SeatRow; bigBlindSeat: SeatRow } {
-  const smallBlindSeat = getNextActiveSeatId(
-    orderedSeats,
-    game.dealerButtonSeatId!,
-  );
-  const bigBlindSeat = getNextActiveSeatId(orderedSeats, smallBlindSeat);
-  return {
-    smallBlindSeat: orderedSeats.find((s) => s.id === smallBlindSeat)!,
-    bigBlindSeat: orderedSeats.find((s) => s.id === bigBlindSeat)!,
-  };
-}
-
-async function collectBigAndSmallBlind(
-  tx: TableTransaction,
-  table: TableRow,
-  orderedSeats: Array<SeatRow>,
-  game: GameRow,
-): Promise<void> {
-  const { smallBlindSeat, bigBlindSeat } = getBigAndSmallBlindSeats(
-    orderedSeats,
-    game,
-  );
-  // Transfer buy-in into bets for big and small blind
-  await tx
-    .update(seats)
-    .set({
-      currentBet: sql`${table.smallBlind}`,
-      buyIn: sql`${seats.buyIn} - ${table.smallBlind}`,
-    })
-    .where(eq(seats.id, smallBlindSeat.id));
-  await tx
-    .update(seats)
-    .set({
-      currentBet: sql`${table.bigBlind}`,
-      buyIn: sql`${seats.buyIn} - ${table.bigBlind}`,
-    })
-    .where(eq(seats.id, bigBlindSeat.id));
-}
-
 async function resetGame(
   tx: TableTransaction,
   game: GameRow | null,
@@ -191,67 +154,6 @@ async function resetGame(
       })
       .where(eq(games.id, game.id));
   }
-}
-
-async function createNewGame(
-  tx: TableTransaction,
-  table: TableRow,
-  orderedSeats: Array<SeatRow>,
-  dealerButtonSeatId: string,
-): Promise<GameRow> {
-  // Validate that all players have enough chips to participate
-  const minimumBet = table.bigBlind; // Players need at least the big blind amount
-  const playersWithInsufficientChips = orderedSeats.filter(
-    (seat) => seat.buyIn < minimumBet,
-  );
-
-  if (playersWithInsufficientChips.length > 0) {
-    const playerNames = playersWithInsufficientChips
-      .map((seat) => `Player at seat ${seat.seatNumber} (${seat.buyIn} chips)`)
-      .join(", ");
-    throw new Error(
-      `Cannot start game: ${playerNames} have insufficient chips. Minimum required: ${minimumBet} chips (big blind amount)`,
-    );
-  }
-
-  // Update startingBalance to current buyIn for all players before starting new game
-  for (const seat of orderedSeats) {
-    await tx
-      .update(seats)
-      .set({ startingBalance: seat.buyIn })
-      .where(eq(seats.id, seat.id));
-    seat.startingBalance = seat.buyIn; // Update in-memory object too
-  }
-
-  // Create a new game object
-  const createdRows = await (tx as DB)
-    .insert(games)
-    .values({
-      tableId: table.id,
-      isCompleted: false,
-      state: "DEAL_HOLE_CARDS",
-      dealerButtonSeatId,
-      communityCards: [],
-      potTotal: 0,
-      betCount: 0,
-      requiredBetCount: 0,
-    })
-    .returning();
-  const game = createdRows?.[0];
-  if (!game) throw new Error("Failed to create game");
-
-  // Collect big and small blind
-  await collectBigAndSmallBlind(tx, table, orderedSeats, game);
-  const { smallBlindSeat } = getBigAndSmallBlindSeats(orderedSeats, game);
-
-  // Small blind gets the first turn
-  await tx
-    .update(games)
-    .set({
-      assignedSeatId: smallBlindSeat.id,
-    })
-    .where(eq(games.id, game.id));
-  return game;
 }
 
 export const tableRouter = createTRPCRouter({
@@ -692,22 +594,14 @@ export const tableRouter = createTRPCRouter({
         if (n < 2 && input.action === "START_GAME")
           throw new Error("Need at least 2 players to start");
 
-        let game =
-          snapshot.games[0] && !snapshot.games[0].isCompleted
-            ? snapshot.games[0]
-            : null;
-
+        // Get the last game, whether its finished or not
+        let game = snapshot.games[0];
         const isDealerCaller = snapshot.dealerId === userId;
-
-        const toCardCode = (rank?: string, suit?: string) => {
-          if (!rank || !suit) throw new Error("rank and suit required");
-          return `${rank}${suit}`;
-        };
 
         if (input.action === "RESET_TABLE") {
           if (!isDealerCaller) throw new Error("Only dealer can RESET_TABLE");
           // If there was a previous game, mark it as complete
-          if (game) {
+          if (game && !game.isCompleted) {
             await resetGame(tx, game, orderedSeats, true); // Reset buyIn to startingBalance
             // End game with no winners
             await logEndGame(tx, input.tableId, game.id, {
@@ -725,34 +619,47 @@ export const tableRouter = createTRPCRouter({
           // Reset all seats and mark current game as completed (if exists)
           await resetGame(tx, game ?? null, orderedSeats);
 
-          // If there was a previous game, progress the dealer button
-          const prevButton = game?.dealerButtonSeatId;
-          if (prevButton) {
-            dealerButtonSeatId = getNextActiveSeatId(orderedSeats, prevButton);
-          }
-
-          game = await createNewGame(
-            tx,
-            snapshot,
-            orderedSeats,
-            dealerButtonSeatId,
-          );
+          game = await createNewGame(tx, snapshot, orderedSeats, game ?? null);
           await logStartGame(tx as any, input.tableId, game.id, {
             dealerButtonSeatId,
           });
           return { ok: true } as const;
         }
 
-        if (!game) throw new Error("No active game");
-
         if (input.action === "DEAL_CARD") {
           if (!isDealerCaller) throw new Error("Only dealer can DEAL_CARD");
-          const code = toCardCode(input.params?.rank, input.params?.suit);
+          if (!input.params?.rank || !input.params?.suit)
+            throw new Error("Rank and suit are required");
+          const barcode = parseRankSuitToBarcode(
+            input.params.rank,
+            input.params.suit,
+          );
 
           // Use shared game logic instead of duplicating code
-          await dealCard(tx, input.tableId, game, code);
+          // await dealCard(tx, input.tableId, game ?? null, code);
+          const region = process.env.AWS_REGION || "us-east-1";
+          const queueUrl = process.env.SQS_QUEUE_URL;
+          const sqs = new SQSClient({ region });
+          const ts = Date.now();
+          sqs.send(
+            new SendMessageCommand({
+              QueueUrl: queueUrl,
+              MessageBody: JSON.stringify({
+                serial: "10000000672a9ed2",
+                barcode,
+                ts,
+              }),
+              MessageGroupId: input.tableId, // Ensures FIFO ordering per table
+              MessageDeduplicationId: `${input.tableId}-${barcode}-${ts}`, // Prevents duplicates
+            }),
+            () => {
+              console.log(`published ${barcode} to SQS`);
+            },
+          );
           return { ok: true } as const;
         }
+
+        if (!game || game.isCompleted) throw new Error("No active game");
 
         // Player actions require assigned seat
         const actorSeat = orderedSeats.find((s) => s.playerId === userId);
