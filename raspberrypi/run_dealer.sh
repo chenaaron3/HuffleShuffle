@@ -49,16 +49,16 @@ command -v lk >/dev/null 2>&1 || { echo "lk not found" >&2; exit 1; }
 echo "Using V4L2 device: $DEV" >&2
 
 # Pre-configure device for stability (best-effort)
-v4l2-ctl -d "$DEV" --set-fmt-video=width=1920,height=1080,pixelformat=YUYV || true
-v4l2-ctl -d "$DEV" --set-parm=30 || true
+# Try to set 720p60 NV12 at the source; falls back if unsupported by the dongle
+v4l2-ctl -d "$DEV" --set-fmt-video=width=1280,height=720,pixelformat=NV12 || true
+v4l2-ctl -d "$DEV" --set-parm=60 || true
 
 rm -f "$LOG_FILE"
 
-PIPELINE="v4l2src device=$DEV ! \
-  videoconvert ! videoscale ! videorate ! \
-  video/x-raw,format=I420,width=1280,height=720,framerate=30/1 ! \
-  x264enc tune=zerolatency speed-preset=ultrafast bitrate=3000 key-int-max=60 \
-    byte-stream=true aud=true bframes=0 sliced-threads=false threads=1 sync-lookahead=0 ! \
+PIPELINE="v4l2src device=$DEV io-mode=4 ! \
+  video/x-raw,format=NV12,framerate=60/1 ! queue ! \
+  v4l2convert output-io-mode=dmabuf-import ! video/x-raw,format=NV12,width=1280,height=720,framerate=60/1 ! \
+  v4l2h264enc extra-controls=\"controls,video_bitrate=3500000,h264_i_frame_period=60\" ! \
   h264parse config-interval=-1 ! \
   video/x-h264,stream-format=byte-stream,alignment=au ! \
   tcpserversink host=$HOST port=$PORT sync=false recover-policy=keyframe"
