@@ -147,6 +147,7 @@ async function resetGame(
     await tx
       .update(games)
       .set({
+        communityCards: sql`ARRAY[]::text[]`,
         assignedSeatId: null,
         isCompleted: true,
         potTotal: 0,

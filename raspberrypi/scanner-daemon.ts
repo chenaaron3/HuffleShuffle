@@ -1,7 +1,5 @@
 import console from 'node:console';
-import { createHash } from 'node:crypto';
 import { createReadStream } from 'node:fs';
-import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 import { SendMessageCommand, SQSClient } from '@aws-sdk/client-sqs';
