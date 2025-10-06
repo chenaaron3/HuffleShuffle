@@ -1,6 +1,6 @@
 import console from 'node:console';
 import { createHash } from 'node:crypto';
-import { closeSync, openSync, readFileSync, readSync } from 'node:fs';
+import { createReadStream } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
@@ -12,9 +12,12 @@ import { ensurePiKeys, getSerialNumber, loadEnv, resolveTable } from './daemon-u
 loadEnv();
 
 // Read from a HID device (SCANNER_DEVICE, defaults to /dev/hidraw0)
-type ScanHandler = (code: string) => void;
+type ScanHandler = (code: string) => Promise<void>;
 
-function startHidReader(devicePath: string, onScan: ScanHandler): void {
+async function startHidReader(
+  devicePath: string,
+  onScan: ScanHandler,
+): Promise<void> {
   const HID_BREAK_LINE_CODE = 0x28;
   const HidToCharMap: Record<number, string> = {
     0x4: "a",
@@ -67,55 +70,59 @@ function startHidReader(devicePath: string, onScan: ScanHandler): void {
     0x38: "/",
   };
 
-  let fd: number | null = null;
-
-  try {
-    fd = openSync(devicePath, "r");
-  } catch (e) {
-    console.error(
-      `[scanner-daemon] failed to open HID device ${devicePath}`,
-      e,
-    );
-    return;
-  }
-
-  const buf = Buffer.alloc(8);
   let acc = "";
+  let stream: ReturnType<typeof createReadStream> | null = null;
 
-  const loop = () => {
-    if (fd == null) return;
-
+  const openStream = () => {
     try {
-      const bytes = readSync(fd, buf, 0, buf.length, null);
+      stream = createReadStream(devicePath, { flags: "r", highWaterMark: 8 });
+    } catch (e) {
+      console.error(
+        `[scanner-daemon] failed to open HID device ${devicePath}`,
+        e,
+      );
+      setTimeout(openStream, 1000);
+      return;
+    }
 
-      for (let i = 0; i < bytes; i++) {
+    const s = stream;
+
+    s.on("data", (chunk: Buffer | string) => {
+      const buf =
+        typeof chunk === "string" ? Buffer.from(chunk, "binary") : chunk;
+      for (let i = 0; i < buf.length; i++) {
         const b = buf[i]!;
-        console.log(b);
         if (b === HID_BREAK_LINE_CODE) {
           const code = acc.trim();
           acc = "";
-          onScan(code);
-          console.log(acc);
+          void onScan(code);
           continue;
         }
         const ch = HidToCharMap[b];
         if (ch) acc += ch;
       }
-    } catch (e) {
-      console.error("[scanner-daemon] HID read error:", e);
-      setTimeout(loop, 100);
-      return;
-    }
+    });
 
-    // Use setTimeout with a shorter delay to be more responsive
-    setTimeout(loop, 5);
+    s.on("error", (e) => {
+      console.error("[scanner-daemon] HID read error:", e);
+      try {
+        s.close();
+      } catch {}
+      if (stream === s) stream = null;
+      setTimeout(openStream, 100);
+    });
+
+    s.on("close", () => {
+      if (stream === s) stream = null;
+      setTimeout(openStream, 100);
+    });
   };
 
-  loop();
+  openStream();
 
   process.on("exit", () => {
     try {
-      if (fd != null) closeSync(fd);
+      if (stream) stream.close();
     } catch {}
   });
 }
