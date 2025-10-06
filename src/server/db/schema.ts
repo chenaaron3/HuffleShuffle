@@ -1,5 +1,6 @@
 import { relations, sql } from 'drizzle-orm';
 import { check, index, pgEnum, pgTableCreator, primaryKey, uniqueIndex } from 'drizzle-orm/pg-core';
+import { randomUUID } from 'node:crypto';
 
 import type { AdapterAccount } from "next-auth/adapters";
 
@@ -24,7 +25,7 @@ export const users = createTable(
       .varchar({ length: 255 })
       .notNull()
       .primaryKey()
-      .$defaultFn(() => crypto.randomUUID()),
+      .$defaultFn(() => randomUUID()),
     name: d.varchar({ length: 255 }),
     email: d.varchar({ length: 255 }).notNull(),
     emailVerified: d
@@ -108,7 +109,7 @@ export const pokerTables = createTable(
       .varchar({ length: 255 })
       .notNull()
       .primaryKey()
-      .$defaultFn(() => crypto.randomUUID()),
+      .$defaultFn(() => randomUUID()),
     name: d.varchar({ length: 255 }).notNull(),
     dealerId: d
       .varchar({ length: 255 })
@@ -137,7 +138,7 @@ export const seats = createTable(
       .varchar({ length: 255 })
       .notNull()
       .primaryKey()
-      .$defaultFn(() => crypto.randomUUID()),
+      .$defaultFn(() => randomUUID()),
     tableId: d
       .varchar({ length: 255 })
       .notNull()
@@ -200,7 +201,7 @@ export const games = createTable(
       .varchar({ length: 255 })
       .notNull()
       .primaryKey()
-      .$defaultFn(() => crypto.randomUUID()),
+      .$defaultFn(() => randomUUID()),
     tableId: d
       .varchar({ length: 255 })
       .notNull()

@@ -1,4 +1,3 @@
-import { table } from 'console';
 import { and, eq, isNotNull, sql } from 'drizzle-orm';
 import { logFlop, logRiver, logTurn } from '~/server/api/game-event-logger';
 import { db } from '~/server/db';

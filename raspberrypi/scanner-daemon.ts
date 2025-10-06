@@ -1,3 +1,4 @@
+import console from 'node:console';
 import { createHash } from 'node:crypto';
 import { closeSync, openSync, readFileSync, readSync } from 'node:fs';
 import { join } from 'node:path';
@@ -67,7 +68,6 @@ function startHidReader(devicePath: string, onScan: ScanHandler): void {
   };
 
   let fd: number | null = null;
-  let isProcessing = false; // Flag to prevent overlapping processing
 
   try {
     fd = openSync(devicePath, "r");
@@ -90,20 +90,12 @@ function startHidReader(devicePath: string, onScan: ScanHandler): void {
 
       for (let i = 0; i < bytes; i++) {
         const b = buf[i]!;
+        console.log(b);
         if (b === HID_BREAK_LINE_CODE) {
           const code = acc.trim();
           acc = "";
-          if (code && !isProcessing) {
-            isProcessing = true;
-            // Process this scan and wait for it to complete before processing the next
-            Promise.resolve(onScan(code)).finally(() => {
-              isProcessing = false;
-            });
-          } else if (code && isProcessing) {
-            console.log(
-              `[scanner-daemon] scan ${code} queued (previous scan still processing)`,
-            );
-          }
+          onScan(code);
+          console.log(acc);
           continue;
         }
         const ch = HidToCharMap[b];
