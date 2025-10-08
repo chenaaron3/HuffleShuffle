@@ -196,7 +196,7 @@ export function DealerCamera({
             )}
 
             {/* Horizontal Raise Controls - Bottom Right */}
-            <AnimatePresence mode="wait">
+            <AnimatePresence>
                 {isPlayerTurn && onAction && (
                     <div className="absolute right-4 bottom-3">
                         <VerticalRaiseControls

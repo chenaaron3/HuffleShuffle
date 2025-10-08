@@ -53,7 +53,7 @@ export function VerticalRaiseControls({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 12, scale: 0.98 }}
             transition={{ type: 'spring', stiffness: 260, damping: 24, mass: 0.7 }}
-            className="flex flex-col gap-3 w-full"
+            className="rounded-xl shadow-2xl w-64 bg-black/20 border border-white/10 p-3 backdrop-blur flex flex-col gap-3"
         >
             {/* Quick Action Buttons - Top */}
             <div className="flex gap-1.5 w-full">
