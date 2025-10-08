@@ -16,6 +16,7 @@ interface DealerCameraProps {
     gameStatus?: string;
     activePlayerName?: string;
     winningCards?: string[]; // Cards that make up the winning hand
+    dealerUserId?: string;
     // Action button props
     isDealer?: boolean;
     isJoinable?: boolean;
@@ -40,6 +41,7 @@ export function DealerCamera({
     gameStatus,
     activePlayerName,
     winningCards,
+    dealerUserId,
     isDealer,
     isJoinable,
     currentUserSeatId,
@@ -55,8 +57,12 @@ export function DealerCamera({
     onLeaveTable,
     isLeaving
 }: DealerCameraProps) {
-    const tracks = useTracks([Track.Source.Camera]);
-    const dealerRef = tracks.find((t) => t.participant.identity === 'dealer-camera');
+    const trackRefs = useTracks([Track.Source.Camera]);
+    const dealerRef = dealerUserId
+        ? trackRefs.find(
+            (t) => t.participant.identity === dealerUserId && t.source === Track.Source.Camera,
+        )
+        : null;
 
     // Check if it's the current user's turn
     const isPlayerTurn = gameStatus === 'BETTING' && currentUserSeatId === bettingActorSeatId;
@@ -156,9 +162,10 @@ export function DealerCamera({
             )} */}
 
             {/* Action Buttons Overlay - Center when it's the user's turn or dealer's turn */}
-            {((isPlayerTurn || isDealer) && onAction) && (
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                    <div className="pointer-events-auto">
+            <AnimatePresence mode="wait">
+                {((isPlayerTurn || isDealer) && onAction) && (
+                    <div className="absolute inset-0 flex items-center justify-center">
+
                         <ActionButtons
                             isDealer={isDealer ?? false}
                             isJoinable={isJoinable ?? false}
@@ -172,8 +179,8 @@ export function DealerCamera({
                             maxBet={maxBet}
                         />
                     </div>
-                </div>
-            )}
+                )}
+            </AnimatePresence>
 
             {/* Leave Table Button - Bottom Left */}
             {isJoinable && onLeaveTable && (
@@ -189,11 +196,9 @@ export function DealerCamera({
             )}
 
             {/* Horizontal Raise Controls - Bottom Right */}
-            {isPlayerTurn && onAction && (
-                <div className="absolute right-4 bottom-3">
-                    <div
-                        className="rounded-xl shadow-2xl w-64 bg-black/20 border border-white/10 p-3 backdrop-blur"
-                    >
+            <AnimatePresence mode="wait">
+                {isPlayerTurn && onAction && (
+                    <div className="absolute right-4 bottom-3">
                         <VerticalRaiseControls
                             isLoading={isLoading ?? false}
                             potTotal={potTotal}
@@ -204,8 +209,8 @@ export function DealerCamera({
                             onRaiseAmountChange={setRaiseAmount}
                         />
                     </div>
-                </div>
-            )}
+                )}
+            </AnimatePresence>
 
             {/* Subtle gradient overlay for better text readability */}
             <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-black/10 pointer-events-none" />

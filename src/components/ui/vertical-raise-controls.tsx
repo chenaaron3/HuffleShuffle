@@ -1,3 +1,4 @@
+import { AnimatePresence, motion } from 'framer-motion';
 import { Coins, Target, Zap } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Button } from '~/components/ui/button';
@@ -46,14 +47,21 @@ export function VerticalRaiseControls({
     const isAllInDisabled = allIn < minRaise;
 
     return (
-        <div className="flex flex-col gap-3 w-full">
+        <motion.div
+            key="raise-controls"
+            initial={{ opacity: 0, y: 12, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 12, scale: 0.98 }}
+            transition={{ type: 'spring', stiffness: 260, damping: 24, mass: 0.7 }}
+            className="flex flex-col gap-3 w-full"
+        >
             {/* Quick Action Buttons - Top */}
             <div className="flex gap-1.5 w-full">
                 {/* Half Pot Button */}
                 <Button
                     onClick={handleHalfPot}
                     disabled={isLoading || isHalfPotDisabled}
-                    className="inline-flex items-center gap-1 text-xs flex-1 disabled:opacity-50 disabled:cursor-not-allowed justify-center font-medium px-2 py-1 rounded-lg border border-blue-400/50 bg-blue-500/20 text-white backdrop-blur"
+                    className="inline-flex items-center gap-1 text-xs flex-1 disabled:opacity-50 disabled:cursor-not-allowed justify-center font-medium px-2 py-1 rounded-lg border text-white backdrop-blur transition-all duration-200 hover:scale-105 bg-blue-500/70 hover:bg-blue-500/80 border-blue-300/80"
                 >
                     <Target className="w-3 h-3" />
                     ½ Pot
@@ -63,7 +71,7 @@ export function VerticalRaiseControls({
                 <Button
                     onClick={handleFullPot}
                     disabled={isLoading || isFullPotDisabled}
-                    className="inline-flex items-center gap-1 text-xs flex-1 disabled:opacity-50 disabled:cursor-not-allowed justify-center font-medium px-2 py-1 rounded-lg border border-purple-400/50 bg-purple-500/20 text-white backdrop-blur"
+                    className="inline-flex items-center gap-1 text-xs flex-1 disabled:opacity-50 disabled:cursor-not-allowed justify-center font-medium px-2 py-1 rounded-lg border text-white backdrop-blur transition-all duration-200 hover:scale-105 bg-purple-500/70 hover:bg-purple-500/80 border-purple-300/80"
                 >
                     <Zap className="w-3 h-3" />
                     Pot
@@ -73,7 +81,7 @@ export function VerticalRaiseControls({
                 <Button
                     onClick={handleAllIn}
                     disabled={isLoading || isAllInDisabled}
-                    className="inline-flex items-center gap-1 text-xs flex-1 disabled:opacity-50 disabled:cursor-not-allowed justify-center font-medium px-2 py-1 rounded-lg border border-yellow-400/50 bg-yellow-500/20 text-white backdrop-blur"
+                    className="inline-flex items-center gap-1 text-xs flex-1 disabled:opacity-50 disabled:cursor-not-allowed justify-center font-medium px-2 py-1 rounded-lg border text-white backdrop-blur transition-all duration-200 hover:scale-105 bg-yellow-500/70 hover:bg-yellow-500/80 border-yellow-300/80"
                 >
                     <Coins className="w-3 h-3" />
                     All In
@@ -99,7 +107,7 @@ export function VerticalRaiseControls({
                                 min={minRaise}
                                 step={bigBlind}
                                 orientation="horizontal"
-                                className="w-full [&_[data-slot=slider-track]]:bg-zinc-700/50 [&_[data-slot=slider-range]]:bg-orange-500 [&_[data-slot=slider-thumb]]:bg-orange-400 [&_[data-slot=slider-thumb]]:border-orange-300"
+                                className="w-full [&_[data-slot=slider-track]]:bg-zinc-800/70 [&_[data-slot=slider-range]]:bg-orange-500/90 [&_[data-slot=slider-thumb]]:bg-orange-400 [&_[data-slot=slider-thumb]]:border-orange-300 [&_[data-slot=slider-thumb]]:ring-2 [&_[data-slot=slider-thumb]]:ring-orange-300 [&_[data-slot=slider-thumb]]:drop-shadow-[0_0_12px_rgba(249,115,22,0.85)] [&_[data-slot=slider-thumb]]:transition-shadow"
                             />
                         </div>
                     </TooltipTrigger>
@@ -111,6 +119,6 @@ export function VerticalRaiseControls({
                     </TooltipContent>
                 </Tooltip>
             </div>
-        </div>
+        </motion.div>
     );
 }

@@ -302,6 +302,7 @@ export default function TableView() {
                                     gameStatus={state}
                                     activePlayerName={activePlayerName}
                                     winningCards={allWinningCards}
+                                    dealerUserId={snapshot?.table?.dealerId}
                                     isDealer={session?.user?.role === 'dealer'}
                                     isJoinable={snapshot?.isJoinable ?? false}
                                     currentUserSeatId={currentUserSeatId}
