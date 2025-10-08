@@ -8,6 +8,7 @@ import { RollingNumber } from '~/components/ui/chip-animations';
 import { ParticipantTile, useTracks, VideoTrack } from '@livekit/components-react';
 
 import { ActionButtons } from './action-buttons';
+import { TurnIndicator } from './turn-indicator';
 import { VerticalRaiseControls } from './vertical-raise-controls';
 
 interface DealerCameraProps {
@@ -66,7 +67,7 @@ export function DealerCamera({
 
     // Check if it's the current user's turn
     const isPlayerTurn = gameStatus === 'BETTING' && currentUserSeatId === bettingActorSeatId;
-
+    const isDealerTurn = ['DEAL_HOLE_CARDS', 'DEAL_FLOP', 'DEAL_TURN', 'DEAL_RIVER'].includes(gameStatus ?? '');
     // State for raise amount
     const [raiseAmount, setRaiseAmount] = useState<number>(bigBlind ?? 10);
 
@@ -149,23 +150,20 @@ export function DealerCamera({
                 </div>
             </div>
 
-            {/* Game Status Overlay - Top Right */}
-            {/* {gameStatus && activePlayerName && !isPlayerTurn && (
-                <div className="absolute top-4 right-4 rounded-xl bg-blue-600/90 px-4 py-3 backdrop-blur-sm shadow-lg border border-blue-500/50">
-                    <div className="flex items-center gap-2">
-                        <span className="h-2 w-2 animate-pulse rounded-full bg-blue-200" />
-                        <span className="text-sm font-semibold text-white">
-                            {activePlayerName}'s turn to act
-                        </span>
-                    </div>
-                </div>
-            )} */}
+            {/* Turn Indicator - Bottom Center */}
+            <TurnIndicator
+                gameStatus={gameStatus}
+                isJoinable={isJoinable}
+                isDealer={isDealer ?? false}
+                isPlayerTurn={isPlayerTurn}
+                isDealerTurn={isDealerTurn}
+                activePlayerName={activePlayerName}
+            />
 
             {/* Action Buttons Overlay - Center when it's the user's turn or dealer's turn */}
             <AnimatePresence mode="wait">
                 {((isPlayerTurn || isDealer) && onAction) && (
                     <div className="absolute inset-0 flex items-center justify-center">
-
                         <ActionButtons
                             isDealer={isDealer ?? false}
                             isJoinable={isJoinable ?? false}
