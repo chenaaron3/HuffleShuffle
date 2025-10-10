@@ -66,6 +66,8 @@ export type ValidateStep = {
   game?: GameSubset;
   table?: TableSubset;
   seats?: Partial<Record<PlayerKey, SeatSubset>>;
+  // Optional helper to validate that the dealer button is on a specific player's seat
+  dealerButtonFor?: PlayerKey;
 };
 
 export type Step = JoinStep | DealHoleStep | ActionStep | ValidateStep;

@@ -589,9 +589,7 @@ export const tableRouter = createTRPCRouter({
           },
         });
         if (!snapshot) throw new Error("Table not found");
-        const orderedSeats = snapshot.seats.filter(
-          (s) => s.buyIn > snapshot.bigBlind,
-        );
+        const orderedSeats = snapshot.seats.filter((s) => s.buyIn > 0);
         const n = orderedSeats.length;
         if (n < 2 && input.action === "START_GAME")
           throw new Error("Need at least 2 players to start");

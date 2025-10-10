@@ -21,8 +21,8 @@ else
   echo "DB already migrated. Skipping migrations."
 fi
 
-# Run tests against the DB
-SKIP_ENV_VALIDATION=1 DATABASE_URL="$DB_URL" npm run test
+# Run tests against the DB, forwarding any args (e.g., -- -t "pattern")
+SKIP_ENV_VALIDATION=1 DATABASE_URL="$DB_URL" npm run test -- "$@"
 
 echo "Tests complete. DB left running for faster iteration."
 

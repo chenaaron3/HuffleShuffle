@@ -52,28 +52,29 @@ const scenarios: Scenario[] = [
       { type: "action", action: "CHECK", by: "player1" },
       { type: "action", action: "CHECK", by: "player2" },
       { type: "action", action: "CHECK", by: "player3" },
-      { type: "validate", game: { state: "DEAL_FLOP" } },
+      // After preflop betting: 5+10 blinds + 7 players call 20 = 140
+      { type: "validate", game: { state: "DEAL_FLOP", potTotal: 140 } },
 
-      // Flop
+      // Flop (set up for a single winner later: AKQ on board, only player3 holds a T)
       {
         type: "action",
         action: "DEAL_CARD",
         by: "dealer",
-        params: { rank: "2", suit: "h" },
+        params: { rank: "A", suit: "h" },
       },
       {
         type: "action",
         action: "DEAL_CARD",
         by: "dealer",
-        params: { rank: "3", suit: "h" },
+        params: { rank: "K", suit: "c" },
       },
       {
         type: "action",
         action: "DEAL_CARD",
         by: "dealer",
-        params: { rank: "4", suit: "h" },
+        params: { rank: "Q", suit: "h" },
       },
-      { type: "validate", game: { state: "BETTING" } },
+      { type: "validate", game: { state: "BETTING", potTotal: 140 } },
       { type: "action", action: "CHECK", by: "player2" },
       {
         type: "action",
@@ -88,36 +89,62 @@ const scenarios: Scenario[] = [
       { type: "action", action: "CHECK", by: "player8" },
       { type: "action", action: "CHECK", by: "player1" },
       { type: "action", action: "CHECK", by: "player2" },
-      { type: "validate", game: { state: "DEAL_TURN" } },
+      // After flop betting: 140 + (5 players × 30) = 290
+      { type: "validate", game: { state: "DEAL_TURN", potTotal: 290 } },
 
-      // Turn
+      // Turn (J to complete Broadway only with a Ten in hole)
       {
         type: "action",
         action: "DEAL_CARD",
         by: "dealer",
-        params: { rank: "5", suit: "h" },
+        params: { rank: "J", suit: "d" },
       },
-      { type: "validate", game: { state: "BETTING" } },
+      { type: "validate", game: { state: "BETTING", potTotal: 290 } },
       { type: "action", action: "CHECK", by: "player2" },
       { type: "action", action: "CHECK", by: "player3" },
       { type: "action", action: "FOLD", by: "player7" },
       { type: "action", action: "CHECK", by: "player8" },
       { type: "action", action: "CHECK", by: "player1" },
-      { type: "validate", game: { state: "DEAL_RIVER" } },
+      // After turn betting: 290 + 0 (all checks) = 290
+      { type: "validate", game: { state: "DEAL_RIVER", potTotal: 290 } },
 
-      // River
+      // River (blank that doesn't change hand ranking)
       {
         type: "action",
         action: "DEAL_CARD",
         by: "dealer",
-        params: { rank: "6", suit: "h" },
+        params: { rank: "2", suit: "c" },
       },
-      { type: "validate", game: { state: "BETTING" } },
+      { type: "validate", game: { state: "BETTING", potTotal: 290 } },
       { type: "action", action: "CHECK", by: "player2" },
       { type: "action", action: "CHECK", by: "player3" },
       { type: "action", action: "CHECK", by: "player8" },
       { type: "action", action: "CHECK", by: "player1" },
       { type: "validate", game: { state: "SHOWDOWN" } },
+      // Validate pot distribution: player3 has Broadway straight (AKQJT) and wins
+      { type: "validate", game: { potTotal: 290 } },
+      {
+        type: "validate",
+        seats: {
+          // player1: As+Ks = Two Pair A's & K's
+          player1: { winAmount: 0, buyIn: 250 },
+          // player2: Qs+Js = Two Pair Q's & J's
+          player2: { winAmount: 0, buyIn: 250 },
+          // player3: Ts+9s = Broadway Straight (AKQJT) - WINNER
+          player3: { winAmount: 290, buyIn: 540 },
+          player4: { winAmount: 0, buyIn: 280 },
+          player5: { winAmount: 0, buyIn: 300 },
+          player6: { winAmount: 0, buyIn: 280 },
+          player7: { winAmount: 0, buyIn: 250 },
+          // player8: Kd+Qd = Two Pair K's & Q's
+          player8: { winAmount: 0, buyIn: 250 },
+        },
+      },
+
+      // Start second hand and validate dealer button moved to next active player (player2)
+      { type: "action", action: "START_GAME", by: "dealer" },
+      // After START_GAME, the new game's dealer button should advance by one active seat
+      { type: "validate", dealerButtonFor: "player2" },
     ],
   },
 ];
