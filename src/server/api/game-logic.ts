@@ -1,4 +1,5 @@
 import { and, eq, isNotNull, sql } from 'drizzle-orm';
+import process from 'process';
 import { logFlop, logRiver, logTurn } from '~/server/api/game-event-logger';
 import { db } from '~/server/db';
 import { games, pokerTables, seats } from '~/server/db/schema';
@@ -414,5 +415,6 @@ export function parseRankSuitToBarcode(rank: string, suit: string): string {
 // Shared function to notify clients of table state changes
 // Used in TRPC API and also consumer
 export async function notifyTableUpdate(tableId: string): Promise<void> {
+  if (process.env.NODE_ENV === "test") return;
   await updateTable(tableId);
 }

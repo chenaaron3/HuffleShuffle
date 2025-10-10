@@ -2,84 +2,25 @@ import { and, desc, eq, sql } from 'drizzle-orm';
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { createCaller } from '~/server/api/root';
 import { db } from '~/server/db';
-import { gameEvents, games, pokerTables, seats, users } from '~/server/db/schema';
+import { gameEvents, games, piDevices, pokerTables, seats, users } from '~/server/db/schema';
 
-type ActionName =
-  | "START_GAME"
-  | "DEAL_CARD"
-  | "RESET_TABLE"
-  | "RAISE"
-  | "FOLD"
-  | "CHECK";
-
-type ActionStep = {
-  type: "action";
-  action: ActionName;
-  by: "dealer" | "A" | "B" | "C";
-  params?: { rank?: string; suit?: string; amount?: number };
-  isError?: boolean;
-};
-
-type SeatSubset = Partial<
-  Pick<
-    typeof seats.$inferSelect,
-    | "buyIn"
-    | "startingBalance"
-    | "currentBet"
-    | "isActive"
-    | "handType"
-    | "handDescription"
-    | "winAmount"
-  >
-> & { cards?: string[]; winningCards?: string[] };
-
-type GameSubset = Partial<
-  Pick<
-    typeof games.$inferSelect,
-    | "isCompleted"
-    | "state"
-    | "dealerButtonSeatId"
-    | "assignedSeatId"
-    | "communityCards"
-    | "potTotal"
-    | "betCount"
-    | "requiredBetCount"
-  >
->;
-
-type TableSubset = Partial<
-  Pick<
-    typeof pokerTables.$inferSelect,
-    "name" | "smallBlind" | "bigBlind" | "maxSeats"
-  >
->;
-
-type ValidateStep = {
-  type: "validate";
-  game?: GameSubset;
-  table?: TableSubset;
-  seats?: {
-    A?: SeatSubset;
-    B?: SeatSubset;
-    C?: SeatSubset;
-  };
-};
-
-type Step = ActionStep | ValidateStep;
-
-type Scenario = {
-  name: string;
-  steps: Step[];
-};
+import type { Scenario, Step, PlayerKey } from "~/test/scenario.types";
 
 const publicKey = `-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAyVsuzIuAr7TYmbOtLrAp\nr6rmZBQrgMiXF0apTg7rvvSwa8JfUrZ0wXBHLx5VgpyHWNq0vFUwah7FgkpdGFQ0\nwWqRiwYWU6DG3S0sxWSYwfOiRTTLnnLPcUN3SzJjbJ5gnh7V7ukx5mpsm0dPHSiB\nREg4PNvbOo9suK4eIFKmRCgRdwNskA0pgaBi3PMfOLY+FbyTzlbs4xaQom2RMPt+\n1yD6mEACuOKzHQQP8Ve4ikkR4TdcYrnApUbfGa44xloA4fv500ez1hlBfRZ2ekow\npynGBufiP7koxSK4Nt8TRAVvuS8zZYrtGyboIZvObx6mm2YS6j7T9n0pEACpO2rT\nrwIDAQAB\n-----END PUBLIC KEY-----`;
 
 describe("table scenario harness", () => {
   // Use unique IDs to avoid collisions with existing e2e tests running in parallel
   const dealerId = "dealer-scenario-vitest";
-  const playerAId = "playerA-scenario-vitest";
-  const playerBId = "playerB-scenario-vitest";
-  const playerCId = "playerC-scenario-vitest";
+  const playerIds: Record<PlayerKey, string> = {
+    player1: "player1-scenario-vitest",
+    player2: "player2-scenario-vitest",
+    player3: "player3-scenario-vitest",
+    player4: "player4-scenario-vitest",
+    player5: "player5-scenario-vitest",
+    player6: "player6-scenario-vitest",
+    player7: "player7-scenario-vitest",
+    player8: "player8-scenario-vitest",
+  };
 
   const SMALL_BLIND = 5;
   const BIG_BLIND = 10;
@@ -92,27 +33,18 @@ describe("table scenario harness", () => {
     },
     db,
   } as any);
-  const playerACaller = createCaller({
-    session: {
-      user: { id: playerAId, role: "player" as const },
-      expires: new Date().toISOString(),
-    },
-    db,
-  } as any);
-  const playerBCaller = createCaller({
-    session: {
-      user: { id: playerBId, role: "player" as const },
-      expires: new Date().toISOString(),
-    },
-    db,
-  } as any);
-  const playerCCaller = createCaller({
-    session: {
-      user: { id: playerCId, role: "player" as const },
-      expires: new Date().toISOString(),
-    },
-    db,
-  } as any);
+  const playerCallers: Record<PlayerKey, any> = Object.fromEntries(
+    (Object.keys(playerIds) as PlayerKey[]).map((k) => [
+      k,
+      createCaller({
+        session: {
+          user: { id: playerIds[k], role: "player" as const },
+          expires: new Date().toISOString(),
+        },
+        db,
+      } as any),
+    ]),
+  ) as Record<PlayerKey, any>;
 
   let tableId = "";
 
@@ -124,38 +56,10 @@ describe("table scenario harness", () => {
       await db.delete(gameEvents).where(eq(gameEvents.tableId, t.id));
       await db.delete(games).where(eq(games.tableId, t.id));
       await db.delete(seats).where(eq(seats.tableId, t.id));
+      await db.delete(piDevices).where(eq(piDevices.tableId, t.id));
       await db.delete(pokerTables).where(eq(pokerTables.id, t.id));
     }
   };
-
-  beforeAll(async () => {
-    await db
-      .insert(users)
-      .values([
-        {
-          id: dealerId,
-          email: "d@vitest.local",
-          role: "dealer",
-          balance: 0,
-          name: "Dealer",
-        },
-        {
-          id: playerAId,
-          email: "a@vitest.local",
-          role: "player",
-          balance: 1000,
-          name: "A",
-        },
-        {
-          id: playerBId,
-          email: "b@vitest.local",
-          role: "player",
-          balance: 1000,
-          name: "B",
-        },
-      ])
-      .onConflictDoNothing();
-  });
 
   beforeEach(async () => {
     await cleanup();
@@ -164,32 +68,18 @@ describe("table scenario harness", () => {
       .values([
         {
           id: dealerId,
-          email: "d@vitest.local",
+          email: "dealer@vitest.local",
           role: "dealer",
           balance: 0,
           name: "Dealer",
         },
-        {
-          id: playerAId,
-          email: "a@vitest.local",
-          role: "player",
+        ...(Object.keys(playerIds) as PlayerKey[]).map((k, i) => ({
+          id: playerIds[k],
+          email: `${k}@vitest.local`,
+          role: "player" as const,
           balance: 1000,
-          name: "A",
-        },
-        {
-          id: playerBId,
-          email: "b@vitest.local",
-          role: "player",
-          balance: 1000,
-          name: "B",
-        },
-        {
-          id: playerCId,
-          email: "c@vitest.local",
-          role: "player",
-          balance: 1000,
-          name: "C",
-        },
+          name: `${i + 1}`,
+        })),
       ])
       .onConflictDoUpdate({
         target: users.id,
@@ -208,33 +98,70 @@ describe("table scenario harness", () => {
       maxSeats: 8,
     });
     tableId = res.tableId;
-
-    await playerACaller.table.join({
+    // Seed Pi devices for card seats 0..7 with a public key so joins can encrypt nonce
+    const cardPis = Array.from({ length: 8 }, (_, i) => ({
+      serial: `${tableId}-card-${i}`,
       tableId,
-      buyIn: BUY_IN,
-      userPublicKey: publicKey,
-    });
-    await playerBCaller.table.join({
-      tableId,
-      buyIn: BUY_IN,
-      userPublicKey: publicKey,
-    });
-    await playerCCaller.table.join({
-      tableId,
-      buyIn: BUY_IN,
-      userPublicKey: publicKey,
-    });
+      type: "card" as const,
+      seatNumber: i,
+      publicKey,
+    }));
+    await db.insert(piDevices).values(cardPis);
   });
 
-  const callers: Record<"dealer" | "A" | "B" | "C", any> = {
+  const callers: Record<"dealer" | PlayerKey, any> = {
     dealer: dealerCaller,
-    A: playerACaller,
-    B: playerBCaller,
-    C: playerCCaller,
+    ...playerCallers,
   };
 
   async function executeStep(step: Step) {
     console.log("Executing step:", step);
+    if (step.type === "deal_hole") {
+      // Validate table and state
+      const table = await db.query.pokerTables.findFirst({
+        where: eq(pokerTables.id, tableId),
+        with: {
+          games: { orderBy: (g, { desc }) => [desc(g.createdAt)], limit: 1 },
+          seats: { orderBy: (s, { asc }) => [asc(s.seatNumber)] },
+        },
+      });
+      if (!table) throw new Error("Table not found");
+
+      // Ensure players joined and build seat order of PlayerKeys
+      const idMap = playerIds as Record<PlayerKey, string>;
+      const userIdToKey: Record<string, PlayerKey> = Object.fromEntries(
+        (Object.keys(idMap) as PlayerKey[]).map((k) => [idMap[k], k]),
+      ) as Record<string, PlayerKey>;
+      const seatOrderKeys: PlayerKey[] = table.seats.map((s) => {
+        const key = userIdToKey[s.playerId];
+        if (!key) throw new Error("Seat has unknown player id");
+        return key;
+      });
+
+      // Deal in proper rotation: first a round of one card to each seat, then second round
+      for (let round = 0; round < 2; round++) {
+        for (const key of seatOrderKeys) {
+          const pair = step.hole[key] as [string, string];
+          const card = pair[round]!;
+          await callers.dealer.table.action({
+            tableId,
+            action: "DEAL_CARD",
+            params: { rank: card[0] as any, suit: card[1] as any },
+          });
+        }
+      }
+      return;
+    }
+    if (step.type === "join") {
+      for (const p of step.players) {
+        await callers[p].table.join({
+          tableId,
+          buyIn: BUY_IN,
+          userPublicKey: publicKey,
+        });
+      }
+      return;
+    }
     if (step.type === "action") {
       if (step.isError) {
         await expect(
@@ -281,13 +208,9 @@ describe("table scenario harness", () => {
       const mapByPlayer: Record<string, (typeof all)[number]> = {};
       for (const s of all) mapByPlayer[s.playerId] = s;
 
-      const idMap: Record<"A" | "B" | "C", string> = {
-        A: playerAId,
-        B: playerBId,
-        C: playerCId,
-      };
-      for (const key of ["A", "B", "C"] as const) {
-        const subset = (step.seats as any)[key] as SeatSubset | undefined;
+      const idMap = playerIds;
+      for (const key of Object.keys(step.seats) as PlayerKey[]) {
+        const subset = (step.seats as any)[key];
         if (!subset) continue;
         const seat = mapByPlayer[idMap[key]];
         if (!seat) throw new Error(`Seat missing for ${key}`);
@@ -300,7 +223,7 @@ describe("table scenario harness", () => {
 
   // Load scenarios via Vite glob import
   const scenarioModules = (import.meta as any).glob(
-    "./table.scenarios/**/*.json",
+    "./table.scenarios/**/*.ts",
     { eager: true },
   ) as Record<string, any>;
   const scenarios: Scenario[] = [];

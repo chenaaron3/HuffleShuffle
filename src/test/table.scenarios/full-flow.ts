@@ -1,0 +1,103 @@
+import type { Scenario } from "~/test/scenario.types";
+
+const scenarios: Scenario[] = [
+  {
+    name: "full flow: preflop checks to river and reset/start",
+    steps: [
+      { type: "join", players: ["player1", "player2", "player3"] },
+      { type: "action", action: "START_GAME", by: "dealer" },
+      {
+        type: "action",
+        action: "DEAL_CARD",
+        by: "dealer",
+        params: { rank: "A", suit: "s" },
+      },
+      {
+        type: "action",
+        action: "DEAL_CARD",
+        by: "dealer",
+        params: { rank: "K", suit: "s" },
+      },
+      {
+        type: "action",
+        action: "DEAL_CARD",
+        by: "dealer",
+        params: { rank: "Q", suit: "s" },
+      },
+      {
+        type: "action",
+        action: "DEAL_CARD",
+        by: "dealer",
+        params: { rank: "J", suit: "s" },
+      },
+      {
+        type: "action",
+        action: "DEAL_CARD",
+        by: "dealer",
+        params: { rank: "T", suit: "s" },
+      },
+      {
+        type: "action",
+        action: "DEAL_CARD",
+        by: "dealer",
+        params: { rank: "9", suit: "s" },
+      },
+      { type: "validate", game: { state: "BETTING" } },
+      { type: "action", action: "CHECK", by: "player1" },
+      { type: "action", action: "CHECK", by: "player2" },
+      { type: "action", action: "CHECK", by: "player3" },
+      { type: "validate", game: { state: "DEAL_FLOP" } },
+      {
+        type: "action",
+        action: "DEAL_CARD",
+        by: "dealer",
+        params: { rank: "2", suit: "h" },
+      },
+      {
+        type: "action",
+        action: "DEAL_CARD",
+        by: "dealer",
+        params: { rank: "3", suit: "h" },
+      },
+      {
+        type: "action",
+        action: "DEAL_CARD",
+        by: "dealer",
+        params: { rank: "4", suit: "h" },
+      },
+      { type: "validate", game: { state: "BETTING" } },
+      { type: "action", action: "CHECK", by: "player2" },
+      { type: "action", action: "CHECK", by: "player3" },
+      { type: "action", action: "CHECK", by: "player1" },
+      { type: "validate", game: { state: "DEAL_TURN" } },
+      {
+        type: "action",
+        action: "DEAL_CARD",
+        by: "dealer",
+        params: { rank: "5", suit: "h" },
+      },
+      { type: "validate", game: { state: "BETTING" } },
+      { type: "action", action: "CHECK", by: "player2" },
+      { type: "action", action: "CHECK", by: "player3" },
+      { type: "action", action: "CHECK", by: "player1" },
+      { type: "validate", game: { state: "DEAL_RIVER" } },
+      {
+        type: "action",
+        action: "DEAL_CARD",
+        by: "dealer",
+        params: { rank: "6", suit: "h" },
+      },
+      { type: "validate", game: { state: "BETTING" } },
+      { type: "action", action: "CHECK", by: "player2" },
+      { type: "action", action: "CHECK", by: "player3" },
+      { type: "action", action: "CHECK", by: "player1" },
+      { type: "validate", game: { state: "SHOWDOWN" } },
+      { type: "action", action: "RESET_TABLE", by: "dealer" },
+      { type: "validate", game: { isCompleted: true } },
+      { type: "action", action: "START_GAME", by: "dealer" },
+      { type: "validate", game: { state: "DEAL_HOLE_CARDS" } },
+    ],
+  },
+];
+
+export default scenarios;

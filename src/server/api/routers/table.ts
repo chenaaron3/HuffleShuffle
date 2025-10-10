@@ -1,5 +1,6 @@
 import { and, eq, gt, isNull, or, sql } from 'drizzle-orm';
 import { AccessToken } from 'livekit-server-sdk';
+import process from 'process';
 import ts from 'typescript';
 import { z } from 'zod';
 import { createTRPCRouter, protectedProcedure, publicProcedure } from '~/server/api/trpc';
@@ -637,12 +638,20 @@ export const tableRouter = createTRPCRouter({
           );
 
           // Use shared game logic instead of duplicating code
-          // await dealCard(tx, input.tableId, game ?? null, code);
+          if (process.env.NODE_ENV === "test") {
+            await dealCard(
+              tx,
+              input.tableId,
+              game ?? null,
+              `${input.params.rank}${input.params.suit}`,
+            );
+            return { ok: true } as const;
+          }
           const region = process.env.AWS_REGION || "us-east-1";
           const queueUrl = process.env.SQS_QUEUE_URL;
           const sqs = new SQSClient({ region });
           const ts = Date.now();
-          sqs.send(
+          await sqs.send(
             new SendMessageCommand({
               QueueUrl: queueUrl,
               MessageBody: JSON.stringify({
@@ -653,10 +662,8 @@ export const tableRouter = createTRPCRouter({
               MessageGroupId: input.tableId, // Ensures FIFO ordering per table
               MessageDeduplicationId: `${input.tableId}-${barcode}-${ts}`, // Prevents duplicates
             }),
-            () => {
-              console.log(`published ${barcode} to SQS`);
-            },
           );
+          console.log(`published ${barcode} to SQS`);
           return { ok: true } as const;
         }
 
