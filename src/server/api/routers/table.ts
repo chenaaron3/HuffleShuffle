@@ -46,7 +46,6 @@ type TableSnapshot = {
   isJoinable: boolean;
   availableSeats: number;
 };
-type TableTransaction = { update: typeof db.update; query: typeof db.query };
 
 const summarizeTable = async (
   client: DB,
@@ -550,10 +549,6 @@ export const tableRouter = createTRPCRouter({
           // If there was a previous game, mark it as complete
           if (game && !game.isCompleted) {
             await resetGame(tx, game, orderedSeats, true); // Reset buyIn to startingBalance
-            // End game with no winners
-            await logEndGame(tx, input.tableId, game.id, {
-              winners: [],
-            });
           }
           return { ok: true } as const;
         }

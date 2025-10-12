@@ -1,7 +1,13 @@
 import { z } from 'zod';
 import { gameEventEnum, gameEvents } from '~/server/db/schema';
 
-type Tx = { insert: typeof import("~/server/db").db.insert };
+import type { db } from "../db";
+
+type Tx = {
+  insert: typeof db.insert;
+  query: typeof db.query;
+  update: typeof db.update;
+};
 
 export type GameEventType = (typeof gameEventEnum.enumValues)[number];
 

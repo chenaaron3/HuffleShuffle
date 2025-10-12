@@ -1,6 +1,6 @@
 import { and, eq, isNotNull, sql } from 'drizzle-orm';
 import process from 'process';
-import { logFlop, logRiver, logTurn } from '~/server/api/game-event-logger';
+import { logEndGame, logFlop, logRiver, logTurn } from '~/server/api/game-event-logger';
 import { db } from '~/server/db';
 import { games, pokerTables, seats } from '~/server/db/schema';
 import { updateTable } from '~/server/signal';
@@ -9,6 +9,12 @@ type DB = typeof db;
 type SeatRow = typeof seats.$inferSelect;
 type GameRow = typeof games.$inferSelect;
 type TableRow = typeof pokerTables.$inferSelect;
+
+type Tx = {
+  insert: typeof db.insert;
+  query: typeof db.query;
+  update: typeof db.update;
+};
 
 // --- Helper utilities ---
 const pickNextIndex = (currentIndex: number, total: number) =>
@@ -36,7 +42,7 @@ export const getNextActiveSeatId = (
 
 // Fetch all seats to be safe and filter by actives later
 export const fetchAllSeatsInOrder = async (
-  tx: { query: typeof db.query; update: typeof db.update },
+  tx: Tx,
   tableId: string,
 ): Promise<SeatRow[]> => {
   return await tx.query.seats.findMany({
@@ -55,7 +61,7 @@ export const activeCountOf = (orderedSeats: Array<SeatRow>): number =>
   orderedSeats.filter((s) => s.isActive).length;
 
 export async function mergeBetsIntoPotGeneric(
-  tx: { query: typeof db.query; update: typeof db.update },
+  tx: Tx,
   gameObj: GameRow,
   orderedSeats: Array<SeatRow>,
 ): Promise<GameRow> {
@@ -84,7 +90,7 @@ export async function mergeBetsIntoPotGeneric(
 // After all hole cards are dealt, start a new betting round
 // Player after big blind starts first
 export async function ensureHoleCardsProgression(
-  tx: { query: typeof db.query; update: typeof db.update },
+  tx: Tx,
   tableId: string,
   gameObj: GameRow,
   orderedSeats: SeatRow[],
@@ -117,7 +123,7 @@ export async function ensureHoleCardsProgression(
 // After flop, turn, or river is dealt, start a new betting round
 // The person after the dealer always starts
 export async function ensurePostflopProgression(
-  tx: { query: typeof db.query; update: typeof db.update },
+  tx: Tx,
   tableId: string,
   gameObj: GameRow,
   orderedSeats: Array<SeatRow>,
@@ -134,7 +140,7 @@ export async function ensurePostflopProgression(
 // and resetting the betting count
 // Also reset the last action for fresh bet statuses
 async function startBettingRound(
-  tx: { query: typeof db.query; update: typeof db.update },
+  tx: Tx,
   tableId: string,
   gameObj: GameRow,
   orderedSeats: Array<SeatRow>,
@@ -159,7 +165,7 @@ async function startBettingRound(
 
 // Card dealing logic that can be shared between consumer and table router
 export async function dealCard(
-  tx: { query: typeof db.query; update: typeof db.update },
+  tx: Tx,
   tableId: string,
   game: GameRow | null,
   cardCode: string,
@@ -242,7 +248,7 @@ export async function dealCard(
 }
 
 export async function resetGame(
-  tx: { query: typeof db.query; update: typeof db.update },
+  tx: Tx,
   game: GameRow | null,
   orderedSeats: Array<SeatRow>,
   resetBalance: boolean = false,
@@ -292,11 +298,15 @@ export async function resetGame(
         state: "DEAL_HOLE_CARDS",
       })
       .where(eq(games.id, game.id));
+    // End game with no winners
+    await logEndGame(tx, game.tableId, game.id, {
+      winners: [],
+    });
   }
 }
 
 export async function createNewGame(
-  tx: { query: typeof db.query; update: typeof db.update },
+  tx: Tx,
   table: TableRow,
   orderedSeats: Array<SeatRow>,
   previousGame: GameRow | null,
@@ -382,7 +392,7 @@ export function getBigAndSmallBlindSeats(
 }
 
 async function collectBigAndSmallBlind(
-  tx: { query: typeof db.query; update: typeof db.update },
+  tx: Tx,
   table: TableRow,
   orderedSeats: Array<SeatRow>,
   game: GameRow,

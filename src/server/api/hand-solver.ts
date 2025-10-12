@@ -11,6 +11,12 @@ type GameRow = typeof games.$inferSelect;
 
 import type { db } from "../db";
 
+type Tx = {
+  insert: typeof db.insert;
+  query: typeof db.query;
+  update: typeof db.update;
+};
+
 // Type definitions for poker hand evaluation
 interface PokerHandResult {
   name: string; // Hand type (e.g., "Straight Flush", "Four of a Kind")
@@ -112,7 +118,7 @@ export function findPokerWinners(hands: PokerHandResult[]): PokerHandResult[] {
 // Betting round is finished if there is only one player left
 // or if all bets are equal
 export async function evaluateBettingTransition(
-  tx: { query: typeof db.query; update: typeof db.update },
+  tx: Tx,
   tableId: string,
   gameObj: GameRow,
 ): Promise<void> {
