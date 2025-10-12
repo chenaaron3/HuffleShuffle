@@ -10,6 +10,7 @@ interface VerticalRaiseControlsProps {
     isLoading?: boolean;
     potTotal?: number;
     playerBalance?: number;
+    currentBet?: number;
     bigBlind?: number;
     minRaise: number;
     raiseAmount: number;
@@ -20,25 +21,28 @@ export function VerticalRaiseControls({
     isLoading = false,
     potTotal = 0,
     playerBalance = 1000,
+    currentBet = 0,
     bigBlind = 20,
     minRaise,
     raiseAmount,
     onRaiseAmountChange
 }: VerticalRaiseControlsProps) {
-    const allIn = playerBalance;
+    const legalMaxBet = currentBet + playerBalance;
+    const sliderMax = Math.max(minRaise, legalMaxBet);
+    const allIn = legalMaxBet;
     const halfPot = Math.floor(potTotal / 2);
     const fullPot = potTotal;
 
     const handleAllIn = () => {
-        onRaiseAmountChange(allIn);
+        onRaiseAmountChange(Math.min(allIn, legalMaxBet));
     };
 
     const handleHalfPot = () => {
-        onRaiseAmountChange(halfPot);
+        onRaiseAmountChange(Math.min(halfPot, legalMaxBet));
     };
 
     const handleFullPot = () => {
-        onRaiseAmountChange(fullPot);
+        onRaiseAmountChange(Math.min(fullPot, legalMaxBet));
     };
 
     // Check if options are below minimum allowed bet
@@ -93,7 +97,7 @@ export function VerticalRaiseControls({
                 {/* Min/Max Labels */}
                 <div className="flex justify-between w-full text-xs text-white/60">
                     <span>${minRaise}</span>
-                    <span>${playerBalance}</span>
+                    <span>${legalMaxBet}</span>
                 </div>
 
                 {/* Slider with Always Visible Tooltip */}
@@ -102,8 +106,8 @@ export function VerticalRaiseControls({
                         <div className="w-full">
                             <Slider
                                 value={[raiseAmount]}
-                                onValueChange={(value) => onRaiseAmountChange(value[0] ?? 0)}
-                                max={playerBalance}
+                                onValueChange={(value) => onRaiseAmountChange(Math.min(value[0] ?? 0, legalMaxBet))}
+                                max={sliderMax}
                                 min={minRaise}
                                 step={bigBlind}
                                 orientation="horizontal"

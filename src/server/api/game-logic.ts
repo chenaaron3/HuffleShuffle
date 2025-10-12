@@ -241,12 +241,69 @@ export async function dealCard(
   }
 }
 
+export async function resetGame(
+  tx: { query: typeof db.query; update: typeof db.update },
+  game: GameRow | null,
+  orderedSeats: Array<SeatRow>,
+  resetBalance: boolean = false,
+): Promise<void> {
+  // Always reset all seats
+  for (const s of orderedSeats) {
+    const updateData: any = {
+      cards: sql`ARRAY[]::text[]`,
+      isActive: true,
+      currentBet: 0,
+      handType: null,
+      handDescription: null,
+      winAmount: 0,
+      winningCards: sql`ARRAY[]::text[]`,
+    };
+
+    // Only reset buyIn to startingBalance if explicitly requested
+    if (resetBalance) {
+      updateData.buyIn = s.startingBalance;
+    }
+
+    await tx.update(seats).set(updateData).where(eq(seats.id, s.id));
+
+    s.cards = [];
+    s.isActive = true;
+    s.currentBet = 0;
+    s.handType = null;
+    s.handDescription = null;
+    s.winAmount = 0;
+    s.winningCards = [];
+
+    // Only reset buyIn to startingBalance if explicitly requested
+    if (resetBalance) {
+      s.buyIn = s.startingBalance;
+    }
+  }
+
+  // Mark current game as completed and reset pot total (if there is one)
+  if (game) {
+    await tx
+      .update(games)
+      .set({
+        communityCards: sql`ARRAY[]::text[]`,
+        assignedSeatId: null,
+        isCompleted: true,
+        potTotal: 0,
+        state: "DEAL_HOLE_CARDS",
+      })
+      .where(eq(games.id, game.id));
+  }
+}
+
 export async function createNewGame(
   tx: { query: typeof db.query; update: typeof db.update },
   table: TableRow,
   orderedSeats: Array<SeatRow>,
   previousGame: GameRow | null,
 ): Promise<GameRow> {
+  // Reset all seats and mark current game as completed (if exists)
+  await resetGame(tx, previousGame, orderedSeats);
+
   // Validate that all players have enough chips to participate
   const minimumBet = table.bigBlind; // Players need at least the big blind amount
   const playersWithInsufficientChips = orderedSeats.filter(

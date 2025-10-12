@@ -17,7 +17,8 @@ import {
     logCall, logCheck, logEndGame, logFold, logRaise, logStartGame
 } from '../game-event-logger';
 import {
-    createNewGame, dealCard, getNextActiveSeatId, notifyTableUpdate, parseRankSuitToBarcode
+    createNewGame, dealCard, getNextActiveSeatId, notifyTableUpdate, parseRankSuitToBarcode,
+    resetGame
 } from '../game-logic';
 import { evaluateBettingTransition } from '../hand-solver';
 
@@ -102,60 +103,6 @@ function redactSnapshotForUser(
     return { ...s, cards: Array(hiddenCount).fill("FD") } as SeatWithPlayer;
   });
   return { ...snapshot, seats: redactedSeats };
-}
-
-async function resetGame(
-  tx: TableTransaction,
-  game: GameRow | null,
-  orderedSeats: Array<SeatRow>,
-  resetBalance: boolean = false,
-): Promise<void> {
-  // Always reset all seats
-  for (const s of orderedSeats) {
-    const updateData: any = {
-      cards: sql`ARRAY[]::text[]`,
-      isActive: true,
-      currentBet: 0,
-      handType: null,
-      handDescription: null,
-      winAmount: 0,
-      winningCards: sql`ARRAY[]::text[]`,
-    };
-
-    // Only reset buyIn to startingBalance if explicitly requested
-    if (resetBalance) {
-      updateData.buyIn = s.startingBalance;
-    }
-
-    await tx.update(seats).set(updateData).where(eq(seats.id, s.id));
-
-    s.cards = [];
-    s.isActive = true;
-    s.currentBet = 0;
-    s.handType = null;
-    s.handDescription = null;
-    s.winAmount = 0;
-    s.winningCards = [];
-
-    // Only reset buyIn to startingBalance if explicitly requested
-    if (resetBalance) {
-      s.buyIn = s.startingBalance;
-    }
-  }
-
-  // Mark current game as completed and reset pot total (if there is one)
-  if (game) {
-    await tx
-      .update(games)
-      .set({
-        communityCards: sql`ARRAY[]::text[]`,
-        assignedSeatId: null,
-        isCompleted: true,
-        potTotal: 0,
-        state: "DEAL_HOLE_CARDS",
-      })
-      .where(eq(games.id, game.id));
-  }
 }
 
 export const tableRouter = createTRPCRouter({
@@ -589,7 +536,7 @@ export const tableRouter = createTRPCRouter({
           },
         });
         if (!snapshot) throw new Error("Table not found");
-        const orderedSeats = snapshot.seats.filter((s) => s.buyIn > 0);
+        const orderedSeats = snapshot.seats;
         const n = orderedSeats.length;
         if (n < 2 && input.action === "START_GAME")
           throw new Error("Need at least 2 players to start");
@@ -615,9 +562,6 @@ export const tableRouter = createTRPCRouter({
           if (!isDealerCaller) throw new Error("Only dealer can START_GAME");
           // Default dealer is the first seat
           let dealerButtonSeatId = orderedSeats[0]!.id;
-
-          // Reset all seats and mark current game as completed (if exists)
-          await resetGame(tx, game ?? null, orderedSeats);
 
           game = await createNewGame(tx, snapshot, orderedSeats, game ?? null);
           await logStartGame(tx as any, input.tableId, game.id, {
