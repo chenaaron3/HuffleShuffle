@@ -129,7 +129,7 @@ export default function TableView() {
 
     // Memoize maximum bet calculation to prevent unnecessary re-renders
     const maxBet = React.useMemo(() => {
-        return Math.max(...originalSeats.filter(s => s.isActive).map(s => s.currentBet), 0);
+        return Math.max(...originalSeats.filter(s => s.seatStatus === 'active').map(s => s.currentBet), 0);
     }, [originalSeats]);
     React.useEffect(() => {
         (async () => {

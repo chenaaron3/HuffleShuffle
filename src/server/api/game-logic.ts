@@ -97,13 +97,14 @@ async function startBettingRound(
 
   // Edge case: If no active players remain (all went all-in or folded),
   // skip betting and proceed directly to next dealing state
-  if (activeCount === 0) {
+  console.log("ACTIVE COUNT", activeCount);
+  if (activeCount <= 1) {
     await evaluateBettingTransition(tx, tableId, {
       ...gameObj,
       state: "BETTING",
       assignedSeatId: firstToActId,
       betCount: 0,
-      requiredBetCount: 0,
+      requiredBetCount: activeCount,
     });
   }
 }

@@ -56,7 +56,7 @@ export function usePokerAnimations({
       previousSeatsRef.current.forEach((previousSeat) => {
         if (
           previousSeat &&
-          previousSeat.isActive &&
+          previousSeat.seatStatus === "active" &&
           previousSeat.currentBet > 0
         ) {
           console.log("usePokerAnimations: Triggering chip stream for seat", {

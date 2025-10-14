@@ -132,6 +132,8 @@ export async function evaluateBettingTransition(
   const finished =
     (gameObj.betCount >= gameObj.requiredBetCount && allEqual) ||
     singleNonFolded;
+  console.log(gameObj);
+  console.log(finished);
   if (!finished) return;
 
   // Merge bets into pot
