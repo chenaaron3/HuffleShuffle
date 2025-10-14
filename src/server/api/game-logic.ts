@@ -5,6 +5,9 @@ import { db } from '~/server/db';
 import { games, pokerTables, seats } from '~/server/db/schema';
 import { updateTable } from '~/server/signal';
 
+import { activeCountOf, fetchAllSeatsInOrder, getNextActiveSeatId } from './game-utils';
+import { evaluateBettingTransition } from './hand-solver';
+
 type DB = typeof db;
 type SeatRow = typeof seats.$inferSelect;
 type GameRow = typeof games.$inferSelect;
@@ -15,76 +18,6 @@ type Tx = {
   query: typeof db.query;
   update: typeof db.update;
 };
-
-// --- Helper utilities ---
-const pickNextIndex = (currentIndex: number, total: number) =>
-  (currentIndex + 1) % total;
-
-// The input seats don't have to all be active since the
-// current seat can be inactive. This finds the first active
-// seat after the current seat.
-export const getNextActiveSeatId = (
-  orderedSeats: Array<SeatRow>,
-  currentSeatId: string,
-) => {
-  const n = orderedSeats.length;
-  const mapIndex: Record<string, number> = {};
-  orderedSeats.forEach((s, i) => {
-    mapIndex[s.id] = i;
-  });
-  let idx = mapIndex[currentSeatId] ?? 0;
-  for (let i = 0; i < n; i++) {
-    idx = pickNextIndex(idx, n);
-    if (orderedSeats[idx]!.isActive) return orderedSeats[idx]!.id;
-  }
-  return orderedSeats[idx]!.id;
-};
-
-// Fetch all seats to be safe and filter by actives later
-export const fetchAllSeatsInOrder = async (
-  tx: Tx,
-  tableId: string,
-): Promise<SeatRow[]> => {
-  return await tx.query.seats.findMany({
-    where: eq(seats.tableId, tableId),
-    orderBy: (s, { asc }) => [asc(s.seatNumber)],
-  });
-};
-
-export const allActiveBetsEqual = (orderedSeats: Array<SeatRow>): boolean => {
-  const active = orderedSeats.filter((s) => s.isActive);
-  if (active.length === 0) return true;
-  return active.every((s) => s.currentBet === active[0]!.currentBet);
-};
-
-export const activeCountOf = (orderedSeats: Array<SeatRow>): number =>
-  orderedSeats.filter((s) => s.isActive).length;
-
-export async function mergeBetsIntoPotGeneric(
-  tx: Tx,
-  gameObj: GameRow,
-  orderedSeats: Array<SeatRow>,
-): Promise<GameRow> {
-  const total = orderedSeats.reduce((sum, s) => sum + s.currentBet, 0);
-  await tx
-    .update(games)
-    .set({
-      potTotal: sql`${games.potTotal} + ${total}`,
-      betCount: 0,
-      requiredBetCount: 0,
-    })
-    .where(eq(games.id, gameObj.id));
-  for (const s of orderedSeats) {
-    await tx.update(seats).set({ currentBet: 0 }).where(eq(seats.id, s.id));
-    s.currentBet = 0;
-  }
-  return {
-    ...gameObj,
-    potTotal: gameObj.potTotal + total,
-    betCount: 0,
-    requiredBetCount: 0,
-  };
-}
 
 // Check if more players needs cards. If so, rotate to the next player
 // After all hole cards are dealt, start a new betting round
@@ -98,7 +31,7 @@ export async function ensureHoleCardsProgression(
 ): Promise<void> {
   // Check if all active players have two cards
   const allHaveTwo = orderedSeats
-    .filter((s: SeatRow) => s.isActive)
+    .filter((s: SeatRow) => s.seatStatus === "active")
     .every((s: SeatRow) => s.cards.length >= 2);
   if (!allHaveTwo) {
     const nextSeatId = getNextActiveSeatId(orderedSeats, currentSeatId);
@@ -161,6 +94,18 @@ async function startBettingRound(
     .update(seats)
     .set({ lastAction: null })
     .where(eq(seats.tableId, tableId));
+
+  // Edge case: If no active players remain (all went all-in or folded),
+  // skip betting and proceed directly to next dealing state
+  if (activeCount === 0) {
+    await evaluateBettingTransition(tx, tableId, {
+      ...gameObj,
+      state: "BETTING",
+      assignedSeatId: firstToActId,
+      betCount: 0,
+      requiredBetCount: 0,
+    });
+  }
 }
 
 // Card dealing logic that can be shared between consumer and table router
@@ -257,7 +202,7 @@ export async function resetGame(
   for (const s of orderedSeats) {
     const updateData: any = {
       cards: sql`ARRAY[]::text[]`,
-      isActive: true,
+      seatStatus: "active",
       currentBet: 0,
       handType: null,
       handDescription: null,
@@ -273,7 +218,7 @@ export async function resetGame(
     await tx.update(seats).set(updateData).where(eq(seats.id, s.id));
 
     s.cards = [];
-    s.isActive = true;
+    s.seatStatus = "active";
     s.currentBet = 0;
     s.handType = null;
     s.handDescription = null;
@@ -295,6 +240,7 @@ export async function resetGame(
         assignedSeatId: null,
         isCompleted: true,
         potTotal: 0,
+        sidePots: sql`'[]'::jsonb`,
         state: "DEAL_HOLE_CARDS",
       })
       .where(eq(games.id, game.id));
@@ -354,6 +300,7 @@ export async function createNewGame(
       dealerButtonSeatId,
       communityCards: [],
       potTotal: 0,
+      sidePots: [],
       betCount: 0,
       requiredBetCount: 0,
     })

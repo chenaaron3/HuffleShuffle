@@ -17,13 +17,12 @@ import {
     logCall, logCheck, logEndGame, logFold, logRaise, logStartGame
 } from '../game-event-logger';
 import {
-    createNewGame, dealCard, getNextActiveSeatId, notifyTableUpdate, parseRankSuitToBarcode,
-    resetGame
+    createNewGame, dealCard, notifyTableUpdate, parseRankSuitToBarcode, resetGame
 } from '../game-logic';
+import { getNextActiveSeatId } from '../game-utils';
 import { evaluateBettingTransition } from '../hand-solver';
 
 import type { VideoGrant } from "livekit-server-sdk";
-import type { info } from "console";
 const ensureDealerRole = (role: string | undefined) => {
   if (role !== "dealer") throw new Error("FORBIDDEN: dealer role required");
 };
@@ -333,7 +332,7 @@ export const tableRouter = createTRPCRouter({
             seatNumber,
             buyIn: input.buyIn,
             startingBalance: input.buyIn, // Set startingBalance to initial buyIn amount
-            isActive: true,
+            seatStatus: "active",
             encryptedUserNonce: encUser,
             encryptedPiNonce: encPi,
           })
@@ -609,8 +608,8 @@ export const tableRouter = createTRPCRouter({
         // Player actions require assigned seat
         const actorSeat = orderedSeats.find((s) => s.playerId === userId);
         if (!actorSeat) throw new Error("Actor has no seat at this table");
-        if (!actorSeat.isActive)
-          throw new Error("Seat is inactive and cannot act");
+        if (actorSeat.seatStatus !== "active")
+          throw new Error("Seat cannot act (not active status)");
 
         if (game.state !== "BETTING")
           throw new Error("Player actions only allowed in BETTING");
@@ -621,8 +620,11 @@ export const tableRouter = createTRPCRouter({
           throw new Error("Not your turn");
         }
 
+        // Calculate max bet from all non-folded players
         const maxBet = Math.max(
-          ...orderedSeats.filter((s) => s.isActive).map((s) => s.currentBet),
+          ...orderedSeats
+            .filter((s) => s.seatStatus !== "folded")
+            .map((s) => s.currentBet),
         );
 
         if (input.action === "RAISE") {
@@ -635,16 +637,23 @@ export const tableRouter = createTRPCRouter({
           const total = amount - actorSeat.currentBet;
           if (actorSeat.buyIn < total)
             throw new Error("Insufficient chips to raise");
+
+          // Determine if going all-in
+          const newBuyIn = actorSeat.buyIn - total;
+          const newStatus = newBuyIn === 0 ? "all-in" : "active";
+
           await tx
             .update(seats)
             .set({
               buyIn: sql`${seats.buyIn} - ${total}`,
               currentBet: sql`${seats.currentBet} + ${total}`,
               lastAction: "RAISE",
+              seatStatus: newStatus,
             })
             .where(eq(seats.id, actorSeat.id));
-          actorSeat.buyIn -= total;
+          actorSeat.buyIn = newBuyIn;
           actorSeat.currentBet += total;
+          actorSeat.seatStatus = newStatus;
           await logRaise(tx as any, input.tableId, game.id, {
             seatId: actorSeat.id,
             total: amount,
@@ -652,23 +661,30 @@ export const tableRouter = createTRPCRouter({
         } else if (input.action === "CHECK") {
           const need = maxBet - actorSeat.currentBet;
           if (need > 0) {
-            if (actorSeat.buyIn < need)
-              throw new Error("Insufficient chips to call");
+            // Player is calling (matching the bet)
+            // If they don't have enough chips, they go all-in for what they have
+            const actualBet = Math.min(need, actorSeat.buyIn);
+            const newBuyIn = actorSeat.buyIn - actualBet;
+            const newStatus = newBuyIn === 0 ? "all-in" : "active";
+
             await tx
               .update(seats)
               .set({
-                buyIn: sql`${seats.buyIn} - ${need}`,
-                currentBet: sql`${seats.currentBet} + ${need}`,
+                buyIn: sql`${seats.buyIn} - ${actualBet}`,
+                currentBet: sql`${seats.currentBet} + ${actualBet}`,
                 lastAction: "CALL",
+                seatStatus: newStatus,
               })
               .where(eq(seats.id, actorSeat.id));
-            actorSeat.buyIn -= need;
-            actorSeat.currentBet += need;
+            actorSeat.buyIn = newBuyIn;
+            actorSeat.currentBet += actualBet;
+            actorSeat.seatStatus = newStatus;
             await logCall(tx as any, input.tableId, game.id, {
               seatId: actorSeat.id,
-              total: maxBet,
+              total: actorSeat.currentBet,
             });
           } else {
+            // Player is checking (no bet to match)
             await tx
               .update(seats)
               .set({ lastAction: "CHECK" })
@@ -681,9 +697,9 @@ export const tableRouter = createTRPCRouter({
         } else if (input.action === "FOLD") {
           await tx
             .update(seats)
-            .set({ isActive: false, lastAction: "FOLD" })
+            .set({ seatStatus: "folded", lastAction: "FOLD" })
             .where(eq(seats.id, actorSeat.id));
-          actorSeat.isActive = false;
+          actorSeat.seatStatus = "folded";
           await logFold(tx as any, input.tableId, game.id, {
             seatId: actorSeat.id,
           });

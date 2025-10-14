@@ -24,7 +24,7 @@ export type ActionName =
 
 export type JoinStep = {
   type: "join";
-  players: PlayerKey[];
+  players: { key: PlayerKey; buyIn?: number }[];
 };
 
 export type DealHoleStep = {
@@ -54,7 +54,10 @@ export type SeatSubset = Partial<
 type GameRow = typeof GamesTable.$inferSelect;
 export type GameSubset = Partial<
   Pick<GameRow, KeysMatching<GameRow, PrimitiveComparable>>
->;
+> & {
+  // Allow validating JSONB fields
+  sidePots?: Array<{ amount: number; eligibleSeatIds: string[] }>;
+};
 
 type PokerTableRow = typeof PokerTablesTable.$inferSelect;
 export type TableSubset = Partial<

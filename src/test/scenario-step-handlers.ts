@@ -17,14 +17,15 @@ type PlayerIdMap = Record<PlayerKey, string>;
 export async function handleJoinStep(
   step: JoinStep,
   tableId: string,
-  buyIn: number,
+  defaultBuyIn: number,
   publicKey: string,
   callers: CallerMap,
 ): Promise<void> {
   for (const p of step.players) {
-    await callers[p].table.join({
+    const playerBuyIn = p.buyIn ?? defaultBuyIn;
+    await callers[p.key].table.join({
       tableId,
-      buyIn,
+      buyIn: playerBuyIn,
       userPublicKey: publicKey,
     });
   }

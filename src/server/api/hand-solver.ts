@@ -1,15 +1,15 @@
 import { eq, sql } from 'drizzle-orm';
+import { logEndGame } from '~/server/api/game-event-logger';
+import { games, seats } from '~/server/db/schema';
 
-import { games, seats } from '../db/schema';
-import { logEndGame } from './game-event-logger';
-import { allActiveBetsEqual, fetchAllSeatsInOrder, mergeBetsIntoPotGeneric } from './game-logic';
+import { allActiveBetsEqual, fetchAllSeatsInOrder, mergeBetsIntoPotGeneric } from './game-utils';
 
 const { Hand: PokerHand } = require("pokersolver");
 
 type SeatRow = typeof seats.$inferSelect;
 type GameRow = typeof games.$inferSelect;
 
-import type { db } from "../db";
+import type { db } from "~/server/db";
 
 type Tx = {
   insert: typeof db.insert;
@@ -123,19 +123,29 @@ export async function evaluateBettingTransition(
   gameObj: GameRow,
 ): Promise<void> {
   const freshSeats = await fetchAllSeatsInOrder(tx, tableId);
-  const activeSeats = freshSeats.filter((s: SeatRow) => s.isActive);
-  const singleActive = activeSeats.length === 1;
+  // Count all non-folded players (includes all-in players)
+  const nonFoldedSeats = freshSeats.filter(
+    (s: SeatRow) => s.seatStatus !== "folded",
+  );
+  const singleNonFolded = nonFoldedSeats.length === 1;
   const allEqual = allActiveBetsEqual(freshSeats);
   const finished =
-    (gameObj.betCount >= gameObj.requiredBetCount && allEqual) || singleActive;
+    (gameObj.betCount >= gameObj.requiredBetCount && allEqual) ||
+    singleNonFolded;
   if (!finished) return;
 
   // Merge bets into pot
   const updatedGame = await mergeBetsIntoPotGeneric(tx, gameObj, freshSeats);
   const cc = updatedGame.communityCards.length;
-  if (singleActive || cc === 5) {
-    // SHOWDOWN
-    const contenders = freshSeats.filter((s: SeatRow) => s.isActive);
+
+  // Showdown conditions:
+  // 1. Only one non-folded player left (early win)
+  // 2. All 5 community cards dealt (normal showdown)
+  const shouldShowdown = singleNonFolded || cc === 5;
+
+  if (shouldShowdown) {
+    // SHOWDOWN - evaluate all non-folded players (active + all-in)
+    const contenders = nonFoldedSeats;
 
     // Evaluate each player's hand
     const hands = contenders.map((s: SeatRow) => {
@@ -161,77 +171,103 @@ export async function evaluateBettingTransition(
       };
     });
 
-    // Find winners using pokersolver's built-in tie-breaking
-    const handResults = hands.map((h) => h.hand);
-    const winners = findPokerWinners(handResults);
-
-    // Get winner seat IDs by comparing the actual winning hand objects
-    const winnerSeatIds = winners.map((winner) => {
-      // Find the hand that matches this winner by comparing the actual hand data
-      const handIndex = hands.findIndex((h) => {
-        // Compare the actual cards that make up the winning hand
-        const winnerCards = winner.cards.sort();
-        const handCards = h.hand.cards.sort();
-
-        // Check if the cards match (this handles tie-breaking correctly)
-        return (
-          winnerCards.length === handCards.length &&
-          winnerCards.every((card, index) => card === handCards[index])
-        );
-      });
-      return hands[handIndex]!.seatId;
-    });
-
-    // Log winner information
-    console.log("Showdown results:", {
-      totalPlayers: contenders.length,
-      winners: winners.map((w) => ({
-        handType: w.name,
-        description: w.descr,
-        winningCards: w.cards,
-        score: w.score,
-      })),
-      winnerSeatIds,
-    });
-
-    // Additional debug logging for tie-breaking
-    console.log(
-      "Hand comparison details:",
-      hands.map((h, index) => ({
-        seatId: h.seatId,
-        handType: h.hand.name,
-        description: h.hand.descr,
-        score: h.hand.score,
-        winningCards: h.hand.cards,
-        isWinner: winnerSeatIds.includes(h.seatId),
-      })),
-    );
-
-    // Store hand evaluation results and distribute pot
-    const share = Math.floor(updatedGame.potTotal / winnerSeatIds.length);
-
+    // Track total winnings per seat
+    const seatWinnings: Record<string, number> = {};
+    const seatHandInfo: Record<
+      string,
+      { type: string; descr: string; cards: string[] }
+    > = {};
     for (const handData of hands) {
-      const isWinner = winnerSeatIds.includes(handData.seatId);
+      seatWinnings[handData.seatId] = 0;
+      seatHandInfo[handData.seatId] = {
+        type: handData.hand.name,
+        descr: handData.hand.descr,
+        cards: handData.hand.cards,
+      };
+    }
+
+    // Distribute each side pot to the best hand among eligible players
+    const sidePots =
+      (updatedGame.sidePots as Array<{
+        amount: number;
+        eligibleSeatIds: string[];
+      }>) || [];
+
+    console.log("Distributing side pots:", sidePots);
+
+    for (const pot of sidePots) {
+      // Find eligible hands for this pot
+      const eligibleHands = hands.filter((h) =>
+        pot.eligibleSeatIds.includes(h.seatId),
+      );
+
+      if (eligibleHands.length === 0) {
+        console.warn("No eligible players for pot:", pot);
+        continue;
+      }
+
+      // Find winners among eligible players
+      const eligibleHandResults = eligibleHands.map((h) => h.hand);
+      const potWinners = findPokerWinners(eligibleHandResults);
+
+      // Map winners back to seat IDs (track used indices to handle ties)
+      const usedIndices = new Set<number>();
+      const potWinnerSeatIds = potWinners.map((winner) => {
+        const handIndex = eligibleHands.findIndex((h, idx) => {
+          if (usedIndices.has(idx)) return false; // Skip already matched hands
+          const winnerCards = winner.cards.sort();
+          const handCards = h.hand.cards.sort();
+          return (
+            winnerCards.length === handCards.length &&
+            winnerCards.every((card, index) => card === handCards[index])
+          );
+        });
+        usedIndices.add(handIndex);
+        return eligibleHands[handIndex]!.seatId;
+      });
+
+      // Split pot among winners
+      const potShare = Math.floor(pot.amount / potWinnerSeatIds.length);
+      for (const winnerId of potWinnerSeatIds) {
+        seatWinnings[winnerId] = (seatWinnings[winnerId] || 0) + potShare;
+      }
+
+      console.log(
+        `Pot of ${pot.amount} won by:`,
+        potWinnerSeatIds,
+        `(${potShare} each)`,
+      );
+    }
+
+    // Store hand evaluation results and distribute winnings
+    for (const handData of hands) {
+      const winAmount = seatWinnings[handData.seatId] || 0;
+      const handInfo = seatHandInfo[handData.seatId]!;
       await tx
         .update(seats)
         .set({
-          handType: handData.hand.name,
-          handDescription: handData.hand.descr,
-          winAmount: isWinner ? share : 0,
-          buyIn: isWinner ? sql`${seats.buyIn} + ${share}` : seats.buyIn,
-          winningCards: isWinner ? handData.hand.cards : sql`ARRAY[]::text[]`,
+          handType: handInfo.type,
+          handDescription: handInfo.descr,
+          winAmount,
+          buyIn:
+            winAmount > 0 ? sql`${seats.buyIn} + ${winAmount}` : seats.buyIn,
+          winningCards: winAmount > 0 ? handInfo.cards : sql`ARRAY[]::text[]`,
         })
         .where(eq(seats.id, handData.seatId));
     }
 
-    // Emit End Game event with winners
+    // Emit End Game event with all winners
+    const allWinners = Object.entries(seatWinnings)
+      .filter(([_, amount]) => amount > 0)
+      .map(([seatId, amount]) => ({
+        seatId,
+        amount,
+        handType: seatHandInfo[seatId]?.type,
+        cards: seatHandInfo[seatId]?.cards,
+      }));
+
     await logEndGame(tx as any, tableId, updatedGame.id, {
-      winners: winnerSeatIds.map((sid, i) => ({
-        seatId: sid,
-        amount: share,
-        handType: winners[i % winners.length]?.name,
-        cards: winners[i % winners.length]?.cards,
-      })),
+      winners: allWinners,
     });
 
     // Set game to showdown state

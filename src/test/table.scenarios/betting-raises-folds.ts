@@ -4,7 +4,10 @@ const scenarios: Scenario[] = [
   {
     name: "betting round with raises and fold",
     steps: [
-      { type: "join", players: ["player1", "player2", "player3"] },
+      {
+        type: "join",
+        players: [{ key: "player1" }, { key: "player2" }, { key: "player3" }],
+      },
       { type: "action", action: "START_GAME", by: "dealer" },
       {
         type: "action",

@@ -20,7 +20,13 @@
       "~/*": ["src/*"]
     }
   },
-  "include": ["consumer.ts", "link/schema.ts", "link/game-logic.ts"],
+  "include": [
+    "consumer.ts",
+    "link/schema.ts",
+    "link/game-logic.ts",
+    "link/game-utils.ts",
+    "link/hand-solver.ts"
+  ],
   "exclude": [
     "node_modules",
     "dist",

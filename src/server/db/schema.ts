@@ -131,6 +131,13 @@ export const pokerTables = createTable(
   ],
 );
 
+// Seat status enum for tracking player state
+export const seatStatusEnum = pgEnum("seat_status", [
+  "active",
+  "all-in",
+  "folded",
+]);
+
 // Seats (created on-demand; must have a player)
 export const seats = createTable(
   "seat",
@@ -157,7 +164,7 @@ export const seats = createTable(
       .array()
       .notNull()
       .default(sql`ARRAY[]::text[]`),
-    isActive: d.boolean().notNull().default(true),
+    seatStatus: seatStatusEnum("seat_status").notNull().default("active"), // 'active' | 'all-in' | 'folded'
     encryptedUserNonce: d.text(),
     encryptedPiNonce: d.text(),
     handType: d.text(), // Store poker hand type (e.g., "One Pair", "Straight Flush")
@@ -221,6 +228,11 @@ export const games = createTable(
       .notNull()
       .default(sql`ARRAY[]::text[]`),
     potTotal: d.integer().notNull().default(0),
+    sidePots: d
+      .jsonb()
+      .$type<Array<{ amount: number; eligibleSeatIds: string[] }>>()
+      .notNull()
+      .default(sql`'[]'::jsonb`), // Array of side pots with amount and eligible seat IDs
     betCount: d.integer().notNull().default(0),
     requiredBetCount: d.integer().notNull().default(0),
     createdAt: d

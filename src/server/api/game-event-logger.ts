@@ -1,7 +1,6 @@
 import { z } from 'zod';
+import { db } from '~/server/db';
 import { gameEventEnum, gameEvents } from '~/server/db/schema';
-
-import type { db } from "../db";
 
 type Tx = {
   insert: typeof db.insert;
