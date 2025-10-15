@@ -13,9 +13,7 @@ import { rsaEncryptB64 } from '~/utils/crypto';
 
 import { SendMessageCommand, SQSClient } from '@aws-sdk/client-sqs';
 
-import {
-    logCall, logCheck, logEndGame, logFold, logRaise, logStartGame
-} from '../game-event-logger';
+import { logCall, logCheck, logFold, logRaise, logStartGame } from '../game-event-logger';
 import {
     createNewGame, dealCard, notifyTableUpdate, parseRankSuitToBarcode, resetGame
 } from '../game-logic';
@@ -618,14 +616,21 @@ export const tableRouter = createTRPCRouter({
         if (!game.assignedSeatId)
           throw new Error("No assigned seat for betting");
         if (game.assignedSeatId !== actorSeat.id) {
-          console.log("Expected seat id:", game.assignedSeatId);
+          const seat = orderedSeats.find((s) => s.id === game.assignedSeatId);
+          if (seat) {
+            console.log("Expected player id:", seat.playerId);
+          } else {
+            console.log("Expected seat id:", game.assignedSeatId);
+          }
           throw new Error("Not your turn");
         }
 
         // Calculate max bet from all non-folded, non-eliminated players
         const maxBet = Math.max(
           ...orderedSeats
-            .filter((s) => s.seatStatus !== "folded" && s.seatStatus !== "eliminated")
+            .filter(
+              (s) => s.seatStatus !== "folded" && s.seatStatus !== "eliminated",
+            )
             .map((s) => s.currentBet),
         );
 

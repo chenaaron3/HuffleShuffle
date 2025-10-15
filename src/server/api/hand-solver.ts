@@ -2,7 +2,9 @@ import { eq, sql } from 'drizzle-orm';
 import { logEndGame } from '~/server/api/game-event-logger';
 import { games, seats } from '~/server/db/schema';
 
-import { allActiveBetsEqual, fetchAllSeatsInOrder, mergeBetsIntoPotGeneric } from './game-utils';
+import {
+    activeCountOf, allActiveBetsEqual, fetchAllSeatsInOrder, mergeBetsIntoPotGeneric
+} from './game-utils';
 
 const { Hand: PokerHand } = require("pokersolver");
 
@@ -123,31 +125,35 @@ export async function evaluateBettingTransition(
   gameObj: GameRow,
 ): Promise<void> {
   const freshSeats = await fetchAllSeatsInOrder(tx, tableId);
-  // Count all non-folded, non-eliminated players (includes all-in players)
-  const nonFoldedSeats = freshSeats.filter(
-    (s: SeatRow) => s.seatStatus !== "folded" && s.seatStatus !== "eliminated",
-  );
-  const singleNonFolded = nonFoldedSeats.length === 1;
   const allEqual = allActiveBetsEqual(freshSeats);
+  const activeCount = activeCountOf(freshSeats);
+
+  // Betting is finished when all active players have matched the highest bet (allEqual)
+  // AND either:
+  //   - All active players have acted (betCount >= requiredBetCount), OR
+  //   - Only 0-1 active players remain (others are all-in/folded)
   const finished =
-    (gameObj.betCount >= gameObj.requiredBetCount && allEqual) ||
-    singleNonFolded;
-  console.log(gameObj);
-  console.log(finished);
+    allEqual &&
+    (activeCount <= 1 || gameObj.betCount >= gameObj.requiredBetCount);
   if (!finished) return;
 
   // Merge bets into pot
   const updatedGame = await mergeBetsIntoPotGeneric(tx, gameObj, freshSeats);
   const cc = updatedGame.communityCards.length;
 
+  // Determine non-folded players (active + all-in)
+  const contenders = freshSeats.filter(
+    (s: SeatRow) => s.seatStatus === "active" || s.seatStatus === "all-in",
+  );
+  const nonFoldedCount = contenders.length;
+
   // Showdown conditions:
-  // 1. Only one non-folded player left (early win)
-  // 2. All 5 community cards dealt (normal showdown)
-  const shouldShowdown = singleNonFolded || cc === 5;
+  // 1. Only one non-folded player left (early win - everyone else folded)
+  // 2. All 5 community cards dealt (normal showdown - evaluate hands)
+  const shouldShowdown = nonFoldedCount === 1 || cc === 5;
 
   if (shouldShowdown) {
     // SHOWDOWN - evaluate all non-folded players (active + all-in)
-    const contenders = nonFoldedSeats;
 
     // Evaluate each player's hand
     const hands = contenders.map((s: SeatRow) => {
