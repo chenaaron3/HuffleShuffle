@@ -39,7 +39,7 @@ export function TableAnimation({ seats, gameState }: TableAnimationProps) {
     return (
         <>
             {/* Test buttons */}
-            <div className="fixed bottom-4 left-4 z-50 flex gap-2">
+            {/* <div className="fixed bottom-4 left-4 z-50 flex gap-2">
                 <button
                     onClick={testPotToSeat}
                     className="px-3 py-2 bg-green-600 hover:bg-green-700 text-white text-xs rounded shadow-lg"
@@ -52,7 +52,7 @@ export function TableAnimation({ seats, gameState }: TableAnimationProps) {
                 >
                     Seat→Pot
                 </button>
-            </div>
+            </div> */}
 
             {/* Render chip streams */}
             {chipStreams.map(stream => (

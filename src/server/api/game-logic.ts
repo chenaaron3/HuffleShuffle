@@ -251,7 +251,7 @@ export async function resetGame(
   }
 
   // Mark current game as completed and reset pot total (if there is one)
-  if (game) {
+  if (game && !game.isCompleted) {
     await tx
       .update(games)
       .set({

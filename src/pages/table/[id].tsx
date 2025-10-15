@@ -371,10 +371,10 @@ export default function TableView() {
                                 }}
                             />
                         </div>
-                        {/* <TableAnimation
+                        <TableAnimation
                             seats={originalSeats}
                             gameState={state ?? ''}
-                        /> */}
+                        />
                     </LiveKitRoom>
                 ) : (
                     <div className="flex min-h-screen items-center justify-center">
