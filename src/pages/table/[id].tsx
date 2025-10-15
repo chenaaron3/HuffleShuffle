@@ -129,7 +129,7 @@ export default function TableView() {
 
     // Memoize maximum bet calculation to prevent unnecessary re-renders
     const maxBet = React.useMemo(() => {
-        return Math.max(...originalSeats.filter(s => s.seatStatus === 'active').map(s => s.currentBet), 0);
+        return Math.max(...originalSeats.filter(s => s.seatStatus !== 'folded').map(s => s.currentBet), 0);
     }, [originalSeats]);
     React.useEffect(() => {
         (async () => {
@@ -371,10 +371,10 @@ export default function TableView() {
                                 }}
                             />
                         </div>
-                        <TableAnimation
+                        {/* <TableAnimation
                             seats={originalSeats}
                             gameState={state ?? ''}
-                        />
+                        /> */}
                     </LiveKitRoom>
                 ) : (
                     <div className="flex min-h-screen items-center justify-center">

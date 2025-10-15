@@ -58,6 +58,8 @@ export function DealerCamera({
     onLeaveTable,
     isLeaving
 }: DealerCameraProps) {
+
+    console.log(maxBet);
     const trackRefs = useTracks([Track.Source.Camera]);
     const dealerRef = dealerUserId
         ? trackRefs.find(

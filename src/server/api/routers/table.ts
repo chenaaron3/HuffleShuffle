@@ -608,6 +608,8 @@ export const tableRouter = createTRPCRouter({
         // Player actions require assigned seat
         const actorSeat = orderedSeats.find((s) => s.playerId === userId);
         if (!actorSeat) throw new Error("Actor has no seat at this table");
+        if (actorSeat.seatStatus === "eliminated")
+          throw new Error("Cannot act - player is eliminated");
         if (actorSeat.seatStatus !== "active")
           throw new Error("Seat cannot act (not active status)");
 
@@ -620,10 +622,10 @@ export const tableRouter = createTRPCRouter({
           throw new Error("Not your turn");
         }
 
-        // Calculate max bet from all non-folded players
+        // Calculate max bet from all non-folded, non-eliminated players
         const maxBet = Math.max(
           ...orderedSeats
-            .filter((s) => s.seatStatus !== "folded")
+            .filter((s) => s.seatStatus !== "folded" && s.seatStatus !== "eliminated")
             .map((s) => s.currentBet),
         );
 

@@ -18,7 +18,7 @@ const pickNextIndex = (currentIndex: number, total: number) =>
 
 // The input seats don't have to all be active since the
 // current seat can be inactive. This finds the first active
-// seat after the current seat.
+// seat after the current seat (skips eliminated players).
 export const getNextActiveSeatId = (
   orderedSeats: Array<SeatRow>,
   currentSeatId: string,
@@ -69,6 +69,10 @@ export const allActiveBetsEqual = (orderedSeats: Array<SeatRow>): boolean => {
 export const activeCountOf = (orderedSeats: Array<SeatRow>): number =>
   orderedSeats.filter((s) => s.seatStatus === "active").length;
 
+// Helper to count non-eliminated players (those who can still play)
+export const nonEliminatedCountOf = (orderedSeats: Array<SeatRow>): number =>
+  orderedSeats.filter((s) => s.seatStatus !== "eliminated").length;
+
 export async function mergeBetsIntoPotGeneric(
   tx: Tx,
   gameObj: GameRow,
@@ -95,15 +99,18 @@ export async function mergeBetsIntoPotGeneric(
 
   // Create side pots based on all-in players
   // Algorithm:
-  // 1. Sort players by currentBet (ascending)
-  // 2. For each betting level, create a pot for eligible players
-  // 3. Only include players who haven't folded (seatStatus !== 'folded')
+  // 1. Sort ALL players with bets by currentBet (ascending) to determine pot levels
+  // 2. For each betting level, create a pot with contributions from all players
+  // 3. Only non-folded players are eligible to WIN the pot (eligibleSeatIds)
 
   const seatsWithBets = orderedSeats.filter((s) => s.currentBet > 0);
-  const nonFoldedSeats = seatsWithBets.filter((s) => s.seatStatus !== "folded");
+  const nonFoldedSeats = seatsWithBets.filter(
+    (s) => s.seatStatus !== "folded" && s.seatStatus !== "eliminated",
+  );
 
-  // Sort by bet amount (ascending)
-  const sortedByBet = [...nonFoldedSeats].sort(
+  // Sort ALL seats with bets (including folded) to determine pot levels
+  // This ensures folded players' bets are included in side pots
+  const sortedByBet = [...seatsWithBets].sort(
     (a, b) => a.currentBet - b.currentBet,
   );
 
@@ -120,18 +127,19 @@ export async function mergeBetsIntoPotGeneric(
 
     const betIncrement = currentBetLevel - previousBetLevel;
 
-    // All players from this index onwards are eligible (they bet at least this amount)
-    const eligibleSeats = sortedByBet.slice(i);
+    // Eligible seats can WIN the pot - only non-folded players who bet at least this amount
+    const eligibleSeats = nonFoldedSeats.filter(
+      (s) => s.currentBet >= currentBetLevel,
+    );
 
-    // Calculate pot amount: betIncrement * number of all players who bet at least previousBetLevel
-    // This includes folded players who contributed to this pot level
+    // Calculate pot amount: betIncrement * number of ALL players who bet at least currentBetLevel
+    // This includes folded players who contributed chips but can't win
     const contributingSeats = seatsWithBets.filter(
       (s) => s.currentBet >= currentBetLevel,
     );
     const potAmount = betIncrement * contributingSeats.length;
 
     // Only create side pot if there's actual betting happening
-    // Skip if only one player is eligible (they'll get the pot anyway)
     if (potAmount > 0 && eligibleSeats.length > 0) {
       newSidePots.push({
         amount: potAmount,

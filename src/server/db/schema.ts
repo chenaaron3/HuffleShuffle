@@ -1,9 +1,7 @@
-import { randomUUID } from 'crypto';
 import { relations, sql } from 'drizzle-orm';
 import { check, index, pgEnum, pgTableCreator, primaryKey, uniqueIndex } from 'drizzle-orm/pg-core';
 
 import type { AdapterAccount } from "next-auth/adapters";
-import type { d } from "node_modules/drizzle-kit/index-BAUrj6Ib.mjs";
 
 // Constants
 export const MAX_SEATS_PER_TABLE = 8;
@@ -136,6 +134,7 @@ export const seatStatusEnum = pgEnum("seat_status", [
   "active",
   "all-in",
   "folded",
+  "eliminated",
 ]);
 
 // Seats (created on-demand; must have a player)
@@ -164,7 +163,7 @@ export const seats = createTable(
       .array()
       .notNull()
       .default(sql`ARRAY[]::text[]`),
-    seatStatus: seatStatusEnum("seat_status").notNull().default("active"), // 'active' | 'all-in' | 'folded'
+    seatStatus: seatStatusEnum("seat_status").notNull().default("active"), // 'active' | 'all-in' | 'folded' | 'eliminated'
     encryptedUserNonce: d.text(),
     encryptedPiNonce: d.text(),
     handType: d.text(), // Store poker hand type (e.g., "One Pair", "Straight Flush")

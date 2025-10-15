@@ -123,9 +123,9 @@ export async function evaluateBettingTransition(
   gameObj: GameRow,
 ): Promise<void> {
   const freshSeats = await fetchAllSeatsInOrder(tx, tableId);
-  // Count all non-folded players (includes all-in players)
+  // Count all non-folded, non-eliminated players (includes all-in players)
   const nonFoldedSeats = freshSeats.filter(
-    (s: SeatRow) => s.seatStatus !== "folded",
+    (s: SeatRow) => s.seatStatus !== "folded" && s.seatStatus !== "eliminated",
   );
   const singleNonFolded = nonFoldedSeats.length === 1;
   const allEqual = allActiveBetsEqual(freshSeats);
@@ -256,6 +256,18 @@ export async function evaluateBettingTransition(
           winningCards: winAmount > 0 ? handInfo.cards : sql`ARRAY[]::text[]`,
         })
         .where(eq(seats.id, handData.seatId));
+    }
+
+    // Mark players with 0 chips as eliminated
+    const allSeatsAfterWinnings = await fetchAllSeatsInOrder(tx, tableId);
+    for (const seat of allSeatsAfterWinnings) {
+      if (seat.buyIn === 0 && seat.seatStatus !== "eliminated") {
+        await tx
+          .update(seats)
+          .set({ seatStatus: "eliminated" })
+          .where(eq(seats.id, seat.id));
+        console.log(`Player ${seat.id} eliminated (0 chips remaining)`);
+      }
     }
 
     // Emit End Game event with all winners

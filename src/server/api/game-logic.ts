@@ -5,7 +5,9 @@ import { db } from '~/server/db';
 import { games, pokerTables, seats } from '~/server/db/schema';
 import { updateTable } from '~/server/signal';
 
-import { activeCountOf, fetchAllSeatsInOrder, getNextActiveSeatId } from './game-utils';
+import {
+    activeCountOf, fetchAllSeatsInOrder, getNextActiveSeatId, nonEliminatedCountOf
+} from './game-utils';
 import { evaluateBettingTransition } from './hand-solver';
 
 type DB = typeof db;
@@ -80,6 +82,16 @@ async function startBettingRound(
   firstToActId: string,
 ): Promise<void> {
   const activeCount = activeCountOf(orderedSeats);
+  console.log("startBettingRound - activeCount:", activeCount);
+  console.log(
+    "Seats:",
+    orderedSeats.map((s) => ({
+      status: s.seatStatus,
+      buyIn: s.buyIn,
+      bet: s.currentBet,
+    })),
+  );
+
   await tx
     .update(games)
     .set({
@@ -97,7 +109,6 @@ async function startBettingRound(
 
   // Edge case: If no active players remain (all went all-in or folded),
   // skip betting and proceed directly to next dealing state
-  console.log("ACTIVE COUNT", activeCount);
   if (activeCount <= 1) {
     await evaluateBettingTransition(tx, tableId, {
       ...gameObj,
@@ -199,17 +210,21 @@ export async function resetGame(
   orderedSeats: Array<SeatRow>,
   resetBalance: boolean = false,
 ): Promise<void> {
-  // Always reset all seats
+  // Reset all seats, but preserve eliminated status
   for (const s of orderedSeats) {
     const updateData: any = {
       cards: sql`ARRAY[]::text[]`,
-      seatStatus: "active",
       currentBet: 0,
       handType: null,
       handDescription: null,
       winAmount: 0,
       winningCards: sql`ARRAY[]::text[]`,
     };
+
+    // Only reset seatStatus to active if the player is NOT eliminated
+    if (s.seatStatus !== "eliminated") {
+      updateData.seatStatus = "active";
+    }
 
     // Only reset buyIn to startingBalance if explicitly requested
     if (resetBalance) {
@@ -219,7 +234,10 @@ export async function resetGame(
     await tx.update(seats).set(updateData).where(eq(seats.id, s.id));
 
     s.cards = [];
-    s.seatStatus = "active";
+    // Preserve eliminated status
+    if (s.seatStatus !== "eliminated") {
+      s.seatStatus = "active";
+    }
     s.currentBet = 0;
     s.handType = null;
     s.handDescription = null;
@@ -261,22 +279,26 @@ export async function createNewGame(
   // Reset all seats and mark current game as completed (if exists)
   await resetGame(tx, previousGame, orderedSeats);
 
-  // Validate that all players have enough chips to participate
-  const minimumBet = table.bigBlind; // Players need at least the big blind amount
-  const playersWithInsufficientChips = orderedSeats.filter(
-    (seat) => seat.buyIn < minimumBet,
-  );
+  // Mark players with 0 chips as eliminated
+  for (const seat of orderedSeats) {
+    if (seat.buyIn === 0 && seat.seatStatus !== "eliminated") {
+      await tx
+        .update(seats)
+        .set({ seatStatus: "eliminated" })
+        .where(eq(seats.id, seat.id));
+      seat.seatStatus = "eliminated";
+    }
+  }
 
-  if (playersWithInsufficientChips.length > 0) {
-    const playerNames = playersWithInsufficientChips
-      .map((seat) => `Player at seat ${seat.seatNumber} (${seat.buyIn} chips)`)
-      .join(", ");
+  // Check that we have at least 2 non-eliminated players
+  const nonEliminatedCount = nonEliminatedCountOf(orderedSeats);
+  if (nonEliminatedCount < 2) {
     throw new Error(
-      `Cannot start game: ${playerNames} have insufficient chips. Minimum required: ${minimumBet} chips (big blind amount)`,
+      `Cannot start game: Need at least 2 players with chips. Currently ${nonEliminatedCount} player(s) remaining.`,
     );
   }
 
-  // Update startingBalance to current buyIn for all players before starting new game
+  // Update startingBalance to current buyIn for all non-eliminated players before starting new game
   for (const seat of orderedSeats) {
     await tx
       .update(seats)

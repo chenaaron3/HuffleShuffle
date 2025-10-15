@@ -78,4 +78,9 @@ export type Step = JoinStep | DealHoleStep | ActionStep | ValidateStep;
 export type Scenario = {
   name: string;
   steps: Step[];
+  metadata?: {
+    dealerButtonPlayer?: PlayerKey;
+    smallBlind?: number;
+    bigBlind?: number;
+  };
 };

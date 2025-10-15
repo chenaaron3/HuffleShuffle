@@ -43,7 +43,7 @@ export async function handleActionStep(
         action: step.action,
         params: step.params as any,
       }),
-    ).rejects.toThrowError();
+    ).rejects.toThrow();
   } else {
     await callers[step.by].table.action({
       tableId,
@@ -114,6 +114,9 @@ export async function handleDealHoleStep(
   for (let round = 0; round < 2; round++) {
     console.log(`Dealing round ${round + 1}:`);
     for (const key of seatOrderKeys) {
+      // Skip players who don't have cards (e.g., eliminated players)
+      if (!step.hole[key]) continue;
+
       const pair = step.hole[key] as [string, string];
       const card = pair[round]!;
       console.log(`  Dealing ${card} to ${key}`);
