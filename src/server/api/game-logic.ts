@@ -1,6 +1,8 @@
 import { and, eq, isNotNull, sql } from 'drizzle-orm';
 import process from 'process';
-import { logEndGame, logFlop, logRiver, logTurn } from '~/server/api/game-event-logger';
+import {
+    logEndGame, logFlop, logRiver, logStartGame, logTurn
+} from '~/server/api/game-event-logger';
 import { db } from '~/server/db';
 import { games, pokerTables, seats } from '~/server/db/schema';
 import { updateTable } from '~/server/signal';
@@ -343,6 +345,10 @@ export async function createNewGame(
     })
     .where(eq(games.id, game.id));
   game.assignedSeatId = smallBlindSeat.id;
+
+  await logStartGame(tx as any, table.id, game.id, {
+    dealerButtonSeatId,
+  });
   return game;
 }
 

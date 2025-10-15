@@ -550,15 +550,10 @@ export const tableRouter = createTRPCRouter({
           return { ok: true } as const;
         }
 
+        // Deprecated API, since dealing a card will start the game
         if (input.action === "START_GAME") {
           if (!isDealerCaller) throw new Error("Only dealer can START_GAME");
-          // Default dealer is the first seat
-          let dealerButtonSeatId = orderedSeats[0]!.id;
-
           game = await createNewGame(tx, snapshot, orderedSeats, game ?? null);
-          await logStartGame(tx as any, input.tableId, game.id, {
-            dealerButtonSeatId,
-          });
           return { ok: true } as const;
         }
 
