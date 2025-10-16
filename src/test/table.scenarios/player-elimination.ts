@@ -263,7 +263,7 @@ const scenarios: Scenario[] = [
     ],
   },
   {
-    name: "Player elimination: 8 players, 16 hands, eliminate to 1 winner",
+    name: "Player elimination: 8 players, 8 hands, eliminate to 1 winner",
     steps: [
       // Setup: 8 players (7×200 + 1×195 = 1595 total chips)
       {
@@ -506,589 +506,294 @@ const scenarios: Scenario[] = [
         },
       },
 
-      // // HAND 5: p4 eliminated
-      // { type: "action", action: "RESET_TABLE", by: "dealer" },
-      // { type: "action", action: "START_GAME", by: "dealer" },
-      // {
-      //   type: "deal_hole",
-      //   hole: {
-      //     player2: ["As", "Ks"],
-      //     player3: ["7c", "8c"],
-      //     player4: ["2d", "3d"],
-      //     player6: ["4h", "5h"],
-      //     player8: ["Jh", "Qh"],
-      //   },
-      // },
-      // {
-      //   type: "action",
-      //   action: "RAISE",
-      //   by: "player2",
-      //   params: { amount: 100 },
-      // },
-      // { type: "action", action: "FOLD", by: "player3" },
-      // { type: "action", action: "CHECK", by: "player4" },
-      // { type: "action", action: "FOLD", by: "player6" },
-      // { type: "action", action: "FOLD", by: "player8" },
-      // {
-      //   type: "action",
-      //   action: "DEAL_CARD",
-      //   by: "dealer",
-      //   params: { rank: "A", suit: "c" },
-      // },
-      // {
-      //   type: "action",
-      //   action: "DEAL_CARD",
-      //   by: "dealer",
-      //   params: { rank: "K", suit: "c" },
-      // },
-      // {
-      //   type: "action",
-      //   action: "DEAL_CARD",
-      //   by: "dealer",
-      //   params: { rank: "Q", suit: "c" },
-      // },
-      // {
-      //   type: "action",
-      //   action: "DEAL_CARD",
-      //   by: "dealer",
-      //   params: { rank: "2", suit: "s" },
-      // },
-      // {
-      //   type: "action",
-      //   action: "DEAL_CARD",
-      //   by: "dealer",
-      //   params: { rank: "3", suit: "s" },
-      // },
-      // { type: "validate", game: { state: "SHOWDOWN" } },
-      // {
-      //   type: "validate",
-      //   seats: {
-      //     player1: { buyIn: 0, seatStatus: "eliminated" },
-      //     player2: { buyIn: 1020 },
-      //     player3: { buyIn: 200 },
-      //     player4: { buyIn: 0, seatStatus: "eliminated" },
-      //     player5: { buyIn: 0, seatStatus: "eliminated" },
-      //     player6: { buyIn: 185 },
-      //     player7: { buyIn: 0, seatStatus: "eliminated" },
-      //     player8: { buyIn: 190 },
-      //   },
-      // },
+      // HAND 5: p4 eliminated (Button: p6, SB: p8, BB: p2, First to act: p3)
+      { type: "action", action: "RESET_TABLE", by: "dealer" },
+      { type: "action", action: "START_GAME", by: "dealer" },
+      {
+        type: "deal_hole",
+        hole: {
+          player2: ["Ad", "Kc"],
+          player3: ["9h", "Th"],
+          player4: ["Qd", "Jd"],
+          player6: ["2c", "3c"],
+          player8: ["5s", "6s"],
+        },
+      },
+      {
+        type: "action",
+        action: "RAISE",
+        by: "player3",
+        params: { amount: 50 },
+      },
+      {
+        type: "action",
+        action: "RAISE",
+        by: "player4",
+        params: { amount: 185 },
+      },
+      { type: "action", action: "FOLD", by: "player6" },
+      { type: "action", action: "FOLD", by: "player8" },
+      {
+        type: "action",
+        action: "RAISE",
+        by: "player2",
+        params: { amount: 300 },
+      },
+      { type: "action", action: "FOLD", by: "player3" },
+      {
+        type: "action",
+        action: "DEAL_CARD",
+        by: "dealer",
+        params: { rank: "A", suit: "h" },
+      },
+      {
+        type: "action",
+        action: "DEAL_CARD",
+        by: "dealer",
+        params: { rank: "K", suit: "s" },
+      },
+      {
+        type: "action",
+        action: "DEAL_CARD",
+        by: "dealer",
+        params: { rank: "4", suit: "d" },
+      },
+      {
+        type: "action",
+        action: "DEAL_CARD",
+        by: "dealer",
+        params: { rank: "7", suit: "h" },
+      },
+      {
+        type: "action",
+        action: "DEAL_CARD",
+        by: "dealer",
+        params: { rank: "8", suit: "d" },
+      },
+      { type: "validate", game: { state: "SHOWDOWN" } },
+      {
+        type: "validate",
+        seats: {
+          player1: { buyIn: 0, seatStatus: "eliminated" },
+          player2: { buyIn: 1065 },
+          player3: { buyIn: 150 },
+          player4: { buyIn: 0, seatStatus: "eliminated" },
+          player5: { buyIn: 0, seatStatus: "eliminated" },
+          player6: { buyIn: 195 },
+          player7: { buyIn: 0, seatStatus: "eliminated" },
+          player8: { buyIn: 185 },
+        },
+      },
 
-      // // HAND 6: p6 and p8 eliminated
-      // { type: "action", action: "RESET_TABLE", by: "dealer" },
-      // { type: "action", action: "START_GAME", by: "dealer" },
-      // {
-      //   type: "deal_hole",
-      //   hole: {
-      //     player2: ["5c", "6c"],
-      //     player3: ["Ah", "Ac"],
-      //     player8: ["Kd", "Qd"],
-      //   },
-      // },
-      // {
-      //   type: "action",
-      //   action: "RAISE",
-      //   by: "player3",
-      //   params: { amount: 100 },
-      // },
-      // { type: "action", action: "CHECK", by: "player8" },
-      // { type: "action", action: "FOLD", by: "player2" },
-      // {
-      //   type: "action",
-      //   action: "DEAL_CARD",
-      //   by: "dealer",
-      //   params: { rank: "A", suit: "d" },
-      // },
-      // {
-      //   type: "action",
-      //   action: "DEAL_CARD",
-      //   by: "dealer",
-      //   params: { rank: "K", suit: "s" },
-      // },
-      // {
-      //   type: "action",
-      //   action: "DEAL_CARD",
-      //   by: "dealer",
-      //   params: { rank: "Q", suit: "s" },
-      // },
-      // {
-      //   type: "action",
-      //   action: "DEAL_CARD",
-      //   by: "dealer",
-      //   params: { rank: "J", suit: "s" },
-      // },
-      // {
-      //   type: "action",
-      //   action: "DEAL_CARD",
-      //   by: "dealer",
-      //   params: { rank: "T", suit: "s" },
-      // },
-      // { type: "validate", game: { state: "SHOWDOWN" } },
-      // {
-      //   type: "validate",
-      //   seats: {
-      //     player1: { buyIn: 0, seatStatus: "eliminated" },
-      //     player2: { buyIn: 1010 },
-      //     player3: { buyIn: 395 },
-      //     player4: { buyIn: 0, seatStatus: "eliminated" },
-      //     player5: { buyIn: 0, seatStatus: "eliminated" },
-      //     player6: { buyIn: 185, seatStatus: "eliminated" },
-      //     player7: { buyIn: 0, seatStatus: "eliminated" },
-      //     player8: { buyIn: 0, seatStatus: "eliminated" },
-      //   },
-      // },
+      // HAND 6: p3 eliminated (Button: p8, SB: p2, BB: p3, First to act: p6)
+      { type: "action", action: "RESET_TABLE", by: "dealer" },
+      { type: "action", action: "START_GAME", by: "dealer" },
+      {
+        type: "deal_hole",
+        hole: {
+          player2: ["7s", "8s"],
+          player3: ["Qc", "Js"],
+          player6: ["Ah", "As"],
+          player8: ["3d", "4c"],
+        },
+      },
+      {
+        type: "action",
+        action: "RAISE",
+        by: "player6",
+        params: { amount: 100 },
+      },
+      { type: "action", action: "FOLD", by: "player8" },
+      { type: "action", action: "FOLD", by: "player2" },
+      {
+        type: "action",
+        action: "RAISE",
+        by: "player3",
+        params: { amount: 150 },
+      },
+      { type: "action", action: "CHECK", by: "player6" },
+      {
+        type: "action",
+        action: "DEAL_CARD",
+        by: "dealer",
+        params: { rank: "A", suit: "c" },
+      },
+      {
+        type: "action",
+        action: "DEAL_CARD",
+        by: "dealer",
+        params: { rank: "K", suit: "h" },
+      },
+      {
+        type: "action",
+        action: "DEAL_CARD",
+        by: "dealer",
+        params: { rank: "9", suit: "c" },
+      },
+      {
+        type: "action",
+        action: "DEAL_CARD",
+        by: "dealer",
+        params: { rank: "2", suit: "h" },
+      },
+      {
+        type: "action",
+        action: "DEAL_CARD",
+        by: "dealer",
+        params: { rank: "5", suit: "d" },
+      },
+      { type: "validate", game: { state: "SHOWDOWN" } },
+      {
+        type: "validate",
+        seats: {
+          player1: { buyIn: 0, seatStatus: "eliminated" },
+          player2: { buyIn: 1060 },
+          player3: { buyIn: 0, seatStatus: "eliminated" },
+          player4: { buyIn: 0, seatStatus: "eliminated" },
+          player5: { buyIn: 0, seatStatus: "eliminated" },
+          player6: { buyIn: 350 },
+          player7: { buyIn: 0, seatStatus: "eliminated" },
+          player8: { buyIn: 185 },
+        },
+      },
 
-      // // HAND 7-10: Heads-up between p2 and p3
-      // { type: "action", action: "RESET_TABLE", by: "dealer" },
-      // { type: "action", action: "START_GAME", by: "dealer" },
-      // {
-      //   type: "deal_hole",
-      //   hole: {
-      //     player2: ["7c", "8c"],
-      //     player3: ["Kh", "Qh"],
-      //   },
-      // },
-      // {
-      //   type: "action",
-      //   action: "RAISE",
-      //   by: "player2",
-      //   params: { amount: 30 },
-      // },
-      // { type: "action", action: "FOLD", by: "player3" },
-      // { type: "validate", game: { state: "SHOWDOWN" } },
-      // {
-      //   type: "validate",
-      //   seats: {
-      //     player2: { buyIn: 815 },
-      //     player3: { buyIn: 385 },
-      //   },
-      // },
+      // HAND 7: p8 eliminated (Button: p2, SB: p6, BB: p8, First to act: p2)
+      { type: "action", action: "RESET_TABLE", by: "dealer" },
+      { type: "action", action: "START_GAME", by: "dealer" },
+      {
+        type: "deal_hole",
+        hole: {
+          player2: ["Kh", "Qh"],
+          player6: ["9c", "Tc"],
+          player8: ["Jc", "Ts"],
+        },
+      },
+      {
+        type: "action",
+        action: "RAISE",
+        by: "player2",
+        params: { amount: 100 },
+      },
+      { type: "action", action: "FOLD", by: "player6" },
+      {
+        type: "action",
+        action: "RAISE",
+        by: "player8",
+        params: { amount: 185 },
+      },
+      { type: "action", action: "CHECK", by: "player2" },
+      {
+        type: "action",
+        action: "DEAL_CARD",
+        by: "dealer",
+        params: { rank: "K", suit: "d" },
+      },
+      {
+        type: "action",
+        action: "DEAL_CARD",
+        by: "dealer",
+        params: { rank: "Q", suit: "d" },
+      },
+      {
+        type: "action",
+        action: "DEAL_CARD",
+        by: "dealer",
+        params: { rank: "3", suit: "s" },
+      },
+      {
+        type: "action",
+        action: "DEAL_CARD",
+        by: "dealer",
+        params: { rank: "7", suit: "c" },
+      },
+      {
+        type: "action",
+        action: "DEAL_CARD",
+        by: "dealer",
+        params: { rank: "2", suit: "d" },
+      },
+      { type: "validate", game: { state: "SHOWDOWN" } },
+      {
+        type: "validate",
+        seats: {
+          player1: { buyIn: 0, seatStatus: "eliminated" },
+          player2: { buyIn: 1250 },
+          player3: { buyIn: 0, seatStatus: "eliminated" },
+          player4: { buyIn: 0, seatStatus: "eliminated" },
+          player5: { buyIn: 0, seatStatus: "eliminated" },
+          player6: { buyIn: 345 },
+          player7: { buyIn: 0, seatStatus: "eliminated" },
+          player8: { buyIn: 0, seatStatus: "eliminated" },
+        },
+      },
 
-      // // HAND 8
-      // { type: "action", action: "RESET_TABLE", by: "dealer" },
-      // { type: "action", action: "START_GAME", by: "dealer" },
-      // {
-      //   type: "deal_hole",
-      //   hole: {
-      //     player2: ["2h", "3h"],
-      //     player3: ["As", "Ks"],
-      //   },
-      // },
-      // {
-      //   type: "action",
-      //   action: "RAISE",
-      //   by: "player3",
-      //   params: { amount: 50 },
-      // },
-      // { type: "action", action: "FOLD", by: "player2" },
-      // { type: "validate", game: { state: "SHOWDOWN" } },
-      // {
-      //   type: "validate",
-      //   seats: {
-      //     player2: { buyIn: 810 },
-      //     player3: { buyIn: 390 },
-      //   },
-      // },
-
-      // // HAND 9
-      // { type: "action", action: "RESET_TABLE", by: "dealer" },
-      // { type: "action", action: "START_GAME", by: "dealer" },
-      // {
-      //   type: "deal_hole",
-      //   hole: {
-      //     player2: ["Jc", "Tc"],
-      //     player3: ["4d", "5d"],
-      //   },
-      // },
-      // {
-      //   type: "action",
-      //   action: "RAISE",
-      //   by: "player2",
-      //   params: { amount: 30 },
-      // },
-      // { type: "action", action: "FOLD", by: "player3" },
-      // { type: "validate", game: { state: "SHOWDOWN" } },
-      // {
-      //   type: "validate",
-      //   seats: {
-      //     player2: { buyIn: 820 },
-      //     player3: { buyIn: 380 },
-      //   },
-      // },
-
-      // // HAND 10: p3 wins big pot
-      // { type: "action", action: "RESET_TABLE", by: "dealer" },
-      // { type: "action", action: "START_GAME", by: "dealer" },
-      // {
-      //   type: "deal_hole",
-      //   hole: {
-      //     player2: ["6h", "7h"],
-      //     player3: ["Ah", "Kh"],
-      //   },
-      // },
-      // {
-      //   type: "action",
-      //   action: "RAISE",
-      //   by: "player3",
-      //   params: { amount: 100 },
-      // },
-      // {
-      //   type: "action",
-      //   action: "RAISE",
-      //   by: "player2",
-      //   params: { amount: 200 },
-      // },
-      // { type: "action", action: "CHECK", by: "player3" },
-      // {
-      //   type: "action",
-      //   action: "DEAL_CARD",
-      //   by: "dealer",
-      //   params: { rank: "A", suit: "c" },
-      // },
-      // {
-      //   type: "action",
-      //   action: "DEAL_CARD",
-      //   by: "dealer",
-      //   params: { rank: "K", suit: "d" },
-      // },
-      // {
-      //   type: "action",
-      //   action: "DEAL_CARD",
-      //   by: "dealer",
-      //   params: { rank: "Q", suit: "c" },
-      // },
-      // {
-      //   type: "action",
-      //   action: "DEAL_CARD",
-      //   by: "dealer",
-      //   params: { rank: "2", suit: "c" },
-      // },
-      // {
-      //   type: "action",
-      //   action: "DEAL_CARD",
-      //   by: "dealer",
-      //   params: { rank: "3", suit: "c" },
-      // },
-      // { type: "validate", game: { state: "SHOWDOWN" } },
-      // {
-      //   type: "validate",
-      //   seats: {
-      //     player2: { buyIn: 620 },
-      //     player3: { buyIn: 580 },
-      //   },
-      // },
-
-      // // HAND 11-15: Continue heads-up play
-      // { type: "action", action: "RESET_TABLE", by: "dealer" },
-      // { type: "action", action: "START_GAME", by: "dealer" },
-      // {
-      //   type: "deal_hole",
-      //   hole: {
-      //     player2: ["9c", "Tc"],
-      //     player3: ["2d", "3d"],
-      //   },
-      // },
-      // {
-      //   type: "action",
-      //   action: "RAISE",
-      //   by: "player2",
-      //   params: { amount: 30 },
-      // },
-      // { type: "action", action: "FOLD", by: "player3" },
-      // { type: "validate", game: { state: "SHOWDOWN" } },
-      // {
-      //   type: "validate",
-      //   seats: {
-      //     player2: { buyIn: 630 },
-      //     player3: { buyIn: 570 },
-      //   },
-      // },
-
-      // // HAND 12
-      // { type: "action", action: "RESET_TABLE", by: "dealer" },
-      // { type: "action", action: "START_GAME", by: "dealer" },
-      // {
-      //   type: "deal_hole",
-      //   hole: {
-      //     player2: ["4h", "5h"],
-      //     player3: ["Kc", "Qc"],
-      //   },
-      // },
-      // {
-      //   type: "action",
-      //   action: "RAISE",
-      //   by: "player3",
-      //   params: { amount: 50 },
-      // },
-      // { type: "action", action: "FOLD", by: "player2" },
-      // { type: "validate", game: { state: "SHOWDOWN" } },
-      // {
-      //   type: "validate",
-      //   seats: {
-      //     player2: { buyIn: 625 },
-      //     player3: { buyIn: 575 },
-      //   },
-      // },
-
-      // // HAND 13
-      // { type: "action", action: "RESET_TABLE", by: "dealer" },
-      // { type: "action", action: "START_GAME", by: "dealer" },
-      // {
-      //   type: "deal_hole",
-      //   hole: {
-      //     player2: ["Jd", "Td"],
-      //     player3: ["6s", "7s"],
-      //   },
-      // },
-      // {
-      //   type: "action",
-      //   action: "RAISE",
-      //   by: "player2",
-      //   params: { amount: 50 },
-      // },
-      // {
-      //   type: "action",
-      //   action: "RAISE",
-      //   by: "player3",
-      //   params: { amount: 150 },
-      // },
-      // { type: "action", action: "CHECK", by: "player2" },
-      // {
-      //   type: "action",
-      //   action: "DEAL_CARD",
-      //   by: "dealer",
-      //   params: { rank: "J", suit: "h" },
-      // },
-      // {
-      //   type: "action",
-      //   action: "DEAL_CARD",
-      //   by: "dealer",
-      //   params: { rank: "T", suit: "h" },
-      // },
-      // {
-      //   type: "action",
-      //   action: "DEAL_CARD",
-      //   by: "dealer",
-      //   params: { rank: "9", suit: "h" },
-      // },
-      // {
-      //   type: "action",
-      //   action: "DEAL_CARD",
-      //   by: "dealer",
-      //   params: { rank: "2", suit: "d" },
-      // },
-      // {
-      //   type: "action",
-      //   action: "DEAL_CARD",
-      //   by: "dealer",
-      //   params: { rank: "3", suit: "d" },
-      // },
-      // { type: "validate", game: { state: "SHOWDOWN" } },
-      // {
-      //   type: "validate",
-      //   seats: {
-      //     player2: { buyIn: 775 },
-      //     player3: { buyIn: 425 },
-      //   },
-      // },
-
-      // // HAND 14
-      // { type: "action", action: "RESET_TABLE", by: "dealer" },
-      // { type: "action", action: "START_GAME", by: "dealer" },
-      // {
-      //   type: "deal_hole",
-      //   hole: {
-      //     player2: ["8d", "9d"],
-      //     player3: ["Ac", "Kd"],
-      //   },
-      // },
-      // {
-      //   type: "action",
-      //   action: "RAISE",
-      //   by: "player3",
-      //   params: { amount: 100 },
-      // },
-      // {
-      //   type: "action",
-      //   action: "RAISE",
-      //   by: "player2",
-      //   params: { amount: 200 },
-      // },
-      // { type: "action", action: "CHECK", by: "player3" },
-      // {
-      //   type: "action",
-      //   action: "DEAL_CARD",
-      //   by: "dealer",
-      //   params: { rank: "A", suit: "s" },
-      // },
-      // {
-      //   type: "action",
-      //   action: "DEAL_CARD",
-      //   by: "dealer",
-      //   params: { rank: "K", suit: "h" },
-      // },
-      // {
-      //   type: "action",
-      //   action: "DEAL_CARD",
-      //   by: "dealer",
-      //   params: { rank: "Q", suit: "d" },
-      // },
-      // {
-      //   type: "action",
-      //   action: "DEAL_CARD",
-      //   by: "dealer",
-      //   params: { rank: "4", suit: "c" },
-      // },
-      // {
-      //   type: "action",
-      //   action: "DEAL_CARD",
-      //   by: "dealer",
-      //   params: { rank: "5", suit: "c" },
-      // },
-      // { type: "validate", game: { state: "SHOWDOWN" } },
-      // {
-      //   type: "validate",
-      //   seats: {
-      //     player2: { buyIn: 575 },
-      //     player3: { buyIn: 625 },
-      //   },
-      // },
-
-      // // HAND 15
-      // { type: "action", action: "RESET_TABLE", by: "dealer" },
-      // { type: "action", action: "START_GAME", by: "dealer" },
-      // {
-      //   type: "deal_hole",
-      //   hole: {
-      //     player2: ["Qs", "Js"],
-      //     player3: ["7d", "8d"],
-      //   },
-      // },
-      // {
-      //   type: "action",
-      //   action: "RAISE",
-      //   by: "player2",
-      //   params: { amount: 50 },
-      // },
-      // {
-      //   type: "action",
-      //   action: "RAISE",
-      //   by: "player3",
-      //   params: { amount: 150 },
-      // },
-      // {
-      //   type: "action",
-      //   action: "RAISE",
-      //   by: "player2",
-      //   params: { amount: 300 },
-      // },
-      // { type: "action", action: "CHECK", by: "player3" },
-      // {
-      //   type: "action",
-      //   action: "DEAL_CARD",
-      //   by: "dealer",
-      //   params: { rank: "Q", suit: "h" },
-      // },
-      // {
-      //   type: "action",
-      //   action: "DEAL_CARD",
-      //   by: "dealer",
-      //   params: { rank: "J", suit: "c" },
-      // },
-      // {
-      //   type: "action",
-      //   action: "DEAL_CARD",
-      //   by: "dealer",
-      //   params: { rank: "9", suit: "c" },
-      // },
-      // {
-      //   type: "action",
-      //   action: "DEAL_CARD",
-      //   by: "dealer",
-      //   params: { rank: "5", suit: "d" },
-      // },
-      // {
-      //   type: "action",
-      //   action: "DEAL_CARD",
-      //   by: "dealer",
-      //   params: { rank: "6", suit: "d" },
-      // },
-      // { type: "validate", game: { state: "SHOWDOWN" } },
-      // {
-      //   type: "validate",
-      //   seats: {
-      //     player2: { buyIn: 875 },
-      //     player3: { buyIn: 325 },
-      //   },
-      // },
-
-      // // HAND 16: FINAL - p2 eliminates p3 and wins
-      // { type: "action", action: "RESET_TABLE", by: "dealer" },
-      // { type: "action", action: "START_GAME", by: "dealer" },
-      // {
-      //   type: "deal_hole",
-      //   hole: {
-      //     player2: ["As", "Ad"],
-      //     player3: ["Kc", "Ks"],
-      //   },
-      // },
-      // {
-      //   type: "action",
-      //   action: "RAISE",
-      //   by: "player3",
-      //   params: { amount: 100 },
-      // },
-      // {
-      //   type: "action",
-      //   action: "RAISE",
-      //   by: "player2",
-      //   params: { amount: 325 },
-      // },
-      // { type: "action", action: "CHECK", by: "player3" },
-      // {
-      //   type: "action",
-      //   action: "DEAL_CARD",
-      //   by: "dealer",
-      //   params: { rank: "A", suit: "h" },
-      // },
-      // {
-      //   type: "action",
-      //   action: "DEAL_CARD",
-      //   by: "dealer",
-      //   params: { rank: "7", suit: "c" },
-      // },
-      // {
-      //   type: "action",
-      //   action: "DEAL_CARD",
-      //   by: "dealer",
-      //   params: { rank: "8", suit: "h" },
-      // },
-      // {
-      //   type: "action",
-      //   action: "DEAL_CARD",
-      //   by: "dealer",
-      //   params: { rank: "2", suit: "s" },
-      // },
-      // {
-      //   type: "action",
-      //   action: "DEAL_CARD",
-      //   by: "dealer",
-      //   params: { rank: "3", suit: "h" },
-      // },
-      // { type: "validate", game: { state: "SHOWDOWN" } },
-      // {
-      //   type: "validate",
-      //   seats: {
-      //     player1: { buyIn: 0, seatStatus: "eliminated" },
-      //     player2: { buyIn: 1600 },
-      //     player3: { buyIn: 0, seatStatus: "eliminated" },
-      //     player4: { buyIn: 0, seatStatus: "eliminated" },
-      //     player5: { buyIn: 0, seatStatus: "eliminated" },
-      //     player6: { buyIn: 0, seatStatus: "eliminated" },
-      //     player7: { buyIn: 0, seatStatus: "eliminated" },
-      //     player8: { buyIn: 0, seatStatus: "eliminated" },
-      //   },
-      // },
+      // HAND 8 (FINAL): p6 eliminated, p2 wins tournament (Button: p6, SB: p6, BB: p2)
+      { type: "action", action: "RESET_TABLE", by: "dealer" },
+      { type: "action", action: "START_GAME", by: "dealer" },
+      {
+        type: "deal_hole",
+        hole: {
+          player2: ["Ac", "Ad"],
+          player6: ["Ks", "Qc"],
+        },
+      },
+      {
+        type: "action",
+        action: "RAISE",
+        by: "player2",
+        params: { amount: 100 },
+      },
+      {
+        type: "action",
+        action: "RAISE",
+        by: "player6",
+        params: { amount: 345 },
+      },
+      { type: "action", action: "CHECK", by: "player2" },
+      {
+        type: "action",
+        action: "DEAL_CARD",
+        by: "dealer",
+        params: { rank: "5", suit: "h" },
+      },
+      {
+        type: "action",
+        action: "DEAL_CARD",
+        by: "dealer",
+        params: { rank: "9", suit: "s" },
+      },
+      {
+        type: "action",
+        action: "DEAL_CARD",
+        by: "dealer",
+        params: { rank: "3", suit: "h" },
+      },
+      {
+        type: "action",
+        action: "DEAL_CARD",
+        by: "dealer",
+        params: { rank: "6", suit: "d" },
+      },
+      {
+        type: "action",
+        action: "DEAL_CARD",
+        by: "dealer",
+        params: { rank: "4", suit: "h" },
+      },
+      { type: "validate", game: { state: "SHOWDOWN" } },
+      {
+        type: "validate",
+        seats: {
+          player1: { buyIn: 0, seatStatus: "eliminated" },
+          player2: { buyIn: 1595 },
+          player3: { buyIn: 0, seatStatus: "eliminated" },
+          player4: { buyIn: 0, seatStatus: "eliminated" },
+          player5: { buyIn: 0, seatStatus: "eliminated" },
+          player6: { buyIn: 0, seatStatus: "eliminated" },
+          player7: { buyIn: 0, seatStatus: "eliminated" },
+          player8: { buyIn: 0, seatStatus: "eliminated" },
+        },
+      },
     ],
   },
 ];
