@@ -794,6 +794,15 @@ const scenarios: Scenario[] = [
           player8: { buyIn: 0, seatStatus: "eliminated" },
         },
       },
+
+      // Try to start a new game with only 1 player - should throw
+      { type: "action", action: "RESET_TABLE", by: "dealer" },
+      {
+        type: "action",
+        action: "START_GAME",
+        by: "dealer",
+        isError: true,
+      },
     ],
   },
 ];
