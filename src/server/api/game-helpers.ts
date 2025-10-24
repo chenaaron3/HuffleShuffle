@@ -262,8 +262,6 @@ export async function triggerBotActions(tableId: string): Promise<void> {
       return;
     }
 
-    console.log(`Bot action: Seat ${currentSeat.seatNumber} acting`);
-
     // Execute bot action
     await db.transaction(async (tx) => {
       // Re-fetch within transaction
@@ -291,10 +289,10 @@ export async function triggerBotActions(tableId: string): Promise<void> {
         action: "CHECK",
       });
     });
-
-    // Notify clients
-    await notifyTableUpdate(tableId);
   }
+
+  // Notify clients
+  await notifyTableUpdate(tableId);
 
   if (iterations >= MAX_ITERATIONS) {
     console.error("Bot actions: Max iterations reached");

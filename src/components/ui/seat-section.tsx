@@ -266,9 +266,33 @@ function SeatCard({
                             />
                         </div>
                     )}
-                    {gameState === 'BETTING' && seat.lastAction && (
+                    {/* Status/Action tags */}
+                    {seat.seatStatus === 'all-in' && (
+                        <div className="w-fit translate-y-1/4 mx-auto rounded-full text-xs font-medium text-center shadow-lg px-3 py-1 bg-yellow-600/30 border border-yellow-400/50 text-yellow-300">
+                            ALL-IN
+                        </div>
+                    )}
+                    {seat.seatStatus === 'folded' && (
+                        <div className="w-fit translate-y-1/4 mx-auto rounded-full text-xs font-medium text-center shadow-lg px-3 py-1 bg-zinc-600/30 border border-zinc-400/50 text-zinc-300">
+                            FOLDED
+                        </div>
+                    )}
+                    {seat.seatStatus === 'eliminated' && (
+                        <div className="w-fit translate-y-1/4 mx-auto rounded-full text-xs font-medium text-center shadow-lg px-3 py-1 bg-red-600/30 border border-red-400/50 text-red-300">
+                            ELIMINATED
+                        </div>
+                    )}
+                    {/* Show last action only for active players during betting */}
+                    {seat.seatStatus === 'active' && gameState === 'BETTING' && seat.lastAction && (
                         <div
-                            className="w-fit translate-y-1/4 mx-auto rounded-full text-xs font-medium text-center shadow-lg bg-blue-600/30 border border-blue-400/50 px-3 py-1 text-blue-300"
+                            className={`w-fit translate-y-1/4 mx-auto rounded-full text-xs font-medium text-center shadow-lg px-3 py-1 ${seat.lastAction === 'RAISE'
+                                ? 'bg-red-600/30 border border-red-400/50 text-red-300'
+                                : seat.lastAction === 'CALL'
+                                    ? 'bg-blue-600/30 border border-blue-400/50 text-blue-300'
+                                    : seat.lastAction === 'CHECK'
+                                        ? 'bg-green-600/30 border border-green-400/50 text-green-300'
+                                        : 'bg-zinc-600/30 border border-zinc-400/50 text-zinc-300'
+                                }`}
                         >
                             {seat.lastAction}
                         </div>
