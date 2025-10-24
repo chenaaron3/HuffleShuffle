@@ -296,6 +296,7 @@ export async function evaluateBettingTransition(
       .set({
         state: "SHOWDOWN",
         isCompleted: true,
+        turnStartTime: null, // Clear turn start time when game is completed
       })
       .where(eq(games.id, updatedGame.id));
     return;
@@ -303,19 +304,28 @@ export async function evaluateBettingTransition(
   if (cc === 0) {
     await tx
       .update(games)
-      .set({ state: "DEAL_FLOP" })
+      .set({
+        state: "DEAL_FLOP",
+        turnStartTime: null, // Clear turn start time when transitioning to dealing
+      })
       .where(eq(games.id, updatedGame.id));
   }
   if (cc === 3) {
     await tx
       .update(games)
-      .set({ state: "DEAL_TURN" })
+      .set({
+        state: "DEAL_TURN",
+        turnStartTime: null, // Clear turn start time when transitioning to dealing
+      })
       .where(eq(games.id, updatedGame.id));
   }
   if (cc === 4) {
     await tx
       .update(games)
-      .set({ state: "DEAL_RIVER" })
+      .set({
+        state: "DEAL_RIVER",
+        turnStartTime: null, // Clear turn start time when transitioning to dealing
+      })
       .where(eq(games.id, updatedGame.id));
   }
 }

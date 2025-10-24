@@ -99,6 +99,7 @@ async function startBettingRound(
     .set({
       state: "BETTING",
       assignedSeatId: firstToActId,
+      turnStartTime: new Date(), // Set turn start time in game record
       betCount: 0,
       requiredBetCount: activeCount,
     })

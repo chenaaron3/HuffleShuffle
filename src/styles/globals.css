@@ -5,6 +5,22 @@
   50% { transform: translateY(0); }
 }
 
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+@keyframes sparkle {
+  0%, 100% { 
+    opacity: 1; 
+    transform: scale(1);
+  }
+  50% { 
+    opacity: 0.3; 
+    transform: scale(1.2);
+  }
+}
+
 @layer utilities {
   .animate-subtle-bounce { animation: subtle-bounce 1.8s ease-in-out infinite; }
   .no-scrollbar::-webkit-scrollbar { display: none; }

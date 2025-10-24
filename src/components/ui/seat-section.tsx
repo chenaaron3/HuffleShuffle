@@ -2,6 +2,8 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Track } from 'livekit-client';
 import { CardSlot } from '~/components/ui/card-slot';
 import { RollingNumber } from '~/components/ui/chip-animations';
+import { PLAYER_ACTION_TIMEOUT_MS } from '~/constants/timer';
+import { useTimerBorder } from '~/hooks/use-timer-border';
 
 import { ParticipantTile, TrackToggle, useTracks, VideoTrack } from '@livekit/components-react';
 
@@ -18,6 +20,7 @@ interface SeatSectionProps {
     canMoveSeat?: boolean;
     onMoveSeat?: (seatNumber: number) => void;
     movingSeatNumber?: number | null;
+    turnStartTime?: Date | null;
 }
 
 export function SeatSection({
@@ -31,6 +34,7 @@ export function SeatSection({
     canMoveSeat,
     onMoveSeat,
     movingSeatNumber,
+    turnStartTime,
 }: SeatSectionProps) {
     // Since seats array is now padded, array index matches seat number
     let displaySeats: (SeatWithPlayer | null)[] = [];
@@ -64,7 +68,7 @@ export function SeatSection({
 
                 return (
                     <SeatCard
-                        key={seat?.id || `empty-${side}-${index}`}
+                        key={seat?.id || `empty-${side}-${seatNumber}`}
                         seat={seat}
                         index={index} // Use the display index directly
                         seatNumber={seatNumber} // Pass the actual seat number (0-based)
@@ -78,6 +82,7 @@ export function SeatSection({
                         canMoveSeat={canMoveSeat}
                         onMoveSeat={onMoveSeat}
                         isMoving={movingSeatNumber === seatNumber}
+                        turnStartTime={turnStartTime}
                     />
                 );
             })}
@@ -99,6 +104,7 @@ function SeatCard({
     canMoveSeat,
     onMoveSeat,
     isMoving,
+    turnStartTime,
 }: {
     seat: SeatWithPlayer | null;
     index: number;
@@ -113,12 +119,19 @@ function SeatCard({
     canMoveSeat?: boolean;
     onMoveSeat?: (seatNumber: number) => void;
     isMoving?: boolean;
+    turnStartTime?: Date | null;
 }) {
     const trackRefs = useTracks([Track.Source.Camera]);
     const videoTrackRef = seat ? trackRefs.find(
         (t) => t.participant.identity === seat.player?.id && t.source === Track.Source.Camera
     ) : null;
     const isSelf = !!myUserId && seat?.player?.id === myUserId;
+
+    // Timer border hook for active players during betting
+    const timerBorder = useTimerBorder({
+        turnStartTime: turnStartTime ?? null,
+        isActive: !!(active && gameState === 'BETTING'),
+    });
 
     // Empty seat placeholder
     if (!seat) {
@@ -181,10 +194,14 @@ function SeatCard({
         );
     }
 
+    // Get complete border style (includes burning rope timer)
+    const borderStyle = timerBorder.getBorderStyle(!!isWinner, !!active, gameState);
+
     return (
-        <div
+        <motion.div
             id={`seat-${seat.id}`}
-            className={`relative flex h-[22vh] flex-col rounded-xl bg-zinc-900/60 backdrop-blur-sm border ${isWinner ? 'border-yellow-400/80 shadow-2xl shadow-yellow-500/50' : active ? 'border-yellow-400/60' : 'border-zinc-500/30'}`}
+            className="relative flex h-[22vh] flex-col rounded-xl bg-zinc-900/60 backdrop-blur-sm"
+            style={borderStyle}
         >
             {/* Video Feed - Scaled Down with Aspect Ratio */}
             <div className="group relative h-full aspect-[4/3] overflow-hidden rounded-xl bg-black mb-3 -z-10">
@@ -341,6 +358,6 @@ function SeatCard({
             >
                 {isSelf ? 'You' : (seat.player?.name ?? 'Player')}
             </div>
-        </div>
+        </motion.div>
     );
 }

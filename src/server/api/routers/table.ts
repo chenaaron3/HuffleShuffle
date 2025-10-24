@@ -3,6 +3,7 @@ import { AccessToken } from 'livekit-server-sdk';
 import process from 'process';
 import ts from 'typescript';
 import { z } from 'zod';
+import { PLAYER_ACTION_TIMEOUT_MS } from '~/constants/timer';
 import { createTRPCRouter, protectedProcedure, publicProcedure } from '~/server/api/trpc';
 import { db } from '~/server/db';
 import {
@@ -567,7 +568,7 @@ export const tableRouter = createTRPCRouter({
           );
 
           // Use shared game logic instead of duplicating code
-          if (process.env.NODE_ENV === "test") {
+          if (true || process.env.NODE_ENV === "test") {
             await dealCard(
               tx,
               input.tableId,
@@ -716,7 +717,10 @@ export const tableRouter = createTRPCRouter({
         const nextSeatId = getNextActiveSeatId(orderedSeats, actorSeat.id);
         await tx
           .update(games)
-          .set({ assignedSeatId: nextSeatId })
+          .set({
+            assignedSeatId: nextSeatId,
+            turnStartTime: nextSeatId ? new Date() : null, // Set turn start time for next player
+          })
           .where(eq(games.id, game.id));
         game.assignedSeatId = nextSeatId;
 
@@ -763,5 +767,110 @@ export const tableRouter = createTRPCRouter({
         limit: 25,
       });
       return { events: rows };
+    }),
+
+  timeout: protectedProcedure
+    .input(
+      z.object({
+        tableId: z.string(),
+        seatId: z.string(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+      ensureDealerRole(ctx.session.user.role);
+
+      await db.transaction(async (tx) => {
+        // Verify the caller is the dealer of this table
+        const table = await tx.query.pokerTables.findFirst({
+          where: eq(pokerTables.id, input.tableId),
+        });
+        if (!table) throw new Error("Table not found");
+        if (table.dealerId !== userId)
+          throw new Error("FORBIDDEN: not the dealer of this table");
+
+        // Get current game state
+        const snapshot = await tx.query.pokerTables.findFirst({
+          where: eq(pokerTables.id, input.tableId),
+          with: {
+            games: { orderBy: (g, { desc }) => [desc(g.createdAt)], limit: 1 },
+            seats: { orderBy: (s, { asc }) => [asc(s.seatNumber)] },
+          },
+        });
+        if (!snapshot) throw new Error("Table not found");
+
+        const game = snapshot.games[0];
+        if (!game || game.isCompleted) throw new Error("No active game");
+        if (game.state !== "BETTING")
+          throw new Error("Timeout only allowed during betting");
+
+        // Verify the seat ID matches the currently assigned seat
+        if (game.assignedSeatId !== input.seatId) {
+          throw new Error("Seat ID does not match current player's turn");
+        }
+
+        // Find the seat to timeout
+        const seat = snapshot.seats.find((s) => s.id === input.seatId);
+        if (!seat) throw new Error("Seat not found");
+        if (seat.seatStatus !== "active") throw new Error("Seat is not active");
+
+        // Check if enough time has actually passed
+        if (game.turnStartTime) {
+          const timeElapsed = Date.now() - game.turnStartTime.getTime();
+          console.log("Timeout API: Time check", {
+            seatId: input.seatId,
+            turnStartTime: game.turnStartTime,
+            now: new Date(),
+            timeElapsed: timeElapsed / 1000 + "s",
+            required: PLAYER_ACTION_TIMEOUT_MS / 1000 + "s",
+            canTimeout: timeElapsed >= PLAYER_ACTION_TIMEOUT_MS,
+          });
+          if (timeElapsed < PLAYER_ACTION_TIMEOUT_MS) {
+            throw new Error("Timeout period has not elapsed yet");
+          }
+        }
+
+        // Fold the player due to timeout
+        await tx
+          .update(seats)
+          .set({ seatStatus: "folded", lastAction: "FOLD" })
+          .where(eq(seats.id, seat.id));
+
+        // Log the fold event
+        await logFold(tx as any, input.tableId, game.id, {
+          seatId: seat.id,
+        });
+
+        // Increment betCount and rotate to next player
+        await tx
+          .update(games)
+          .set({ betCount: sql`${games.betCount} + 1` })
+          .where(eq(games.id, game.id));
+
+        const nextSeatId = getNextActiveSeatId(snapshot.seats, seat.id);
+        await tx
+          .update(games)
+          .set({
+            assignedSeatId: nextSeatId,
+            turnStartTime: nextSeatId ? new Date() : null, // Set turn start time for next player
+          })
+          .where(eq(games.id, game.id));
+
+        // Determine if betting round finished
+        await evaluateBettingTransition(tx, input.tableId, {
+          ...game,
+          betCount: game.betCount + 1,
+          assignedSeatId: nextSeatId,
+        });
+
+        return { ok: true } as const;
+      });
+
+      // Notify clients of table update after successful transaction
+      await notifyTableUpdate(input.tableId);
+
+      // Return fresh snapshot
+      const snapshot = await summarizeTable(db, input.tableId);
+      return redactSnapshotForUser(snapshot, userId);
     }),
 });

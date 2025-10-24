@@ -10,13 +10,6 @@
       "breakpoints": true
     },
     {
-      "idx": 1,
-      "version": "7",
-      "when": 1758498619442,
-      "tag": "0001_add_hand_fields",
-      "breakpoints": true
-    },
-    {
       "idx": 2,
       "version": "7",
       "when": 1758501115378,
@@ -49,6 +42,41 @@
       "version": "7",
       "when": 1759192025234,
       "tag": "0006_bizarre_nitro",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1759192025235,
+      "tag": "0007_add_side_pots_and_seat_status",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1759192025236,
+      "tag": "0008_add_eliminated_status",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1759192025237,
+      "tag": "0009_add_turn_start_time",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1759192025238,
+      "tag": "0010_add_turn_start_time_to_game",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1759192025239,
+      "tag": "0011_remove_turn_start_time_from_seats",
       "breakpoints": true
     }
   ]

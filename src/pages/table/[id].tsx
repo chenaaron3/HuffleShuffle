@@ -8,6 +8,7 @@ import { DealerCamera } from '~/components/ui/dealer-camera';
 import { EventFeed } from '~/components/ui/event-feed';
 import { HandCamera } from '~/components/ui/hand-camera';
 import { SeatSection } from '~/components/ui/seat-section';
+import { useDealerTimer } from '~/hooks/use-dealer-timer';
 import { useTableEvents } from '~/hooks/use-table-events';
 import { api } from '~/utils/api';
 import { generateRsaKeyPairForTable, rsaDecryptBase64 } from '~/utils/crypto';
@@ -98,6 +99,16 @@ export default function TableView() {
 
     // --- Event feed managed by hook ---
     const { events, refreshEvents: refreshEventFeed } = useTableEvents({ tableId: id });
+
+    // --- Dealer timer hook ---
+    const isDealer = session?.user?.role === 'dealer' && snapshot?.table?.dealerId === session?.user?.id;
+    useDealerTimer({
+        tableId: id ?? '',
+        gameState: state,
+        assignedSeatId: bettingActorSeatId,
+        turnStartTime: snapshot?.game?.turnStartTime ?? null,
+        isDealer: !!isDealer,
+    });
 
     // Memoize winning cards calculation to prevent unnecessary re-renders
     const allWinningCards = React.useMemo(() => {
@@ -280,6 +291,7 @@ export default function TableView() {
                                 gameState={state}
                                 canMoveSeat={Boolean(snapshot?.isJoinable && currentUserSeatId)}
                                 movingSeatNumber={movingSeat}
+                                turnStartTime={snapshot?.game?.turnStartTime ?? null}
                                 onMoveSeat={async (seatNumber) => {
                                     if (!id || movingSeat !== null) return;
                                     try {
@@ -358,6 +370,7 @@ export default function TableView() {
                                 gameState={state}
                                 canMoveSeat={Boolean(snapshot?.isJoinable && currentUserSeatId)}
                                 movingSeatNumber={movingSeat}
+                                turnStartTime={snapshot?.game?.turnStartTime ?? null}
                                 onMoveSeat={async (seatNumber) => {
                                     if (!id || movingSeat !== null) return;
                                     try {

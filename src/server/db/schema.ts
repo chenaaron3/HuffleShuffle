@@ -221,6 +221,7 @@ export const games = createTable(
     assignedSeatId: d
       .varchar({ length: 255 })
       .references(() => seats.id, { onDelete: "set null" }),
+    turnStartTime: d.timestamp({ withTimezone: true }), // When the current player's turn started (for timer)
     communityCards: d
       .text()
       .array()
