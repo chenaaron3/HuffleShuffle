@@ -14,12 +14,11 @@ import { rsaEncryptB64 } from '~/utils/crypto';
 
 import { SendMessageCommand, SQSClient } from '@aws-sdk/client-sqs';
 
-import { logCall, logCheck, logFold, logRaise, logStartGame } from '../game-event-logger';
+import { generateBotPublicKey, getBotIdForSeat, getBotName, isBot } from '../bot-constants';
+import { createSeatTransaction, executeBettingAction, triggerBotActions } from '../game-helpers';
 import {
     createNewGame, dealCard, notifyTableUpdate, parseRankSuitToBarcode, resetGame
 } from '../game-logic';
-import { getNextActiveSeatId } from '../game-utils';
-import { evaluateBettingTransition } from '../hand-solver';
 
 import type { VideoGrant } from "livekit-server-sdk";
 const ensureDealerRole = (role: string | undefined) => {
@@ -259,6 +258,7 @@ export const tableRouter = createTRPCRouter({
         where: eq(users.id, userId),
       });
       if (!user) throw new Error("User not found");
+
       const result = await db.transaction(async (tx) => {
         const snapshot = await tx.query.pokerTables.findFirst({
           where: eq(pokerTables.id, input.tableId),
@@ -272,7 +272,6 @@ export const tableRouter = createTRPCRouter({
         if (latestGame && !latestGame.isCompleted)
           throw new Error("Cannot join: game already active");
 
-        // Seat auto-assign: next index based on count
         const existingSeats = snapshot.seats;
         if (existingSeats.length >= snapshot.maxSeats)
           throw new Error("Table is full");
@@ -280,7 +279,7 @@ export const tableRouter = createTRPCRouter({
         if (user.balance < input.buyIn)
           throw new Error("Insufficient balance for buy-in");
 
-        // Find the first available seat number (smallest available)
+        // Find the first available seat number
         const occupiedSeatNumbers = new Set(
           existingSeats.map((seat) => seat.seatNumber),
         );
@@ -296,52 +295,18 @@ export const tableRouter = createTRPCRouter({
           throw new Error("No available seats found");
         }
 
-        // Store/refresh user's public key
-        await tx
-          .update(users)
-          .set({ publicKey: input.userPublicKey })
-          .where(eq(users.id, userId));
-
-        // Deduct balance
-        await tx
-          .update(users)
-          .set({ balance: sql`${users.balance} - ${input.buyIn}` })
-          .where(eq(users.id, userId));
-
-        // Generate ephemeral nonce and encrypt for user + seat's mapped Pi (if any)
-        const nonce = crypto.randomUUID();
-        const encUser = await rsaEncryptB64(input.userPublicKey, nonce);
-        // Find seat-mapped Pi (type 'card' with matching seatNumber)
-        const pi = await tx.query.piDevices.findFirst({
-          where: and(
-            eq(piDevices.tableId, input.tableId),
-            eq(piDevices.type, "card"),
-            eq(piDevices.seatNumber, seatNumber),
-          ),
+        // Use shared helper to create seat
+        const seat = await createSeatTransaction(tx, {
+          tableId: input.tableId,
+          playerId: userId,
+          seatNumber,
+          buyIn: input.buyIn,
+          userPublicKey: input.userPublicKey,
         });
-        if (!pi || !pi.publicKey) throw new Error("Pi not found");
-        const encPi = await rsaEncryptB64(pi.publicKey, nonce);
 
-        // Create seat with encrypted nonce
-        const updatedSeatRows = await tx
-          .insert(seats)
-          .values({
-            tableId: input.tableId,
-            playerId: userId,
-            seatNumber,
-            buyIn: input.buyIn,
-            startingBalance: input.buyIn, // Set startingBalance to initial buyIn amount
-            seatStatus: "active",
-            encryptedUserNonce: encUser,
-            encryptedPiNonce: encPi,
-          })
-          .returning();
-
-        if (!updatedSeatRows || updatedSeatRows.length === 0)
-          throw new Error("Failed to update seat");
-        const updatedSeat = updatedSeatRows[0]!;
-        return { seat: updatedSeat } as const;
+        return { seat } as const;
       });
+
       return {
         tableId: input.tableId,
         seatId: result.seat.id,
@@ -385,6 +350,149 @@ export const tableRouter = createTRPCRouter({
         await tx.delete(seats).where(eq(seats.id, seat.id));
         return { ok: true } as const;
       });
+      return result;
+    }),
+
+  addBot: protectedProcedure
+    .input(
+      z.object({
+        tableId: z.string(),
+        seatNumber: z.number().int().nonnegative(),
+        buyIn: z.number().int().positive().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+      ensureDealerRole(ctx.session.user.role);
+
+      const result = await db.transaction(async (tx) => {
+        const snapshot = await tx.query.pokerTables.findFirst({
+          where: eq(pokerTables.id, input.tableId),
+          with: {
+            games: { orderBy: (g, { desc }) => [desc(g.createdAt)], limit: 1 },
+            seats: { columns: { seatNumber: true } },
+          },
+        });
+        if (!snapshot) throw new Error("Table not found");
+
+        // Verify caller is the dealer
+        if (snapshot.dealerId !== userId) {
+          throw new Error("FORBIDDEN: only the dealer can add bots");
+        }
+
+        const latestGame = snapshot.games[0] ?? null;
+        if (latestGame && !latestGame.isCompleted) {
+          throw new Error("Cannot add bots during an active game");
+        }
+
+        // Validate seat number
+        const seatNumber = input.seatNumber;
+        if (seatNumber < 0 || seatNumber >= snapshot.maxSeats) {
+          throw new Error("Seat number out of range");
+        }
+        const occupied = snapshot.seats.some(
+          (s) => s.seatNumber === seatNumber,
+        );
+        if (occupied) {
+          throw new Error("Seat is already occupied");
+        }
+
+        // Get bot user ID for this seat
+        const botUserId = getBotIdForSeat(seatNumber);
+
+        // Ensure bot user exists
+        const existingBot = await tx.query.users.findFirst({
+          where: eq(users.id, botUserId),
+        });
+
+        const botPublicKey = generateBotPublicKey();
+
+        if (!existingBot) {
+          // Create bot user with near-infinite balance
+          await tx.insert(users).values({
+            id: botUserId,
+            name: getBotName(seatNumber),
+            email: `bot-seat-${seatNumber}@huffle-shuffle.local`,
+            role: "player",
+            balance: 2147483647, // Max 32-bit integer
+            publicKey: botPublicKey,
+          });
+        }
+
+        // Default buy-in is 20x big blind
+        const buyInAmount = input.buyIn ?? snapshot.bigBlind * 20;
+
+        // Use shared helper to create bot seat (will deduct from bot's balance)
+        const seat = await createSeatTransaction(tx, {
+          tableId: input.tableId,
+          playerId: botUserId,
+          seatNumber,
+          buyIn: buyInAmount,
+          userPublicKey: botPublicKey,
+        });
+
+        return { seat } as const;
+      });
+
+      // Notify clients
+      await notifyTableUpdate(input.tableId);
+
+      return {
+        tableId: input.tableId,
+        seatId: result.seat.id,
+        seatNumber: result.seat.seatNumber,
+      };
+    }),
+
+  removeBot: protectedProcedure
+    .input(
+      z.object({
+        tableId: z.string(),
+        seatNumber: z.number().int().nonnegative(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+      ensureDealerRole(ctx.session.user.role);
+
+      const result = await db.transaction(async (tx) => {
+        const table = await tx.query.pokerTables.findFirst({
+          where: eq(pokerTables.id, input.tableId),
+        });
+        if (!table) throw new Error("Table not found");
+
+        // Verify caller is the dealer
+        if (table.dealerId !== userId) {
+          throw new Error("FORBIDDEN: only the dealer can remove bots");
+        }
+
+        // Get bot user ID for this seat
+        const botUserId = getBotIdForSeat(input.seatNumber);
+
+        // Find the bot's seat
+        const seat = await tx.query.seats.findFirst({
+          where: and(
+            eq(seats.tableId, input.tableId),
+            eq(seats.playerId, botUserId),
+          ),
+        });
+        if (!seat) throw new Error("Bot not found at this seat");
+
+        const latest = await tx.query.games.findFirst({
+          where: eq(games.tableId, input.tableId),
+          orderBy: (g, { desc }) => [desc(g.createdAt)],
+        });
+        if (latest && latest.isCompleted === false) {
+          throw new Error("Cannot remove bot during an active hand");
+        }
+
+        // Bots don't get refunded (they have infinite balance)
+        // Just remove the seat
+        await tx.delete(seats).where(eq(seats.id, seat.id));
+        return { ok: true } as const;
+      });
+
+      await notifyTableUpdate(input.tableId);
       return result;
     }),
 
@@ -621,116 +729,24 @@ export const tableRouter = createTRPCRouter({
           throw new Error("Not your turn");
         }
 
-        // Calculate max bet from all non-folded, non-eliminated players
-        const maxBet = Math.max(
-          ...orderedSeats
-            .filter(
-              (s) => s.seatStatus !== "folded" && s.seatStatus !== "eliminated",
-            )
-            .map((s) => s.currentBet),
-        );
-
-        if (input.action === "RAISE") {
-          const amount = input.params?.amount ?? 0;
-          // The raised amount must be at least the max bet
-          if (amount <= 0 || amount < maxBet)
-            throw new Error(
-              `Invalid raise amount, must be at least the max bet of ${maxBet}`,
-            );
-          const total = amount - actorSeat.currentBet;
-          if (actorSeat.buyIn < total)
-            throw new Error("Insufficient chips to raise");
-
-          // Determine if going all-in
-          const newBuyIn = actorSeat.buyIn - total;
-          const newStatus = newBuyIn === 0 ? "all-in" : "active";
-
-          await tx
-            .update(seats)
-            .set({
-              buyIn: sql`${seats.buyIn} - ${total}`,
-              currentBet: sql`${seats.currentBet} + ${total}`,
-              lastAction: "RAISE",
-              seatStatus: newStatus,
-            })
-            .where(eq(seats.id, actorSeat.id));
-          actorSeat.buyIn = newBuyIn;
-          actorSeat.currentBet += total;
-          actorSeat.seatStatus = newStatus;
-          await logRaise(tx as any, input.tableId, game.id, {
-            seatId: actorSeat.id,
-            total: amount,
-          });
-        } else if (input.action === "CHECK") {
-          const need = maxBet - actorSeat.currentBet;
-          if (need > 0) {
-            // Player is calling (matching the bet)
-            // If they don't have enough chips, they go all-in for what they have
-            const actualBet = Math.min(need, actorSeat.buyIn);
-            const newBuyIn = actorSeat.buyIn - actualBet;
-            const newStatus = newBuyIn === 0 ? "all-in" : "active";
-
-            await tx
-              .update(seats)
-              .set({
-                buyIn: sql`${seats.buyIn} - ${actualBet}`,
-                currentBet: sql`${seats.currentBet} + ${actualBet}`,
-                lastAction: "CALL",
-                seatStatus: newStatus,
-              })
-              .where(eq(seats.id, actorSeat.id));
-            actorSeat.buyIn = newBuyIn;
-            actorSeat.currentBet += actualBet;
-            actorSeat.seatStatus = newStatus;
-            await logCall(tx as any, input.tableId, game.id, {
-              seatId: actorSeat.id,
-              total: actorSeat.currentBet,
-            });
-          } else {
-            // Player is checking (no bet to match)
-            await tx
-              .update(seats)
-              .set({ lastAction: "CHECK" })
-              .where(eq(seats.id, actorSeat.id));
-            await logCheck(tx as any, input.tableId, game.id, {
-              seatId: actorSeat.id,
-              total: maxBet,
-            });
-          }
-        } else if (input.action === "FOLD") {
-          await tx
-            .update(seats)
-            .set({ seatStatus: "folded", lastAction: "FOLD" })
-            .where(eq(seats.id, actorSeat.id));
-          actorSeat.seatStatus = "folded";
-          await logFold(tx as any, input.tableId, game.id, {
-            seatId: actorSeat.id,
-          });
-        }
-
-        // Increment betCount and rotate assigned player
-        await tx
-          .update(games)
-          .set({ betCount: sql`${games.betCount} + 1` })
-          .where(eq(games.id, game.id));
-        game.betCount += 1;
-        const nextSeatId = getNextActiveSeatId(orderedSeats, actorSeat.id);
-        await tx
-          .update(games)
-          .set({
-            assignedSeatId: nextSeatId,
-            turnStartTime: nextSeatId ? new Date() : null, // Set turn start time for next player
-          })
-          .where(eq(games.id, game.id));
-        game.assignedSeatId = nextSeatId;
-
-        // Determine if betting round finished using helper
-        await evaluateBettingTransition(tx, input.tableId, game);
+        // Execute betting action using shared helper
+        // This handles the action, betCount increment, turn rotation, and betting transition
+        await executeBettingAction(tx, {
+          tableId: input.tableId,
+          game,
+          actorSeat,
+          orderedSeats,
+          action: input.action,
+          raiseAmount: input.params?.amount,
+        });
         return { ok: true } as const;
       });
 
       // Notify clients of table update after successful transaction
       await notifyTableUpdate(input.tableId);
+
+      // Process bot actions if it's a bot's turn
+      await triggerBotActions(input.tableId);
 
       // transaction complete -> fetch committed snapshot
       const snapshot = await summarizeTable(db, input.tableId);
@@ -814,53 +830,14 @@ export const tableRouter = createTRPCRouter({
         if (!seat) throw new Error("Seat not found");
         if (seat.seatStatus !== "active") throw new Error("Seat is not active");
 
-        // Check if enough time has actually passed
-        if (game.turnStartTime) {
-          const timeElapsed = Date.now() - game.turnStartTime.getTime();
-          console.log("Timeout API: Time check", {
-            seatId: input.seatId,
-            turnStartTime: game.turnStartTime,
-            now: new Date(),
-            timeElapsed: timeElapsed / 1000 + "s",
-            required: PLAYER_ACTION_TIMEOUT_MS / 1000 + "s",
-            canTimeout: timeElapsed >= PLAYER_ACTION_TIMEOUT_MS,
-          });
-          if (timeElapsed < PLAYER_ACTION_TIMEOUT_MS) {
-            throw new Error("Timeout period has not elapsed yet");
-          }
-        }
-
-        // Fold the player due to timeout
-        await tx
-          .update(seats)
-          .set({ seatStatus: "folded", lastAction: "FOLD" })
-          .where(eq(seats.id, seat.id));
-
-        // Log the fold event
-        await logFold(tx as any, input.tableId, game.id, {
-          seatId: seat.id,
-        });
-
-        // Increment betCount and rotate to next player
-        await tx
-          .update(games)
-          .set({ betCount: sql`${games.betCount} + 1` })
-          .where(eq(games.id, game.id));
-
-        const nextSeatId = getNextActiveSeatId(snapshot.seats, seat.id);
-        await tx
-          .update(games)
-          .set({
-            assignedSeatId: nextSeatId,
-            turnStartTime: nextSeatId ? new Date() : null, // Set turn start time for next player
-          })
-          .where(eq(games.id, game.id));
-
-        // Determine if betting round finished
-        await evaluateBettingTransition(tx, input.tableId, {
-          ...game,
-          betCount: game.betCount + 1,
-          assignedSeatId: nextSeatId,
+        // Fold the player due to timeout using shared helper
+        // This handles the fold, betCount increment, turn rotation, and betting transition
+        await executeBettingAction(tx, {
+          tableId: input.tableId,
+          game,
+          actorSeat: seat,
+          orderedSeats: snapshot.seats,
+          action: "FOLD",
         });
 
         return { ok: true } as const;
@@ -868,6 +845,9 @@ export const tableRouter = createTRPCRouter({
 
       // Notify clients of table update after successful transaction
       await notifyTableUpdate(input.tableId);
+
+      // Process bot actions if it's a bot's turn
+      await triggerBotActions(input.tableId);
 
       // Return fresh snapshot
       const snapshot = await summarizeTable(db, input.tableId);

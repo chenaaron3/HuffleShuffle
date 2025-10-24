@@ -14,12 +14,7 @@ done
 
 # Only run migrations if the DB hasn't been initialized
 # We check for presence of one of our tables
-if ! docker compose exec -T db psql -U postgres -d huffle_shuffle_test -Atc "SELECT to_regclass('public.huffle-shuffle_user') IS NOT NULL" | grep -q t; then
-  echo "Running migrations for the first time..."
-  SKIP_ENV_VALIDATION=1 DATABASE_URL="$DB_URL" npm run db:push
-else
-  echo "DB already migrated. Skipping migrations."
-fi
+SKIP_ENV_VALIDATION=1 DATABASE_URL="$DB_URL" npm run db:push
 
 # Run tests against the DB, forwarding any args (e.g., -- -t "pattern")
 SKIP_ENV_VALIDATION=1 DATABASE_URL="$DB_URL" npm run test:db -- "$@"
