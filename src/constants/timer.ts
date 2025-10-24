@@ -1,5 +1,5 @@
 // Timer constants for poker game actions
-export const PLAYER_ACTION_TIMEOUT_SECONDS = 12;
+export const PLAYER_ACTION_TIMEOUT_SECONDS = 600;
 export const PLAYER_ACTION_TIMEOUT_MS = PLAYER_ACTION_TIMEOUT_SECONDS * 1000;
 
 // Warning threshold for visual feedback (3 seconds remaining)

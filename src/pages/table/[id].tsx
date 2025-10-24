@@ -7,6 +7,7 @@ import { TableSetupModal } from '~/components/TableSetupModal';
 import { DealerCamera } from '~/components/ui/dealer-camera';
 import { EventFeed } from '~/components/ui/event-feed';
 import { HandCamera } from '~/components/ui/hand-camera';
+import { QuickActions } from '~/components/ui/quick-actions';
 import { SeatSection } from '~/components/ui/seat-section';
 import { useDealerTimer } from '~/hooks/use-dealer-timer';
 import { useTableEvents } from '~/hooks/use-table-events';
@@ -73,6 +74,7 @@ export default function TableView() {
 
     const [showSetup, setShowSetup] = React.useState<boolean>(false);
     const [movingSeat, setMovingSeat] = React.useState<number | null>(null);
+    const [quickAction, setQuickAction] = React.useState<'fold' | 'check' | 'check-fold' | null>(null);
 
     // Create padded seats array on client side - array index matches seat number
     const paddedSeats = React.useMemo(() => {
@@ -165,6 +167,40 @@ export default function TableView() {
             return () => clearTimeout(timer);
         }
     }, [state]); // Removed tableQuery dependency
+
+    // Execute quick action when it's the player's turn
+    React.useEffect(() => {
+        if (!quickAction || !currentSeat || state !== 'BETTING') return;
+
+        const isMyTurn = bettingActorSeatId === currentSeat.id;
+        if (!isMyTurn) return;
+
+        const myCurrentBet = currentSeat.currentBet ?? 0;
+        const canCheck = myCurrentBet === maxBet;
+
+        // Execute the quick action
+        const executeQuickAction = () => {
+            if (quickAction === 'fold') {
+                action.mutate({ tableId: id!, action: 'FOLD', params: {} });
+                setQuickAction(null);
+            } else if (quickAction === 'check' && canCheck) {
+                action.mutate({ tableId: id!, action: 'CHECK', params: {} });
+                setQuickAction(null);
+            } else if (quickAction === 'check-fold') {
+                if (canCheck) {
+                    action.mutate({ tableId: id!, action: 'CHECK', params: {} });
+                } else {
+                    action.mutate({ tableId: id!, action: 'FOLD', params: {} });
+                }
+                setQuickAction(null);
+            }
+            // For 'check' when can't check, do nothing (wait for manual action)
+        };
+
+        // Small delay to ensure turn has fully started
+        const timer = setTimeout(executeQuickAction, 100);
+        return () => clearTimeout(timer);
+    }, [quickAction, currentSeat, state, bettingActorSeatId, maxBet, id, action]);
 
     // Pusher subscription for real-time table updates
     React.useEffect(() => {
@@ -343,18 +379,27 @@ export default function TableView() {
                                     isLeaving={leaveMutation.isPending}
                                 />
 
-                                {/* Hand area: grid layout -> [1fr auto 1fr]; camera centered by auto column */}
-                                <div className="grid w-full grid-cols-[1fr_auto_1fr] items-start gap-3">
-                                    <div className="min-w-0">
+                                {/* Hand area: flex layout with centered camera and quick actions */}
+                                <div className="flex w-full items-start gap-3">
+                                    <div className="flex-1 min-w-0">
                                         <EventFeed events={events} seats={originalSeats as any} />
                                     </div>
-                                    <div className="flex flex-col justify-center h-full">
+                                    <div className="flex gap-3 items-center">
                                         <HandCamera
                                             tableId={tableIdStr}
                                             roomName={handRoomName}
                                         />
                                     </div>
-                                    <div />
+                                    <div className="flex-1 min-w-0 h-full">
+                                        {currentSeat && (
+                                            <QuickActions
+                                                value={quickAction}
+                                                onChange={setQuickAction}
+                                                disabled={bettingActorSeatId === currentSeat.id}
+                                                gameState={state}
+                                            />
+                                        )}
+                                    </div>
                                 </div>
                             </div>
 
