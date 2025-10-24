@@ -676,7 +676,7 @@ export const tableRouter = createTRPCRouter({
           );
 
           // Use shared game logic instead of duplicating code
-          if (true || process.env.NODE_ENV === "test") {
+          if (process.env.NODE_ENV === "test") {
             await dealCard(
               tx,
               input.tableId,

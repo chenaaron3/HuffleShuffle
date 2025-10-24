@@ -289,10 +289,13 @@ export async function triggerBotActions(tableId: string): Promise<void> {
         action: "CHECK",
       });
     });
-  }
 
-  // Notify clients
-  await notifyTableUpdate(tableId);
+    // Notify clients of table update after successful transaction
+    await notifyTableUpdate(tableId);
+
+    // Wait for 1 second
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+  }
 
   if (iterations >= MAX_ITERATIONS) {
     console.error("Bot actions: Max iterations reached");
