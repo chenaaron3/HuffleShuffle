@@ -294,7 +294,7 @@ export async function triggerBotActions(tableId: string): Promise<void> {
     await notifyTableUpdate(tableId);
 
     // Wait for 1 second
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    await new Promise((resolve) => setTimeout(resolve, 500));
   }
 
   if (iterations >= MAX_ITERATIONS) {
