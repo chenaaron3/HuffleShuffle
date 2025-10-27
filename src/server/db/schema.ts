@@ -42,7 +42,7 @@ export const users = createTable(
       .default(sql`CURRENT_TIMESTAMP`),
     image: d.varchar({ length: 255 }),
     role: userRoleEnum("role").notNull().default("player"),
-    balance: d.integer().notNull().default(0),
+    balance: d.integer().notNull().default(100000),
     publicKey: d.text(),
   }),
   (t) => [check("user_balance_non_negative", sql`${t.balance} >= 0`)],
