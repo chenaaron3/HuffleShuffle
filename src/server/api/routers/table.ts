@@ -32,6 +32,7 @@ import {
 import {
   createSeatTransaction,
   executeBettingAction,
+  removePlayerSeatTransaction,
   triggerBotActions,
 } from "../game-helpers";
 import {
@@ -443,6 +444,8 @@ export const tableRouter = createTRPCRouter({
         return { seat } as const;
       });
 
+      await notifyTableUpdate(input.tableId);
+
       return {
         tableId: input.tableId,
         seatId: result.seat.id,
@@ -455,37 +458,15 @@ export const tableRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
       ensurePlayerRole(ctx.session.user.role);
+
       const result = await db.transaction(async (tx) => {
-        const seat = await tx.query.seats.findFirst({
-          where: and(
-            eq(seats.tableId, input.tableId),
-            eq(seats.playerId, userId),
-          ),
+        return await removePlayerSeatTransaction(tx, {
+          tableId: input.tableId,
+          playerId: userId,
         });
-        if (!seat) throw new Error("Seat not found");
-
-        const latest = await tx.query.games.findFirst({
-          where: eq(games.tableId, input.tableId),
-          orderBy: (g, { desc }) => [desc(g.createdAt)],
-        });
-        // Allow leaving if table is joinable (no active game or game is completed)
-        // This matches the isJoinable logic: !game || game.isCompleted
-        if (latest && latest.isCompleted === false) {
-          throw new Error("Cannot leave during an active hand");
-        }
-
-        // Refund remaining buy-in back to wallet
-        if (seat.buyIn > 0) {
-          await tx
-            .update(users)
-            .set({ balance: sql`${users.balance} + ${seat.buyIn}` })
-            .where(eq(users.id, userId));
-        }
-
-        // Remove seat
-        await tx.delete(seats).where(eq(seats.id, seat.id));
-        return { ok: true } as const;
       });
+
+      await notifyTableUpdate(input.tableId);
       return result;
     }),
 
@@ -626,6 +607,38 @@ export const tableRouter = createTRPCRouter({
         // Just remove the seat
         await tx.delete(seats).where(eq(seats.id, seat.id));
         return { ok: true } as const;
+      });
+
+      await notifyTableUpdate(input.tableId);
+      return result;
+    }),
+
+  removePlayer: protectedProcedure
+    .input(
+      z.object({
+        tableId: z.string(),
+        playerId: z.string(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+      ensureDealerRole(ctx.session.user.role);
+
+      const result = await db.transaction(async (tx) => {
+        // Verify caller is the dealer of this table
+        const table = await tx.query.pokerTables.findFirst({
+          where: eq(pokerTables.id, input.tableId),
+        });
+        if (!table) throw new Error("Table not found");
+        if (table.dealerId !== userId) {
+          throw new Error("FORBIDDEN: only the dealer can remove players");
+        }
+
+        // Use shared helper for the removal logic
+        return await removePlayerSeatTransaction(tx, {
+          tableId: input.tableId,
+          playerId: input.playerId,
+        });
       });
 
       await notifyTableUpdate(input.tableId);

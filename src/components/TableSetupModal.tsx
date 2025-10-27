@@ -1,8 +1,8 @@
-import { Bot, Settings, X } from 'lucide-react';
+import { Bot, Settings, Users, X } from 'lucide-react';
 import * as React from 'react';
 import { api } from '~/utils/api';
 
-type Tab = 'hardware' | 'bots';
+type Tab = 'hardware' | 'participants';
 
 // Bot user IDs (must match server-side constants)
 const BOT_USER_IDS = [
@@ -36,6 +36,11 @@ export function TableSetupModal({ tableId, open, onClose }: { tableId: string; o
         }
     });
     const removeBotMut = api.table.removeBot.useMutation({
+        onSuccess: () => {
+            void tableQuery.refetch();
+        }
+    });
+    const removePlayerMut = api.table.removePlayer.useMutation({
         onSuccess: () => {
             void tableQuery.refetch();
         }
@@ -104,14 +109,14 @@ export function TableSetupModal({ tableId, open, onClose }: { tableId: string; o
                             <span className="text-sm font-medium">Hardware</span>
                         </button>
                         <button
-                            onClick={() => setActiveTab('bots')}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-t-lg transition-colors ${activeTab === 'bots'
+                            onClick={() => setActiveTab('participants')}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-t-lg transition-colors ${activeTab === 'participants'
                                 ? 'bg-zinc-800 text-white border-b-2 border-blue-500'
                                 : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50'
                                 }`}
                         >
-                            <Bot className="w-4 h-4" />
-                            <span className="text-sm font-medium">Bots</span>
+                            <Users className="w-4 h-4" />
+                            <span className="text-sm font-medium">Participants</span>
                         </button>
                     </div>
                 </div>
@@ -182,15 +187,15 @@ export function TableSetupModal({ tableId, open, onClose }: { tableId: string; o
                     </div>
                 )}
 
-                    {activeTab === 'bots' && (
+                    {activeTab === 'participants' && (
                         <div className="space-y-4">
                             <div className="text-sm text-zinc-400">
                                 {!tableQuery.data?.isJoinable && (
                                     <div className="mb-4 p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/20 text-yellow-400">
-                                        ⚠️ Bots can only be added/removed when the table is joinable (no active game).
+                                        ⚠️ Participants can only be added/removed when the table is joinable (no active game).
                                     </div>
                                 )}
-                                Manage AI bots for testing and practice. Bots will automatically check/call during betting rounds.
+                                Manage table participants including real players and AI bots. You can kick players or add/remove bots when no game is active.
                             </div>
 
                             <div className="grid gap-3">
@@ -222,7 +227,7 @@ export function TableSetupModal({ tableId, open, onClose }: { tableId: string; o
                                         {isEmpty && tableQuery.data?.isJoinable && (
                                             <button
                                                 onClick={() => addBotMut.mutate({ tableId, seatNumber })}
-                                                disabled={addBotMut.isPending || removeBotMut.isPending}
+                                                disabled={addBotMut.isPending || removeBotMut.isPending || removePlayerMut.isPending}
                                                 className="flex items-center gap-2 rounded-md bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/50 px-4 py-2 text-sm font-medium text-blue-400 hover:text-blue-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                             >
                                                 <Bot className="w-4 h-4" />
@@ -233,7 +238,7 @@ export function TableSetupModal({ tableId, open, onClose }: { tableId: string; o
                                         {isBot && tableQuery.data?.isJoinable && (
                                             <button
                                                 onClick={() => removeBotMut.mutate({ tableId, seatNumber })}
-                                                disabled={addBotMut.isPending || removeBotMut.isPending}
+                                                disabled={addBotMut.isPending || removeBotMut.isPending || removePlayerMut.isPending}
                                                 className="flex items-center gap-2 rounded-md bg-red-500/20 hover:bg-red-500/30 border border-red-500/50 px-4 py-2 text-sm font-medium text-red-400 hover:text-red-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                             >
                                                 <X className="w-4 h-4" />
@@ -241,7 +246,18 @@ export function TableSetupModal({ tableId, open, onClose }: { tableId: string; o
                                             </button>
                                         )}
 
-                                        {!isEmpty && !isBot && (
+                                        {!isEmpty && !isBot && tableQuery.data?.isJoinable && (
+                                            <button
+                                                onClick={() => seat?.playerId && removePlayerMut.mutate({ tableId, playerId: seat.playerId })}
+                                                disabled={removePlayerMut.isPending}
+                                                className="flex items-center gap-2 rounded-md bg-red-500/20 hover:bg-red-500/30 border border-red-500/50 px-4 py-2 text-sm font-medium text-red-400 hover:text-red-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                            >
+                                                <X className="w-4 h-4" />
+                                                Kick
+                                            </button>
+                                        )}
+
+                                        {!isEmpty && !isBot && !tableQuery.data?.isJoinable && (
                                             <div className="text-xs text-zinc-500 px-4 py-2">
                                                 Real player
                                             </div>

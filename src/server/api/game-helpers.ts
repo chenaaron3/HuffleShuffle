@@ -1,14 +1,20 @@
-import crypto from 'crypto';
-import { and, eq, sql } from 'drizzle-orm';
-import { db } from '~/server/db';
-import { games, piDevices, pokerTables, seats, users } from '~/server/db/schema';
-import { rsaEncryptB64 } from '~/utils/crypto';
+import crypto from "crypto";
+import { and, eq, sql } from "drizzle-orm";
+import { db } from "~/server/db";
+import {
+  games,
+  piDevices,
+  pokerTables,
+  seats,
+  users,
+} from "~/server/db/schema";
+import { rsaEncryptB64 } from "~/utils/crypto";
 
-import { isBot } from './bot-constants';
-import { logCall, logCheck, logFold, logRaise } from './game-event-logger';
-import { notifyTableUpdate } from './game-logic';
-import { getNextActiveSeatId } from './game-utils';
-import { evaluateBettingTransition } from './hand-solver';
+import { isBot } from "./bot-constants";
+import { logCall, logCheck, logFold, logRaise } from "./game-event-logger";
+import { notifyTableUpdate } from "./game-logic";
+import { getNextActiveSeatId } from "./game-utils";
+import { evaluateBettingTransition } from "./hand-solver";
 
 type Tx = {
   insert: typeof db.insert;
@@ -300,4 +306,48 @@ export async function triggerBotActions(tableId: string): Promise<void> {
   if (iterations >= MAX_ITERATIONS) {
     console.error("Bot actions: Max iterations reached");
   }
+}
+
+/**
+ * Shared transaction logic for removing a player seat from a table
+ * Used by both leave (player leaves voluntarily) and removePlayer (dealer kicks player)
+ */
+export async function removePlayerSeatTransaction(
+  tx: Tx,
+  params: {
+    tableId: string;
+    playerId: string;
+  },
+): Promise<{ ok: true }> {
+  const { tableId, playerId } = params;
+
+  // Find the player's seat
+  const seat = await tx.query.seats.findFirst({
+    where: and(eq(seats.tableId, tableId), eq(seats.playerId, playerId)),
+  });
+  if (!seat) throw new Error("Seat not found");
+
+  // Check if table is joinable (no active game)
+  const latest = await tx.query.games.findFirst({
+    where: eq(games.tableId, tableId),
+    orderBy: (g, { desc }) => [desc(g.createdAt)],
+  });
+
+  // Allow removing if table is joinable (no active game or game is completed)
+  if (latest && latest.isCompleted === false) {
+    throw new Error("Cannot remove player during an active hand");
+  }
+
+  // Refund remaining buy-in back to player's wallet
+  if (seat.buyIn > 0) {
+    await tx
+      .update(users)
+      .set({ balance: sql`${users.balance} + ${seat.buyIn}` })
+      .where(eq(users.id, playerId));
+  }
+
+  // Remove seat
+  await tx.delete(seats).where(eq(seats.id, seat.id));
+
+  return { ok: true };
 }
