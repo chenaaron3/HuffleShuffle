@@ -17,7 +17,7 @@ const BOT_USER_IDS = [
 ];
 
 export function TableSetupModal({ tableId, open, onClose }: { tableId: string; open: boolean; onClose: () => void }) {
-    const [activeTab, setActiveTab] = React.useState<Tab>('hardware');
+    const [activeTab, setActiveTab] = React.useState<Tab>('participants');
     const [dealerSerial, setDealerSerial] = React.useState('');
     const [dealerPublicKey, setDealerPublicKey] = React.useState('');
     const [scannerSerial, setScannerSerial] = React.useState('');
