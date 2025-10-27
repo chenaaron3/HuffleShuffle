@@ -10,6 +10,7 @@ interface QuickActionsProps {
     onChange: (value: QuickActionType) => void;
     disabled: boolean;
     gameState?: string;
+    isMyTurn?: boolean;
 }
 
 const actionDescriptions = {
@@ -18,7 +19,7 @@ const actionDescriptions = {
     'check-fold': "Auto-check if no bet, otherwise auto-fold.",
 };
 
-export function QuickActions({ value, onChange, disabled, gameState }: QuickActionsProps) {
+export function QuickActions({ value, onChange, disabled, gameState, isMyTurn = false }: QuickActionsProps) {
     const [hoveredAction, setHoveredAction] = useState<QuickActionType>(null);
 
     // Clear selection when game state changes (new betting round)
@@ -29,9 +30,12 @@ export function QuickActions({ value, onChange, disabled, gameState }: QuickActi
         }
     }, [gameState]); // Only depend on gameState to detect round changes
 
-    const isInBettingRound = gameState === 'BETTING';
+    // Show during betting or dealing phases
+    const dealingStates = ['DEAL_HOLE_CARDS', 'DEAL_FLOP', 'DEAL_TURN', 'DEAL_RIVER'];
+    const shouldShow = gameState === 'BETTING' || dealingStates.includes(gameState ?? '');
 
-    if (!isInBettingRound) {
+    // Hide when it's the player's turn (they need to act manually)
+    if (!shouldShow || isMyTurn) {
         return null;
     }
 

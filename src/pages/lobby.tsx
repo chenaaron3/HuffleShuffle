@@ -25,6 +25,14 @@ export default function LobbyPage() {
         },
     });
 
+    const dealerJoinMutation = api.table.dealerJoin.useMutation({
+        onSuccess: ({ tableId }) => void router.push(`/table/${tableId}`),
+        onError: (error) => {
+            console.error('Failed to join table as dealer:', error);
+            alert(error.message);
+        },
+    });
+
     const joinMutation = api.table.join.useMutation({
         onSuccess: ({ tableId }) => void router.push(`/table/${tableId}`),
     });
@@ -64,9 +72,16 @@ export default function LobbyPage() {
                                             </p>
                                         </div>
                                         {isDealer ? (
-                                            <Link href={`/table/${t.id}`} className="rounded-md bg-white px-3 py-2 text-sm font-medium text-black hover:bg-zinc-200">
-                                                Manage
-                                            </Link>
+                                            <button
+                                                onClick={() => dealerJoinMutation.mutate({ tableId: t.id })}
+                                                disabled={!t.isJoinable || dealerJoinMutation.isPending}
+                                                className={`rounded-md px-3 py-2 text-sm font-medium ${t.isJoinable
+                                                    ? "bg-white text-black hover:bg-zinc-200"
+                                                    : "bg-zinc-700 text-zinc-400 cursor-not-allowed"
+                                                    }`}
+                                            >
+                                                {dealerJoinMutation.isPending ? "Joining..." : "Join Table"}
+                                            </button>
                                         ) : (
                                             <button
                                                 onClick={async () => {

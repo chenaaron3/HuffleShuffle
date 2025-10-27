@@ -1,5 +1,12 @@
-import { relations, sql } from 'drizzle-orm';
-import { check, index, pgEnum, pgTableCreator, primaryKey, uniqueIndex } from 'drizzle-orm/pg-core';
+import { relations, sql } from "drizzle-orm";
+import {
+  check,
+  index,
+  pgEnum,
+  pgTableCreator,
+  primaryKey,
+  uniqueIndex,
+} from "drizzle-orm/pg-core";
 
 import type { AdapterAccount } from "next-auth/adapters";
 
@@ -110,10 +117,7 @@ export const pokerTables = createTable(
       .primaryKey()
       .default(sql`gen_random_uuid()`),
     name: d.varchar({ length: 255 }).notNull(),
-    dealerId: d
-      .varchar({ length: 255 })
-      .notNull()
-      .references(() => users.id),
+    dealerId: d.varchar({ length: 255 }).references(() => users.id),
     smallBlind: d.integer().notNull(),
     bigBlind: d.integer().notNull(),
     maxSeats: d.integer().notNull().default(MAX_SEATS_PER_TABLE),
@@ -124,8 +128,8 @@ export const pokerTables = createTable(
     updatedAt: d.timestamp({ withTimezone: true }).$onUpdate(() => new Date()),
   }),
   (t) => [
-    uniqueIndex("poker_table_dealer_id_unique").on(t.dealerId),
     index("poker_table_name_idx").on(t.name),
+    index("poker_table_dealer_id_idx").on(t.dealerId),
   ],
 );
 

@@ -1,24 +1,46 @@
-import { and, eq, gt, isNull, or, sql } from 'drizzle-orm';
-import { AccessToken } from 'livekit-server-sdk';
-import process from 'process';
-import ts from 'typescript';
-import { z } from 'zod';
-import { PLAYER_ACTION_TIMEOUT_MS } from '~/constants/timer';
-import { createTRPCRouter, protectedProcedure, publicProcedure } from '~/server/api/trpc';
-import { db } from '~/server/db';
+import { and, eq, gt, isNull, or, sql } from "drizzle-orm";
+import { AccessToken } from "livekit-server-sdk";
+import process from "process";
+import ts from "typescript";
+import { z } from "zod";
+import { PLAYER_ACTION_TIMEOUT_MS } from "~/constants/timer";
 import {
-    games, MAX_SEATS_PER_TABLE, piDevices, pokerTables, seats, users
-} from '~/server/db/schema';
-import { endHandStream, startHandStream } from '~/server/signal';
-import { rsaEncryptB64 } from '~/utils/crypto';
-
-import { SendMessageCommand, SQSClient } from '@aws-sdk/client-sqs';
-
-import { generateBotPublicKey, getBotIdForSeat, getBotName, isBot } from '../bot-constants';
-import { createSeatTransaction, executeBettingAction, triggerBotActions } from '../game-helpers';
+  createTRPCRouter,
+  protectedProcedure,
+  publicProcedure,
+} from "~/server/api/trpc";
+import { db } from "~/server/db";
 import {
-    createNewGame, dealCard, notifyTableUpdate, parseRankSuitToBarcode, resetGame
-} from '../game-logic';
+  games,
+  MAX_SEATS_PER_TABLE,
+  piDevices,
+  pokerTables,
+  seats,
+  users,
+} from "~/server/db/schema";
+import { endHandStream, startHandStream } from "~/server/signal";
+import { rsaEncryptB64 } from "~/utils/crypto";
+
+import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
+
+import {
+  generateBotPublicKey,
+  getBotIdForSeat,
+  getBotName,
+  isBot,
+} from "../bot-constants";
+import {
+  createSeatTransaction,
+  executeBettingAction,
+  triggerBotActions,
+} from "../game-helpers";
+import {
+  createNewGame,
+  dealCard,
+  notifyTableUpdate,
+  parseRankSuitToBarcode,
+  resetGame,
+} from "../game-logic";
 
 import type { VideoGrant } from "livekit-server-sdk";
 const ensureDealerRole = (role: string | undefined) => {
@@ -104,8 +126,29 @@ function redactSnapshotForUser(
 export const tableRouter = createTRPCRouter({
   checkExistingSeat: protectedProcedure.query(async ({ ctx }) => {
     const userId = ctx.session.user.id;
+    const role = ctx.session.user.role;
 
-    // Find if user has any existing seat
+    // For dealers, check if they're assigned to a table
+    if (role === "dealer") {
+      const table = await db.query.pokerTables.findFirst({
+        where: eq(pokerTables.dealerId, userId),
+        columns: {
+          id: true,
+          name: true,
+        },
+      });
+
+      if (!table) {
+        return { hasSeat: false };
+      }
+
+      return {
+        hasSeat: true,
+        tableId: table.id,
+      };
+    }
+
+    // For players, check if they have a seat
     const seat = await db.query.seats.findFirst({
       where: eq(seats.playerId, userId),
       with: {
@@ -222,10 +265,12 @@ export const tableRouter = createTRPCRouter({
       const userId = ctx.session.user.id;
       ensureDealerRole(ctx.session.user.role);
       const id: string = await db.transaction(async (tx) => {
+        // Verify dealer is not currently assigned to another table
         const existing = await tx.query.pokerTables.findFirst({
           where: eq(pokerTables.dealerId, userId),
         });
-        if (existing) throw new Error("Dealer already has a table");
+        if (existing) throw new Error("Dealer is already assigned to a table");
+
         const rows = await tx
           .insert(pokerTables)
           .values({
@@ -241,6 +286,97 @@ export const tableRouter = createTRPCRouter({
         return row.id as string;
       });
       return { tableId: id };
+    }),
+
+  dealerJoin: protectedProcedure
+    .input(
+      z.object({
+        tableId: z.string(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+      ensureDealerRole(ctx.session.user.role);
+
+      await db.transaction(async (tx) => {
+        // Verify the dealer doesn't already have a table
+        const existingTable = await tx.query.pokerTables.findFirst({
+          where: eq(pokerTables.dealerId, userId),
+        });
+        if (existingTable)
+          throw new Error("Dealer is already assigned to a table");
+
+        // Get the table and verify it's joinable and has no dealer
+        const snapshot = await tx.query.pokerTables.findFirst({
+          where: eq(pokerTables.id, input.tableId),
+          with: {
+            games: { orderBy: (g, { desc }) => [desc(g.createdAt)], limit: 1 },
+          },
+        });
+        if (!snapshot) throw new Error("Table not found");
+
+        if (snapshot.dealerId !== null) {
+          throw new Error("Table already has a dealer");
+        }
+
+        const latestGame = snapshot.games[0] ?? null;
+        const isJoinable = !latestGame || latestGame.isCompleted;
+
+        if (!isJoinable) {
+          throw new Error("Cannot join table: game is in progress");
+        }
+
+        // Assign dealer to table
+        await tx
+          .update(pokerTables)
+          .set({ dealerId: userId })
+          .where(eq(pokerTables.id, input.tableId));
+      });
+
+      return { tableId: input.tableId };
+    }),
+
+  dealerLeave: protectedProcedure
+    .input(
+      z.object({
+        tableId: z.string(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+      ensureDealerRole(ctx.session.user.role);
+
+      await db.transaction(async (tx) => {
+        // Get the table
+        const snapshot = await tx.query.pokerTables.findFirst({
+          where: eq(pokerTables.id, input.tableId),
+          with: {
+            games: { orderBy: (g, { desc }) => [desc(g.createdAt)], limit: 1 },
+          },
+        });
+        if (!snapshot) throw new Error("Table not found");
+
+        // Verify caller is the dealer
+        if (snapshot.dealerId !== userId) {
+          throw new Error("FORBIDDEN: you are not the dealer of this table");
+        }
+
+        // Verify table is joinable (no active game)
+        const latestGame = snapshot.games[0] ?? null;
+        const isJoinable = !latestGame || latestGame.isCompleted;
+
+        if (!isJoinable) {
+          throw new Error("Cannot leave table: game is in progress");
+        }
+
+        // Remove dealer from table
+        await tx
+          .update(pokerTables)
+          .set({ dealerId: null })
+          .where(eq(pokerTables.id, input.tableId));
+      });
+
+      return { success: true };
     }),
 
   join: protectedProcedure

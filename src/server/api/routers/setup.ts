@@ -1,11 +1,12 @@
-import { and, asc, desc, eq, sql } from 'drizzle-orm';
-import { z } from 'zod';
-import { createTRPCRouter, protectedProcedure } from '~/server/api/trpc';
-import { db } from '~/server/db';
-import { piDevices, pokerTables } from '~/server/db/schema';
+import { and, asc, desc, eq, sql } from "drizzle-orm";
+import { z } from "zod";
+import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
+import { db } from "~/server/db";
+import { piDevices, pokerTables } from "~/server/db/schema";
 
-function ensureDealer(tableDealerId: string, userId: string) {
-  if (tableDealerId !== userId) throw new Error("FORBIDDEN: dealer only");
+function ensureDealer(tableDealerId: string | null, userId: string) {
+  if (!tableDealerId || tableDealerId !== userId)
+    throw new Error("FORBIDDEN: dealer only");
 }
 
 export const setupRouter = createTRPCRouter({

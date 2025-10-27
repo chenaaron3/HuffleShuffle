@@ -72,6 +72,13 @@ export default function TableView() {
         },
     });
 
+    const dealerLeaveMutation = api.table.dealerLeave.useMutation({
+        onSuccess: () => {
+            // Redirect to lobby after successfully leaving
+            void router.push('/lobby');
+        },
+    });
+
     const [showSetup, setShowSetup] = React.useState<boolean>(false);
     const [movingSeat, setMovingSeat] = React.useState<number | null>(null);
     const [quickAction, setQuickAction] = React.useState<'fold' | 'check' | 'check-fold' | null>(null);
@@ -235,13 +242,15 @@ export default function TableView() {
     const dealerSeatNumber = dealerSeat?.seatNumber ?? -1;
 
     // Find the next occupied seats for blinds (not just next seat numbers)
+    // Skip eliminated players when determining blind positions
     const findNextOccupiedSeat = (startSeatNumber: number): number => {
         if (startSeatNumber < 0) return -1;
 
         const totalSeats = snapshot?.table?.maxSeats ?? 8;
         for (let i = 1; i < totalSeats; i++) {
             const nextSeatNumber = (startSeatNumber + i) % totalSeats;
-            if (seats[nextSeatNumber] !== null) {
+            const seat = seats[nextSeatNumber] || null;
+            if (seat !== null && seat.seatStatus !== 'eliminated') {
                 return nextSeatNumber;
             }
         }
@@ -350,12 +359,12 @@ export default function TableView() {
                                     gameStatus={state}
                                     activePlayerName={activePlayerName}
                                     winningCards={allWinningCards}
-                                    dealerUserId={snapshot?.table?.dealerId}
+                                    dealerUserId={snapshot?.table?.dealerId ?? undefined}
                                     isDealer={session?.user?.role === 'dealer'}
                                     isJoinable={snapshot?.isJoinable ?? false}
                                     currentUserSeatId={currentUserSeatId}
                                     bettingActorSeatId={bettingActorSeatId}
-                                    isLoading={action.isPending || leaveMutation.isPending}
+                                    isLoading={action.isPending || leaveMutation.isPending || dealerLeaveMutation.isPending}
                                     currentBet={currentSeat?.currentBet ?? 0}
                                     playerBalance={currentSeat?.buyIn ?? 0}
                                     bigBlind={snapshot?.table?.bigBlind ?? 20}
@@ -375,8 +384,14 @@ export default function TableView() {
                                         if (!code) return;
                                         action.mutate({ tableId: id!, action: 'DEAL_CARD', params: { rank: code[0], suit: code[1] } });
                                     }}
-                                    onLeaveTable={() => leaveMutation.mutate({ tableId: id! })}
-                                    isLeaving={leaveMutation.isPending}
+                                    onLeaveTable={() => {
+                                        if (session?.user?.role === 'dealer') {
+                                            dealerLeaveMutation.mutate({ tableId: id! });
+                                        } else {
+                                            leaveMutation.mutate({ tableId: id! });
+                                        }
+                                    }}
+                                    isLeaving={leaveMutation.isPending || dealerLeaveMutation.isPending}
                                 />
 
                                 {/* Hand area: flex layout with centered camera and quick actions */}
@@ -397,6 +412,7 @@ export default function TableView() {
                                                 onChange={setQuickAction}
                                                 disabled={bettingActorSeatId === currentSeat.id}
                                                 gameState={state}
+                                                isMyTurn={bettingActorSeatId === currentSeat.id}
                                             />
                                         )}
                                     </div>
