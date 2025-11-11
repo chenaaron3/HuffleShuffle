@@ -312,7 +312,7 @@ export default function TableView() {
                         audio={true}
                     >
                         <RoomAudioRenderer />
-                        <AutoBackgroundBlur enabled={session?.user?.role !== 'dealer'} />
+                        <AutoBackgroundBlur enabled={false && session?.user?.role !== 'dealer'} />
                         <div className="absolute z-10 right-0 flex max-w-7xl items-center gap-3 px-4">
                             <StartAudio label="Enable Audio" />
                             {session?.user?.role === 'dealer' && (

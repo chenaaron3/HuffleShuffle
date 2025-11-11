@@ -3,6 +3,7 @@ import '~/styles/globals.css';
 
 import { SessionProvider } from 'next-auth/react';
 import { Geist } from 'next/font/google';
+import { SoundProvider } from '~/components/providers/SoundProvider';
 import { Toaster } from '~/components/ui/sonner';
 import { api } from '~/utils/api';
 
@@ -18,10 +19,12 @@ const MyApp: AppType<{ session: Session | null }> = ({
 }) => {
   return (
     <SessionProvider session={session}>
-      <div className={geist.className}>
-        <Component {...pageProps} />
-        <Toaster richColors position="bottom-right" />
-      </div>
+      <SoundProvider>
+        <div className={geist.className}>
+          <Component {...pageProps} />
+          <Toaster richColors position="bottom-right" />
+        </div>
+      </SoundProvider>
     </SessionProvider>
   );
 };

@@ -1,3 +1,6 @@
+import { useEffect, useRef } from 'react';
+import { useSoundEffects } from '~/components/providers/SoundProvider';
+
 interface TurnIndicatorProps {
     gameStatus?: string;
     isJoinable?: boolean;
@@ -15,12 +18,29 @@ export function TurnIndicator({
     isDealerTurn,
     activePlayerName,
 }: TurnIndicatorProps) {
+    const { play } = useSoundEffects();
+    const isViewerTurn = isDealer && isDealerTurn || !isDealer && isPlayerTurn;
+    const previousViewerTurn = useRef(isViewerTurn);
+
+    useEffect(() => {
+        if (!gameStatus || isJoinable) {
+            previousViewerTurn.current = isViewerTurn;
+            return;
+        }
+
+        const wasViewerTurn = previousViewerTurn.current;
+        if (!wasViewerTurn && isViewerTurn) {
+            play('turnNotification');
+        }
+
+        previousViewerTurn.current = isViewerTurn;
+    }, [gameStatus, isJoinable, isViewerTurn, play]);
+
     // Only show when a game is in progress and the table isn't joinable
     if (!gameStatus || isJoinable) {
         return null;
     }
 
-    const isViewerTurn = isDealer && isDealerTurn || !isDealer && isPlayerTurn;
     const containerColorClasses = isViewerTurn
         ? 'bg-green-600/90 border border-green-500/50'
         : 'bg-blue-600/90 border border-blue-500/50';
