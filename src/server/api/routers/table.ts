@@ -1,47 +1,28 @@
-import { and, eq, gt, isNull, or, sql } from "drizzle-orm";
-import { AccessToken } from "livekit-server-sdk";
-import process from "process";
-import ts from "typescript";
-import { z } from "zod";
-import { PLAYER_ACTION_TIMEOUT_MS } from "~/constants/timer";
+import { and, eq, gt, isNull, or, sql } from 'drizzle-orm';
+import { AccessToken } from 'livekit-server-sdk';
+import process from 'process';
+import ts from 'typescript';
+import { z } from 'zod';
+import { PLAYER_ACTION_TIMEOUT_MS } from '~/constants/timer';
+import { createTRPCRouter, protectedProcedure, publicProcedure } from '~/server/api/trpc';
+import { db } from '~/server/db';
 import {
-  createTRPCRouter,
-  protectedProcedure,
-  publicProcedure,
-} from "~/server/api/trpc";
-import { db } from "~/server/db";
-import {
-  games,
-  MAX_SEATS_PER_TABLE,
-  piDevices,
-  pokerTables,
-  seats,
-  users,
-} from "~/server/db/schema";
-import { endHandStream, startHandStream } from "~/server/signal";
-import { rsaEncryptB64 } from "~/utils/crypto";
+    games, MAX_SEATS_PER_TABLE, piDevices, pokerTables, seats, users
+} from '~/server/db/schema';
+import { getRoomServiceClient } from '~/server/livekit';
+import { endHandStream, startHandStream } from '~/server/signal';
+import { rsaEncryptB64 } from '~/utils/crypto';
 
-import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
+import { SendMessageCommand, SQSClient } from '@aws-sdk/client-sqs';
+import { TrackSource, TrackType } from '@livekit/protocol';
 
+import { generateBotPublicKey, getBotIdForSeat, getBotName, isBot } from '../bot-constants';
 import {
-  generateBotPublicKey,
-  getBotIdForSeat,
-  getBotName,
-  isBot,
-} from "../bot-constants";
+    createSeatTransaction, executeBettingAction, removePlayerSeatTransaction, triggerBotActions
+} from '../game-helpers';
 import {
-  createSeatTransaction,
-  executeBettingAction,
-  removePlayerSeatTransaction,
-  triggerBotActions,
-} from "../game-helpers";
-import {
-  createNewGame,
-  dealCard,
-  notifyTableUpdate,
-  parseRankSuitToBarcode,
-  resetGame,
-} from "../game-logic";
+    createNewGame, dealCard, notifyTableUpdate, parseRankSuitToBarcode, resetGame
+} from '../game-logic';
 
 import type { VideoGrant } from "livekit-server-sdk";
 const ensureDealerRole = (role: string | undefined) => {
@@ -643,6 +624,61 @@ export const tableRouter = createTRPCRouter({
 
       await notifyTableUpdate(input.tableId);
       return result;
+    }),
+
+  setParticipantAudioMuted: protectedProcedure
+    .input(
+      z.object({
+        tableId: z.string(),
+        playerId: z.string(),
+        muted: z.boolean(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+      ensureDealerRole(ctx.session.user.role);
+
+      const table = await db.query.pokerTables.findFirst({
+        where: eq(pokerTables.id, input.tableId),
+        columns: {
+          dealerId: true,
+        },
+      });
+
+      if (!table) throw new Error("Table not found");
+      if (table.dealerId !== userId) {
+        throw new Error(
+          "FORBIDDEN: only the assigned dealer can control audio",
+        );
+      }
+
+      const roomService = getRoomServiceClient();
+      const participants = await roomService.listParticipants(input.tableId);
+      const participant = participants.find(
+        (p) => p.identity === input.playerId,
+      );
+
+      if (!participant) {
+        throw new Error("Participant not connected");
+      }
+
+      const audioTrack = (participant.tracks ?? []).find((track) => {
+        if (track.type === TrackType.AUDIO) return true;
+        return track.source === TrackSource.MICROPHONE;
+      });
+
+      if (!audioTrack?.sid) {
+        throw new Error("No audio track available to mute");
+      }
+
+      await roomService.mutePublishedTrack(
+        input.tableId,
+        input.playerId,
+        audioTrack.sid,
+        input.muted,
+      );
+
+      return { ok: true } as const;
     }),
 
   // Change seats for the acting player when the table is joinable

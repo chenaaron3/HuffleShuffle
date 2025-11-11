@@ -343,6 +343,8 @@ export default function TableView() {
                                 canMoveSeat={Boolean(snapshot?.isJoinable && currentUserSeatId)}
                                 movingSeatNumber={movingSeat}
                                 turnStartTime={snapshot?.game?.turnStartTime ?? null}
+                                tableId={tableIdStr}
+                                dealerCanControlAudio={isDealerAtTable}
                                 onMoveSeat={async (seatNumber) => {
                                     if (!id || movingSeat !== null) return;
                                     try {
@@ -438,6 +440,8 @@ export default function TableView() {
                                 canMoveSeat={Boolean(snapshot?.isJoinable && currentUserSeatId)}
                                 movingSeatNumber={movingSeat}
                                 turnStartTime={snapshot?.game?.turnStartTime ?? null}
+                                tableId={tableIdStr}
+                                dealerCanControlAudio={isDealerAtTable}
                                 onMoveSeat={async (seatNumber) => {
                                     if (!id || movingSeat !== null) return;
                                     try {

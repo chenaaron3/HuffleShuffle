@@ -1,10 +1,13 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { Track } from 'livekit-client';
+import { Mic, MicOff } from 'lucide-react';
+import * as React from 'react';
 import { BackgroundBlurToggle } from '~/components/ui/background-blur-toggle';
 import { CardSlot } from '~/components/ui/card-slot';
 import { RollingNumber } from '~/components/ui/chip-animations';
 import { PLAYER_ACTION_TIMEOUT_MS } from '~/constants/timer';
 import { useTimerBorder } from '~/hooks/use-timer-border';
+import { api } from '~/utils/api';
 
 import { ParticipantTile, TrackToggle, useTracks, VideoTrack } from '@livekit/components-react';
 
@@ -22,6 +25,8 @@ interface SeatSectionProps {
     onMoveSeat?: (seatNumber: number) => void;
     movingSeatNumber?: number | null;
     turnStartTime?: Date | null;
+    tableId: string;
+    dealerCanControlAudio?: boolean;
 }
 
 export function SeatSection({
@@ -36,6 +41,8 @@ export function SeatSection({
     onMoveSeat,
     movingSeatNumber,
     turnStartTime,
+    tableId,
+    dealerCanControlAudio,
 }: SeatSectionProps) {
     // Since seats array is now padded, array index matches seat number
     let displaySeats: (SeatWithPlayer | null)[] = [];
@@ -84,6 +91,8 @@ export function SeatSection({
                         onMoveSeat={onMoveSeat}
                         isMoving={movingSeatNumber === seatNumber}
                         turnStartTime={turnStartTime}
+                        tableId={tableId}
+                        dealerCanControlAudio={dealerCanControlAudio}
                     />
                 );
             })}
@@ -106,6 +115,8 @@ function SeatCard({
     onMoveSeat,
     isMoving,
     turnStartTime,
+    tableId,
+    dealerCanControlAudio,
 }: {
     seat: SeatWithPlayer | null;
     index: number;
@@ -121,12 +132,37 @@ function SeatCard({
     onMoveSeat?: (seatNumber: number) => void;
     isMoving?: boolean;
     turnStartTime?: Date | null;
+    tableId: string;
+    dealerCanControlAudio?: boolean;
 }) {
     const trackRefs = useTracks([Track.Source.Camera]);
+    const audioRefs = useTracks([Track.Source.Microphone]);
     const videoTrackRef = seat ? trackRefs.find(
         (t) => t.participant.identity === seat.player?.id && t.source === Track.Source.Camera
     ) : null;
+    const audioTrackRef = seat ? audioRefs.find(
+        (t) => t.participant.identity === seat.player?.id && t.source === Track.Source.Microphone
+    ) : null;
+    const audioPublication = audioTrackRef?.publication ?? null;
+    const isAudioMuted = audioPublication ? audioPublication.isMuted : true;
+    const hasAudioTrack = !!audioPublication;
+    const playerId = seat?.player?.id ?? null;
+    const { mutate: mutateAudioMute, isPending: isMuting } = api.table.setParticipantAudioMuted.useMutation();
     const isSelf = !!myUserId && seat?.player?.id === myUserId;
+    const showDealerMute = Boolean(dealerCanControlAudio && !isSelf && playerId && hasAudioTrack);
+
+    const handleDealerToggleMute = React.useCallback(() => {
+        if (!playerId || !audioPublication) return;
+        mutateAudioMute({
+            tableId,
+            playerId,
+            muted: !isAudioMuted,
+        });
+    }, [audioPublication, isAudioMuted, mutateAudioMute, playerId, tableId]);
+
+    const dealerMuteButtonClasses = isAudioMuted
+        ? 'bg-red-500/90 text-white hover:bg-red-500 disabled:bg-red-500/60 disabled:text-white/70'
+        : 'bg-white/90 text-black hover:bg-white disabled:bg-white/60 disabled:text-black/50';
 
     // Timer border hook for active players during betting
     const timerBorder = useTimerBorder({
@@ -223,9 +259,29 @@ function SeatCard({
                             </div>
                         </>
                     ) : (
-                        <ParticipantTile trackRef={videoTrackRef}>
-                            <VideoTrack trackRef={videoTrackRef} />
-                        </ParticipantTile>
+                        <>
+                            <ParticipantTile trackRef={videoTrackRef}>
+                                <VideoTrack trackRef={videoTrackRef} />
+                            </ParticipantTile>
+                            {showDealerMute && (
+                                <div className="pointer-events-auto absolute bottom-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                                    <button
+                                        type="button"
+                                        onClick={handleDealerToggleMute}
+                                        disabled={isMuting}
+                                        className={`flex h-8 w-8 items-center justify-center rounded-md text-xs font-medium transition-colors ${dealerMuteButtonClasses}`}
+                                        aria-label={isAudioMuted ? 'Unmute player microphone' : 'Mute player microphone'}
+                                        title={isAudioMuted ? 'Unmute player microphone' : 'Mute player microphone'}
+                                    >
+                                        {isAudioMuted ? (
+                                            <MicOff className="h-4 w-4" aria-hidden="true" />
+                                        ) : (
+                                            <Mic className="h-4 w-4" aria-hidden="true" />
+                                        )}
+                                    </button>
+                                </div>
+                            )}
+                        </>
                     )
                 ) : (
                     <div className="flex h-full items-center justify-center text-sm text-zinc-500 font-medium">
