@@ -1,5 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { Track } from 'livekit-client';
+import { BackgroundBlurToggle } from '~/components/ui/background-blur-toggle';
 import { CardSlot } from '~/components/ui/card-slot';
 import { RollingNumber } from '~/components/ui/chip-animations';
 import { PLAYER_ACTION_TIMEOUT_MS } from '~/constants/timer';
@@ -211,13 +212,7 @@ function SeatCard({
                             <VideoTrack trackRef={videoTrackRef} />
                             <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
                             <div className="pointer-events-auto absolute bottom-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                                <TrackToggle
-                                    source={Track.Source.Camera}
-                                    showIcon
-                                    className="rounded-md bg-white/90 text-xs font-medium text-black hover:bg-white"
-                                    aria-label="Toggle camera"
-                                    title="Toggle camera"
-                                />
+                                <BackgroundBlurToggle />
                                 <TrackToggle
                                     source={Track.Source.Microphone}
                                     showIcon

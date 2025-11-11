@@ -10,6 +10,7 @@ import { EventFeed } from '~/components/ui/event-feed';
 import { HandCamera } from '~/components/ui/hand-camera';
 import { QuickActions } from '~/components/ui/quick-actions';
 import { SeatSection } from '~/components/ui/seat-section';
+import { useBackgroundBlur } from '~/hooks/use-background-blur';
 import { useDealerTimer } from '~/hooks/use-dealer-timer';
 import { useTableEvents } from '~/hooks/use-table-events';
 import { api } from '~/utils/api';
@@ -20,11 +21,14 @@ import { SIGNALS } from '~/utils/signal-constants';
 import { LiveKitRoom, RoomAudioRenderer, StartAudio } from '@livekit/components-react';
 
 import type { SeatWithPlayer } from '~/server/api/routers/table';
+
 export default function TableView() {
     const router = useRouter();
     const { id } = router.query as { id?: string };
     const tableIdStr = id ?? '';
     const { data: session } = useSession();
+    const { enabled: backgroundBlurEnabled } = useBackgroundBlur();
+    const isDealerRole = session?.user?.role === 'dealer';
 
     const tableQuery = api.table.get.useQuery({ tableId: id ?? '' }, { enabled: !!id });
     const [snapshot, setSnapshot] = React.useState(tableQuery.data);
@@ -111,13 +115,13 @@ export default function TableView() {
     const { events, refreshEvents: refreshEventFeed } = useTableEvents({ tableId: id });
 
     // --- Dealer timer hook ---
-    const isDealer = session?.user?.role === 'dealer' && snapshot?.table?.dealerId === session?.user?.id;
+    const isDealerAtTable = isDealerRole && snapshot?.table?.dealerId === session?.user?.id;
     useDealerTimer({
         tableId: id ?? '',
         gameState: state,
         assignedSeatId: bettingActorSeatId,
         turnStartTime: snapshot?.game?.turnStartTime ?? null,
-        isDealer: !!isDealer,
+        isDealer: !!isDealerAtTable,
     });
 
     // Memoize winning cards calculation to prevent unnecessary re-renders
@@ -312,7 +316,7 @@ export default function TableView() {
                         audio={true}
                     >
                         <RoomAudioRenderer />
-                        <AutoBackgroundBlur enabled={false && session?.user?.role !== 'dealer'} />
+                        <AutoBackgroundBlur enabled={!isDealerRole && backgroundBlurEnabled} />
                         <div className="absolute z-10 right-0 flex max-w-7xl items-center gap-3 px-4">
                             <StartAudio label="Enable Audio" />
                             {session?.user?.role === 'dealer' && (
@@ -362,7 +366,7 @@ export default function TableView() {
                                     activePlayerName={activePlayerName}
                                     winningCards={allWinningCards}
                                     dealerUserId={snapshot?.table?.dealerId ?? undefined}
-                                    isDealer={session?.user?.role === 'dealer'}
+                                    isDealer={isDealerRole}
                                     isJoinable={snapshot?.isJoinable ?? false}
                                     currentUserSeatId={currentUserSeatId}
                                     bettingActorSeatId={bettingActorSeatId}
