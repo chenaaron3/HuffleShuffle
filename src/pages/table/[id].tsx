@@ -2,6 +2,7 @@ import { useSession } from 'next-auth/react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import * as React from 'react';
+import { AutoBackgroundBlur } from '~/components/livekit/AutoBackgroundBlur';
 import { TableAnimation } from '~/components/TableAnimation';
 import { TableSetupModal } from '~/components/TableSetupModal';
 import { DealerCamera } from '~/components/ui/dealer-camera';
@@ -311,6 +312,7 @@ export default function TableView() {
                         audio={true}
                     >
                         <RoomAudioRenderer />
+                        <AutoBackgroundBlur enabled={session?.user?.role !== 'dealer'} />
                         <div className="absolute z-10 right-0 flex max-w-7xl items-center gap-3 px-4">
                             <StartAudio label="Enable Audio" />
                             {session?.user?.role === 'dealer' && (
