@@ -1,29 +1,52 @@
-import { and, eq, gt, isNull, or, sql } from 'drizzle-orm';
-import { AccessToken } from 'livekit-server-sdk';
-import process from 'process';
-import ts from 'typescript';
-import { z } from 'zod';
-import { PLAYER_ACTION_TIMEOUT_MS } from '~/constants/timer';
-import { createTRPCRouter, protectedProcedure, publicProcedure } from '~/server/api/trpc';
-import { db } from '~/server/db';
+import { and, eq, gt, isNull, or, sql } from "drizzle-orm";
+import { AccessToken } from "livekit-server-sdk";
+import process from "process";
+import ts from "typescript";
+import { z } from "zod";
+import { PLAYER_ACTION_TIMEOUT_MS } from "~/constants/timer";
 import {
-    games, MAX_SEATS_PER_TABLE, piDevices, pokerTables, seats, users
-} from '~/server/db/schema';
-import { getRoomServiceClient } from '~/server/livekit';
-import { endHandStream, startHandStream } from '~/server/signal';
-import { rsaEncryptB64 } from '~/utils/crypto';
-
-import { SendMessageCommand, SQSClient } from '@aws-sdk/client-sqs';
-import { TrackSource, TrackType } from '@livekit/protocol';
-
-import { generateBotPublicKey, getBotIdForSeat, getBotName, isBot } from '../bot-constants';
+  createTRPCRouter,
+  protectedProcedure,
+  publicProcedure,
+} from "~/server/api/trpc";
+import { db } from "~/server/db";
 import {
-    createSeatTransaction, executeBettingAction, removePlayerSeatTransaction, triggerBotActions
-} from '../game-helpers';
-import {
-    createNewGame, dealCard, notifyTableUpdate, parseRankSuitToBarcode, resetGame
-} from '../game-logic';
+  games,
+  MAX_SEATS_PER_TABLE,
+  piDevices,
+  pokerTables,
+  seats,
+  users,
+} from "~/server/db/schema";
+import { getRoomServiceClient } from "~/server/livekit";
+import { endHandStream, startHandStream } from "~/server/signal";
+import { rsaEncryptB64 } from "~/utils/crypto";
 
+import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
+import { TrackSource, TrackType } from "@livekit/protocol";
+
+import { computeBlindState } from "../blind-timer";
+import {
+  generateBotPublicKey,
+  getBotIdForSeat,
+  getBotName,
+  isBot,
+} from "../bot-constants";
+import {
+  createSeatTransaction,
+  executeBettingAction,
+  removePlayerSeatTransaction,
+  triggerBotActions,
+} from "../game-helpers";
+import {
+  createNewGame,
+  dealCard,
+  notifyTableUpdate,
+  parseRankSuitToBarcode,
+  resetGame,
+} from "../game-logic";
+
+import type { BlindState } from "../blind-timer";
 import type { VideoGrant } from "livekit-server-sdk";
 const ensureDealerRole = (role: string | undefined) => {
   if (role !== "dealer") throw new Error("FORBIDDEN: dealer role required");
@@ -46,6 +69,7 @@ type TableSnapshot = {
   game: GameRow | null;
   isJoinable: boolean;
   availableSeats: number;
+  blinds: BlindState;
 };
 
 const summarizeTable = async (
@@ -85,6 +109,7 @@ const summarizeTable = async (
     game: latestGame,
     isJoinable,
     availableSeats,
+    blinds: computeBlindState(snapshot),
   };
 };
 

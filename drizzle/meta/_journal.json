@@ -78,6 +78,13 @@
       "when": 1759192025239,
       "tag": "0011_remove_turn_start_time_from_seats",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1760000000000,
+      "tag": "0014_add_blind_timer",
+      "breakpoints": true
     }
   ]
 }

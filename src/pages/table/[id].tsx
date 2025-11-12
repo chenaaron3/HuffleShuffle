@@ -144,6 +144,10 @@ export default function TableView() {
         return (snapshot?.game?.potTotal ?? 0);
     }, [snapshot?.game?.potTotal, originalSeats]);
 
+    const blindState = snapshot?.blinds;
+    const effectiveSmallBlind = blindState?.effectiveSmallBlind ?? snapshot?.table?.smallBlind ?? 10;
+    const effectiveBigBlind = blindState?.effectiveBigBlind ?? snapshot?.table?.bigBlind ?? 20;
+
     // Memoize active player name calculation to prevent unnecessary re-renders
     const activePlayerName = React.useMemo(() => {
         if (state === 'BETTING') {
@@ -375,7 +379,7 @@ export default function TableView() {
                                     isLoading={action.isPending || leaveMutation.isPending || dealerLeaveMutation.isPending}
                                     currentBet={currentSeat?.currentBet ?? 0}
                                     playerBalance={currentSeat?.buyIn ?? 0}
-                                    bigBlind={snapshot?.table?.bigBlind ?? 20}
+                                    bigBlind={effectiveBigBlind}
                                     maxBet={maxBet}
                                     onAction={(actionType, params) => {
                                         if (actionType === 'LEAVE') {

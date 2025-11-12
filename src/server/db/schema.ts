@@ -120,6 +120,8 @@ export const pokerTables = createTable(
     dealerId: d.varchar({ length: 255 }).references(() => users.id),
     smallBlind: d.integer().notNull(),
     bigBlind: d.integer().notNull(),
+    blindStepSeconds: d.integer().notNull().default(600),
+    blindTimerStartedAt: d.timestamp({ withTimezone: true }),
     maxSeats: d.integer().notNull().default(MAX_SEATS_PER_TABLE),
     createdAt: d
       .timestamp({ withTimezone: true })

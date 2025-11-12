@@ -1,16 +1,24 @@
-import { and, eq, isNotNull, sql } from 'drizzle-orm';
-import process from 'process';
+import { and, eq, isNotNull, sql } from "drizzle-orm";
+import process from "process";
 import {
-    logEndGame, logFlop, logRiver, logStartGame, logTurn
-} from '~/server/api/game-event-logger';
-import { db } from '~/server/db';
-import { games, pokerTables, seats } from '~/server/db/schema';
-import { updateTable } from '~/server/signal';
+  logEndGame,
+  logFlop,
+  logRiver,
+  logStartGame,
+  logTurn,
+} from "~/server/api/game-event-logger";
+import { db } from "~/server/db";
+import { games, pokerTables, seats } from "~/server/db/schema";
+import { updateTable } from "~/server/signal";
 
+import { computeBlindState } from "./blind-timer";
 import {
-    activeCountOf, fetchAllSeatsInOrder, getNextActiveSeatId, nonEliminatedCountOf
-} from './game-utils';
-import { evaluateBettingTransition } from './hand-solver';
+  activeCountOf,
+  fetchAllSeatsInOrder,
+  getNextActiveSeatId,
+  nonEliminatedCountOf,
+} from "./game-utils";
+import { evaluateBettingTransition } from "./hand-solver";
 
 type DB = typeof db;
 type SeatRow = typeof seats.$inferSelect;
@@ -378,19 +386,22 @@ async function collectBigAndSmallBlind(
     orderedSeats,
     game,
   );
+  const blinds = computeBlindState(table);
+  const smallBlindValue = blinds.effectiveSmallBlind;
+  const bigBlindValue = blinds.effectiveBigBlind;
   // Transfer buy-in into bets for big and small blind
   await tx
     .update(seats)
     .set({
-      currentBet: sql`${table.smallBlind}`,
-      buyIn: sql`${seats.buyIn} - ${table.smallBlind}`,
+      currentBet: smallBlindValue,
+      buyIn: sql`${seats.buyIn} - ${smallBlindValue}`,
     })
     .where(eq(seats.id, smallBlindSeat.id));
   await tx
     .update(seats)
     .set({
-      currentBet: sql`${table.bigBlind}`,
-      buyIn: sql`${seats.buyIn} - ${table.bigBlind}`,
+      currentBet: bigBlindValue,
+      buyIn: sql`${seats.buyIn} - ${bigBlindValue}`,
     })
     .where(eq(seats.id, bigBlindSeat.id));
 }
