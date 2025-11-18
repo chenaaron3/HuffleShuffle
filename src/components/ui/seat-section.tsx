@@ -179,14 +179,14 @@ function SeatCard({
     if (!seat) {
         return (
             <div
-                className="group relative flex h-[22vh] flex-col rounded-xl border border-dashed border-zinc-500/50 p-3 bg-zinc-900/30 backdrop-blur"
+                className="group relative flex h-[22vh] w-[34.22vh] flex-col rounded-xl border border-dashed border-zinc-500/50 bg-zinc-900/30 backdrop-blur overflow-hidden"
             >
-                {/* Empty Video Feed - Match Occupied Seat Dimensions */}
+                {/* Empty Video Feed - Full Height */}
                 <div
                     onClick={() => {
                         if (!isMoving && canMoveSeat) onMoveSeat?.(seatNumber);
                     }}
-                    className={`relative h-full aspect-[4/3] overflow-hidden rounded-lg mb-3 border bg-zinc-800/60 ${isMoving
+                    className={`relative h-full w-full overflow-hidden rounded-xl border bg-zinc-800/60 ${isMoving
                         ? 'border-zinc-400/60 cursor-wait'
                         : canMoveSeat
                             ? 'border-zinc-500/40 group-hover:border-zinc-300/70 cursor-pointer'
@@ -216,20 +216,23 @@ function SeatCard({
                     )}
                 </div>
 
-                {/* Empty Player Info and Cards Row */}
-                <div className="flex items-center justify-between">
-                    <div className="flex flex-col gap-1">
-                        <div
-                            className="rounded-full text-xs font-medium w-fit border border-zinc-700/50 px-3 py-1 bg-zinc-700/40 text-zinc-400"
-                        >
-                            Seat {seatNumber + 1}
+                {/* Empty Player Info and Cards Overlay - Bottom of Card */}
+                <div className="absolute bottom-0 left-0 right-0 px-2 pb-2 pt-1 bg-gradient-to-t from-black/50 via-black/30 to-transparent">
+                    <div className="flex items-end justify-between">
+                        {/* Badge Section - Bottom Left */}
+                        <div className="flex flex-col gap-1 items-start">
+                            <div
+                                className="rounded-full text-xs font-medium w-fit border border-zinc-700/50 px-3 py-1 bg-zinc-700/40 text-zinc-400"
+                            >
+                                Seat {seatNumber + 1}
+                            </div>
                         </div>
-                    </div>
 
-                    {/* Empty Cards Area */}
-                    <div className="flex gap-1">
-                        <CardSlot card={null} index={0} size={30} />
-                        <CardSlot card={null} index={1} size={30} />
+                        {/* Empty Cards Section - Bottom Right */}
+                        <div className="flex gap-1">
+                            <CardSlot card={null} index={0} size={30} />
+                            <CardSlot card={null} index={1} size={30} />
+                        </div>
                     </div>
                 </div>
             </div>
@@ -242,17 +245,19 @@ function SeatCard({
     return (
         <motion.div
             id={`seat-${seat.id}`}
-            className="relative flex h-[22vh] flex-col rounded-xl bg-zinc-900/60 backdrop-blur-sm"
+            className="relative flex h-[22vh] w-[34.22vh] flex-col rounded-xl bg-zinc-900/60 backdrop-blur-sm overflow-visible"
             style={borderStyle}
         >
-            {/* Video Feed - Scaled Down with Aspect Ratio */}
-            <div className="group relative h-full aspect-[4/3] overflow-hidden rounded-xl bg-black mb-3 -z-10">
+            {/* Video Feed - Full Height */}
+            <div className="group relative h-full w-full overflow-hidden rounded-xl bg-black -z-10">
                 {videoTrackRef ? (
                     isSelf ? (
                         <>
-                            <VideoTrack trackRef={videoTrackRef} />
+                            <div className="absolute inset-0">
+                                <VideoTrack trackRef={videoTrackRef} className="h-full w-full object-cover" />
+                            </div>
                             <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
-                            <div className="pointer-events-auto absolute bottom-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                            <div className="pointer-events-auto absolute inset-0 flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                                 <BackgroundBlurToggle />
                                 <TrackToggle
                                     source={Track.Source.Microphone}
@@ -265,11 +270,13 @@ function SeatCard({
                         </>
                     ) : (
                         <>
-                            <ParticipantTile trackRef={videoTrackRef}>
-                                <VideoTrack trackRef={videoTrackRef} />
-                            </ParticipantTile>
+                            <div className="absolute inset-0">
+                                <ParticipantTile trackRef={videoTrackRef} className="h-full w-full">
+                                    <VideoTrack trackRef={videoTrackRef} className="h-full w-full object-cover" />
+                                </ParticipantTile>
+                            </div>
                             {showDealerMute && (
-                                <div className="pointer-events-auto absolute bottom-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                                <div className="pointer-events-auto absolute inset-0 flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                                     <button
                                         type="button"
                                         onClick={handleDealerToggleMute}
@@ -312,89 +319,91 @@ function SeatCard({
                 )}
             </div>
 
-            {/* Player Info and Cards Row */}
-            <div className="flex items-center justify-between px-2 pb-2">
-                {/* Left Side - Total and Win Amount */}
-                <div className="flex flex-col gap-1">
-                    {/* Win amount centered above total */}
-                    {gameState === 'SHOWDOWN' && (seat?.winAmount ?? 0) > 0 && (
+            {/* Player Info and Cards Overlay - Bottom of Card */}
+            <div className="absolute bottom-0 left-0 right-0 px-2 pb-2 pt-1 bg-gradient-to-t from-black/50 via-black/30 to-transparent">
+                <div className="flex items-end justify-between">
+                    {/* Badges Section - Bottom Left */}
+                    <div className="flex flex-col gap-1 items-start">
+                        {/* Win amount */}
+                        {gameState === 'SHOWDOWN' && (seat?.winAmount ?? 0) > 0 && (
+                            <div
+                                className="w-fit rounded-full text-xs font-medium text-center shadow-lg bg-green-600/30 border border-green-400/50 px-3 py-1 text-green-300"
+                            >
+                                <RollingNumber
+                                    value={seat.winAmount ?? 0}
+                                    prefix="+$"
+                                />
+                            </div>
+                        )}
+                        {/* Status/Action tags */}
+                        {seat.seatStatus === 'all-in' && (
+                            <div className="w-fit rounded-full text-xs font-medium text-center shadow-lg px-3 py-1 bg-yellow-600/30 border border-yellow-400/50 text-yellow-300">
+                                ALL-IN
+                            </div>
+                        )}
+                        {seat.seatStatus === 'folded' && (
+                            <div className="w-fit rounded-full text-xs font-medium text-center shadow-lg px-3 py-1 bg-zinc-600/30 border border-zinc-400/50 text-zinc-300">
+                                FOLDED
+                            </div>
+                        )}
+                        {seat.seatStatus === 'eliminated' && (
+                            <div className="w-fit rounded-full text-xs font-medium text-center shadow-lg px-3 py-1 bg-red-600/30 border border-red-400/50 text-red-300">
+                                ELIMINATED
+                            </div>
+                        )}
+                        {/* Show last action only for active players during betting */}
+                        {seat.seatStatus === 'active' && gameState === 'BETTING' && seat.lastAction && (
+                            <div
+                                className={`w-fit rounded-full text-xs font-medium text-center shadow-lg px-3 py-1 ${seat.lastAction === 'RAISE'
+                                    ? 'bg-red-600/30 border border-red-400/50 text-red-300'
+                                    : seat.lastAction === 'CALL'
+                                        ? 'bg-blue-600/30 border border-blue-400/50 text-blue-300'
+                                        : seat.lastAction === 'CHECK'
+                                            ? 'bg-green-600/30 border border-green-400/50 text-green-300'
+                                            : 'bg-zinc-600/30 border border-zinc-400/50 text-zinc-300'
+                                    }`}
+                            >
+                                {seat.lastAction}
+                            </div>
+                        )}
+                        {/* Total */}
                         <div
-                            className="w-fit mx-auto translate-y-1/3 rounded-full text-xs font-medium text-center shadow-lg bg-green-600/30 border border-green-400/50 px-3 py-1 text-green-300"
+                            className="rounded-full text-xs font-medium shadow-lg bg-green-600/30 border border-green-400/50 px-3 py-1 text-green-300"
                         >
                             <RollingNumber
-                                value={seat.winAmount ?? 0}
-                                prefix="+$"
+                                value={seat.buyIn}
+                                prefix="$"
+                                suffix=" total"
                             />
                         </div>
-                    )}
-                    {/* Status/Action tags */}
-                    {seat.seatStatus === 'all-in' && (
-                        <div className="w-fit translate-y-1/4 mx-auto rounded-full text-xs font-medium text-center shadow-lg px-3 py-1 bg-yellow-600/30 border border-yellow-400/50 text-yellow-300">
-                            ALL-IN
-                        </div>
-                    )}
-                    {seat.seatStatus === 'folded' && (
-                        <div className="w-fit translate-y-1/4 mx-auto rounded-full text-xs font-medium text-center shadow-lg px-3 py-1 bg-zinc-600/30 border border-zinc-400/50 text-zinc-300">
-                            FOLDED
-                        </div>
-                    )}
-                    {seat.seatStatus === 'eliminated' && (
-                        <div className="w-fit translate-y-1/4 mx-auto rounded-full text-xs font-medium text-center shadow-lg px-3 py-1 bg-red-600/30 border border-red-400/50 text-red-300">
-                            ELIMINATED
-                        </div>
-                    )}
-                    {/* Show last action only for active players during betting */}
-                    {seat.seatStatus === 'active' && gameState === 'BETTING' && seat.lastAction && (
-                        <div
-                            className={`w-fit translate-y-1/4 mx-auto rounded-full text-xs font-medium text-center shadow-lg px-3 py-1 ${seat.lastAction === 'RAISE'
-                                ? 'bg-red-600/30 border border-red-400/50 text-red-300'
-                                : seat.lastAction === 'CALL'
-                                    ? 'bg-blue-600/30 border border-blue-400/50 text-blue-300'
-                                    : seat.lastAction === 'CHECK'
-                                        ? 'bg-green-600/30 border border-green-400/50 text-green-300'
-                                        : 'bg-zinc-600/30 border border-zinc-400/50 text-zinc-300'
-                                }`}
-                        >
-                            {seat.lastAction}
-                        </div>
-                    )}
-                    {/* Total */}
-                    <div
-                        className="rounded-full z-10 text-xs font-medium shadow-lg bg-green-600/30 border border-green-400/50 px-3 py-1 text-green-300"
-                    >
-                        <RollingNumber
-                            value={seat.buyIn}
-                            prefix="$"
-                            suffix=" total"
-                        />
                     </div>
-                </div>
 
-                {/* Right Side - Cards */}
-                <div className="flex gap-1">
-                    {/* Always show 2 card slots - either placeholders or actual cards */}
-                    {Array.from({ length: 2 }, (_, index) => {
-                        const card = Array.isArray(seat.cards) ? seat.cards[index] : null;
+                    {/* Cards Section - Bottom Right */}
+                    <div className="flex gap-1">
+                        {/* Always show 2 card slots - either placeholders or actual cards */}
+                        {Array.from({ length: 2 }, (_, index) => {
+                            const card = Array.isArray(seat.cards) ? seat.cards[index] : null;
 
-                        return (
-                            <CardSlot
-                                key={`seat-${seat.id}-card-slot-${index}`}
-                                card={card}
-                                index={index}
-                                size={30}
-                                gameState={gameState}
-                                winningCards={seat.winningCards ?? undefined}
-                                seatId={seat.id}
-                                compact={true}
-                            />
-                        );
-                    })}
+                            return (
+                                <CardSlot
+                                    key={`seat-${seat.id}-card-slot-${index}`}
+                                    card={card}
+                                    index={index}
+                                    size={30}
+                                    gameState={gameState}
+                                    winningCards={seat.winningCards ?? undefined}
+                                    seatId={seat.id}
+                                    compact={true}
+                                />
+                            );
+                        })}
+                    </div>
                 </div>
             </div>
 
             <AnimatePresence>
                 {seat.currentBet > 0 && <motion.div
-                    className={`absolute top-1/2 transform -translate-y-1/2 ${side === 'right' ? 'left-0 -translate-x-1/2' : 'right-0 translate-x-1/2'}`}
+                    className={`absolute top-1/2 transform -translate-y-1/2 z-20 ${side === 'right' ? 'left-0 -translate-x-1/2' : 'right-0 translate-x-1/2'}`}
                     initial={{ scale: 0, opacity: 0, rotate: -180 }}
                     animate={{ scale: 1, opacity: 1, rotate: 0 }}
                     exit={{ scale: 0, opacity: 0, rotate: 180 }}
@@ -416,7 +425,7 @@ function SeatCard({
 
             {/* Hand Type - Edge Positioned (same side as bet chip during showdown) */}
             {gameState === 'SHOWDOWN' && seat.handType && (
-                <div className={`absolute top-1/2 transform -translate-y-1/2 ${side === 'right'
+                <div className={`absolute top-1/2 transform -translate-y-1/2 z-20 ${side === 'right'
                     ? 'left-0 -translate-x-1/2'
                     : 'right-0 translate-x-1/2'
                     }`}>
