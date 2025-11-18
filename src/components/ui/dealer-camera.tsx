@@ -211,6 +211,10 @@ export function DealerCamera({
                             minRaise={(maxBet ?? 0) + (bigBlind ?? 0)}
                             raiseAmount={raiseAmount}
                             onRaiseAmountChange={setRaiseAmount}
+                            onFold={() => onAction?.('FOLD')}
+                            onCheck={() => onAction?.('CHECK')}
+                            onRaise={handleRaise}
+                            maxBet={maxBet}
                         />
                     </div>
                 )}

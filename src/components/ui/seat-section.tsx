@@ -18,6 +18,7 @@ interface SeatSectionProps {
     highlightedSeatId: string | null;
     smallBlindIdx: number;
     bigBlindIdx: number;
+    dealerButtonIdx: number;
     myUserId?: string | null;
     side: 'left' | 'right';
     gameState?: string;
@@ -34,6 +35,7 @@ export function SeatSection({
     highlightedSeatId,
     smallBlindIdx,
     bigBlindIdx,
+    dealerButtonIdx,
     myUserId,
     side,
     gameState,
@@ -82,6 +84,7 @@ export function SeatSection({
                         seatNumber={seatNumber} // Pass the actual seat number (0-based)
                         small={seatNumber === smallBlindIdx}
                         big={seatNumber === bigBlindIdx}
+                        button={seatNumber === dealerButtonIdx}
                         active={!!highlightedSeatId && seat?.id === highlightedSeatId}
                         isWinner={gameState === 'SHOWDOWN' && (seat?.winAmount ?? 0) > 0}
                         myUserId={myUserId}
@@ -106,6 +109,7 @@ function SeatCard({
     seatNumber,
     small,
     big,
+    button,
     active,
     isWinner,
     myUserId,
@@ -123,6 +127,7 @@ function SeatCard({
     seatNumber: number;
     small: boolean;
     big: boolean;
+    button: boolean;
     active?: boolean;
     isWinner?: boolean;
     myUserId?: string | null;
@@ -289,15 +294,20 @@ function SeatCard({
                     </div>
                 )}
 
-                {/* Big/Small Blind Overlay */}
-                {small && (
-                    <div className="absolute top-2 left-2 rounded-lg bg-blue-600 px-2 py-1 text-xs font-semibold text-white shadow-lg border border-green-500/30">
-                        S
+                {/* Big/Small Blind/Dealer Button Overlay */}
+                {button && (
+                    <div className="absolute top-2 left-2 rounded-lg bg-white px-2 py-1 text-xs font-semibold text-black shadow-lg border border-gray-400/50">
+                        DB
                     </div>
                 )}
-                {big && (
+                {(small && !button) && (
+                    <div className="absolute top-2 left-2 rounded-lg bg-blue-600 px-2 py-1 text-xs font-semibold text-white shadow-lg border border-green-500/30">
+                        SB
+                    </div>
+                )}
+                {(big && !button) && (
                     <div className="absolute top-2 left-2 rounded-lg bg-red-600 px-2 py-1 text-xs font-semibold text-white shadow-lg border border-red-500/50">
-                        B
+                        BB
                     </div>
                 )}
             </div>

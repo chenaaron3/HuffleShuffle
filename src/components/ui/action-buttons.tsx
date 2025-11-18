@@ -79,48 +79,49 @@ export function ActionButtons({
         </div>
     );
 
-    const playerView = (
-        <div className="w-full">
-            {/* Main Action Buttons in FanDuel-style overlay */}
-            <div className="relative flex items-center justify-center gap-4 rounded-2xl shadow-2xl bg-black/25 border border-white/10 p-3 backdrop-blur">
-                {/* Left Side - Negative Actions */}
-                <Button
-                    onClick={() => onAction('FOLD')}
-                    disabled={isLoading}
-                    className="transition-all duration-200 hover:scale-105 hover:bg-red-600/80 min-w-[140px] shadow-2xl flex items-center gap-2  px-10 py-4 rounded-2xl border text-white font-semibold bg-red-600/70 border-red-300/80 backdrop-blur"
-                >
-                    <Hand className="w-4 h-4" />
-                    {isLoading ? '...' : 'Fold'}
-                </Button>
+    const playerView = <></>;
+    // (
+    //     <div className="w-full">
+    //         {/* Main Action Buttons in FanDuel-style overlay */}
+    //         <div className="relative flex items-center justify-center gap-4 rounded-2xl shadow-2xl bg-black/25 border border-white/10 p-3 backdrop-blur">
+    //             {/* Left Side - Negative Actions */}
+    //             <Button
+    //                 onClick={() => onAction('FOLD')}
+    //                 disabled={isLoading}
+    //                 className="transition-all duration-200 hover:scale-105 hover:bg-red-600/80 min-w-[140px] shadow-2xl flex items-center gap-2  px-10 py-4 rounded-2xl border text-white font-semibold bg-red-600/70 border-red-300/80 backdrop-blur"
+    //             >
+    //                 <Hand className="w-4 h-4" />
+    //                 {isLoading ? '...' : 'Fold'}
+    //             </Button>
 
-                {/* Center - Check/Call */}
-                <Button
-                    onClick={() => onAction('CHECK')}
-                    disabled={isLoading}
-                    className="transition-all duration-200 hover:scale-105 hover:bg-green-600/80 min-w-[160px] shadow-2xl flex items-center gap-2 px-10 py-4 rounded-2xl border text-white font-semibold bg-green-600/70 border-green-300/80 backdrop-blur"
-                >
-                    <CheckCircle className="w-4 h-4" />
-                    {isLoading ? '...' : (maxBet ? 'Call' : 'Check')}
-                </Button>
+    //             {/* Center - Check/Call */}
+    //             <Button
+    //                 onClick={() => onAction('CHECK')}
+    //                 disabled={isLoading}
+    //                 className="transition-all duration-200 hover:scale-105 hover:bg-green-600/80 min-w-[160px] shadow-2xl flex items-center gap-2 px-10 py-4 rounded-2xl border text-white font-semibold bg-green-600/70 border-green-300/80 backdrop-blur"
+    //             >
+    //                 <CheckCircle className="w-4 h-4" />
+    //                 {isLoading ? '...' : (maxBet ? 'Call' : 'Check')}
+    //             </Button>
 
-                {/* Right Side - Raise */}
-                {onRaise && (
-                    <Button
-                        onClick={onRaise}
-                        disabled={isLoading}
-                        className="transition-all duration-200 hover:scale-105 hover:bg-orange-500/80 min-w-[140px] shadow-2xl flex items-center gap-2 px-8 py-4 rounded-2xl border text-white font-semibold bg-orange-500/70 border-orange-300/80 backdrop-blur"
-                    >
-                        <TrendingUp className="w-4 h-4" />
-                        {isLoading ? '...' : (
-                            <>
-                                Raise to <RollingNumber value={raiseAmount} prefix="$" className="font-semibold" />
-                            </>
-                        )}
-                    </Button>
-                )}
-            </div>
-        </div>
-    );
+    //             {/* Right Side - Raise */}
+    //             {onRaise && (
+    //                 <Button
+    //                     onClick={onRaise}
+    //                     disabled={isLoading}
+    //                     className="transition-all duration-200 hover:scale-105 hover:bg-orange-500/80 min-w-[140px] shadow-2xl flex items-center gap-2 px-8 py-4 rounded-2xl border text-white font-semibold bg-orange-500/70 border-orange-300/80 backdrop-blur"
+    //                 >
+    //                     <TrendingUp className="w-4 h-4" />
+    //                     {isLoading ? '...' : (
+    //                         <>
+    //                             Raise to <RollingNumber value={raiseAmount} prefix="$" className="font-semibold" />
+    //                         </>
+    //                     )}
+    //                 </Button>
+    //             )}
+    //         </div>
+    //     </div>
+    // );
 
     return (
         <motion.div

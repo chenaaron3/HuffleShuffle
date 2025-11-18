@@ -341,6 +341,7 @@ export default function TableView() {
                                 highlightedSeatId={highlightedSeatId}
                                 smallBlindIdx={smallBlindIdx}
                                 bigBlindIdx={bigBlindIdx}
+                                dealerButtonIdx={dealerSeatNumber}
                                 myUserId={session?.user?.id ?? null}
                                 side="left"
                                 gameState={state}
@@ -438,6 +439,7 @@ export default function TableView() {
                                 highlightedSeatId={highlightedSeatId}
                                 smallBlindIdx={smallBlindIdx}
                                 bigBlindIdx={bigBlindIdx}
+                                dealerButtonIdx={dealerSeatNumber}
                                 myUserId={session?.user?.id ?? null}
                                 side="right"
                                 gameState={state}
