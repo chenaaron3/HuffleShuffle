@@ -11,6 +11,7 @@ import { HandCamera } from '~/components/ui/hand-camera';
 import { QuickActions } from '~/components/ui/quick-actions';
 import { SeatSection } from '~/components/ui/seat-section';
 import { useBackgroundBlur } from '~/hooks/use-background-blur';
+import { useDealerCardSound } from '~/hooks/use-dealer-card-sound';
 import { useDealerTimer } from '~/hooks/use-dealer-timer';
 import { useQuickActions } from '~/hooks/use-quick-actions';
 import { useTableEvents } from '~/hooks/use-table-events';
@@ -126,6 +127,11 @@ export default function TableView() {
         gameState: state,
         assignedSeatId: bettingActorSeatId,
         turnStartTime: snapshot?.game?.turnStartTime ?? null,
+        isDealer: !!isDealerAtTable,
+    });
+
+    // --- Dealer card sound hook ---
+    useDealerCardSound({
         isDealer: !!isDealerAtTable,
     });
     React.useEffect(() => {
