@@ -5,6 +5,7 @@ import * as React from 'react';
 import { BackgroundBlurToggle } from '~/components/ui/background-blur-toggle';
 import { CardSlot } from '~/components/ui/card-slot';
 import { RollingNumber } from '~/components/ui/chip-animations';
+import { TextHoverEffect } from '~/components/ui/text-hover-effect';
 import { PLAYER_ACTION_TIMEOUT_MS } from '~/constants/timer';
 import { useTimerBorder } from '~/hooks/use-timer-border';
 import { api } from '~/utils/api';
@@ -202,8 +203,14 @@ function SeatCard({
                         </div>
                     ) : (
                         <>
-                            <div className="flex h-full items-center justify-center text-sm font-medium transition-opacity duration-150 text-zinc-500">
-                                Empty Seat
+                            <div className="flex h-full items-center justify-center w-full">
+                                <div className="w-full h-20">
+                                    <TextHoverEffect
+                                        text="EMPTY"
+                                        duration={0.3}
+                                        id={`empty-seat-${seatNumber}`}
+                                    />
+                                </div>
                             </div>
                             {canMoveSeat && (
                                 <div className="pointer-events-none absolute inset-0 flex items-center justify-center">

@@ -1,5 +1,6 @@
-import { motion } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import { Coins } from 'lucide-react';
+import { useRef, useState } from 'react';
 import { Button } from '~/components/ui/button';
 import { RollingNumber } from '~/components/ui/chip-animations';
 import { GlareButton } from '~/components/ui/glare-button';
@@ -73,10 +74,31 @@ export function VerticalRaiseControls({
         <motion.div
             key="raise-controls"
             initial={{ opacity: 0, y: 12, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 12, scale: 0.98 }}
-            transition={{ type: 'spring', stiffness: 260, damping: 24, mass: 0.7 }}
-            className="rounded-xl shadow-2xl w-80 bg-black/20 border border-white/10 p-3 backdrop-blur flex flex-col gap-3"
+            animate={{
+                opacity: 1,
+                y: 0,
+                scale: [1, 1.03, 1]
+            }}
+            exit={{
+                opacity: [1, 0.6, 0],
+                scale: [1, 1.08, 0.92],
+                y: [0, 6, 12],
+                transition: {
+                    duration: 0.25,
+                    ease: [0.4, 0, 0.2, 1] // cubic-bezier for snappy feel
+                }
+            }}
+            transition={{
+                type: 'spring',
+                stiffness: 260,
+                damping: 24,
+                mass: 0.7,
+                scale: {
+                    duration: 0.4,
+                    ease: "easeOut"
+                }
+            }}
+            className="relative rounded-xl shadow-2xl w-80 bg-black/20 border border-white/10 p-3 backdrop-blur flex flex-col gap-3 overflow-hidden"
         >
             {/* All In Button - Shiny Gold with Glare Effect */}
             <div className="relative w-full rounded-lg">

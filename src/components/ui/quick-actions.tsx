@@ -110,7 +110,7 @@ export function QuickActions({ value, onChange, disabled, gameState, isMyTurn = 
                     )}
                 >
                     <span className="text-sm">⚡</span>
-                    <span className="font-semibold text-xs whitespace-nowrap">Check/Fold</span>
+                    <span className="font-semibold text-xs whitespace-nowrap">C/F</span>
                 </ToggleGroupItem>
             </ToggleGroup>
 

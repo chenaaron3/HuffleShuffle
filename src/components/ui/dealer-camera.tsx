@@ -4,10 +4,12 @@ import { useEffect, useState } from 'react';
 import { isDefaultClause } from 'typescript';
 import { CardImage } from '~/components/ui/card-img';
 import { RollingNumber } from '~/components/ui/chip-animations';
+import { cn } from '~/lib/utils';
 
 import { ParticipantTile, useTracks, VideoTrack } from '@livekit/components-react';
 
 import { ActionButtons } from './action-buttons';
+import { Spinner } from './spinner';
 import { TurnIndicator } from './turn-indicator';
 import { VerticalRaiseControls } from './vertical-raise-controls';
 
@@ -70,6 +72,7 @@ export function DealerCamera({
     const isDealerTurn = ['DEAL_HOLE_CARDS', 'DEAL_FLOP', 'DEAL_TURN', 'DEAL_RIVER'].includes(gameStatus ?? '');
     // State for raise amount
     const [raiseAmount, setRaiseAmount] = useState<number>(bigBlind ?? 10);
+    const [pendingAction, setPendingAction] = useState<'fold' | 'check' | 'raise' | null>(null);
 
     // Update raise amount when big blind or max bet changes
     useEffect(() => {
@@ -80,7 +83,20 @@ export function DealerCamera({
 
     // Handle raise action
     const handleRaise = () => {
+        setPendingAction('raise');
         onAction?.('RAISE', { amount: raiseAmount });
+    };
+
+    // Handle fold action
+    const handleFold = () => {
+        setPendingAction('fold');
+        onAction?.('FOLD');
+    };
+
+    // Handle check action
+    const handleCheck = () => {
+        setPendingAction('check');
+        onAction?.('CHECK');
     };
 
     return (
@@ -201,23 +217,45 @@ export function DealerCamera({
             )}
 
             {/* Horizontal Raise Controls - Bottom Right */}
-            <AnimatePresence>
-                {isPlayerTurn && onAction && !isLoading && (
-                    <div className="absolute right-4 bottom-3">
-                        <VerticalRaiseControls
-                            potTotal={potTotal}
-                            playerBalance={playerBalance ?? 1000}
-                            currentBet={currentBet ?? 0}
-                            bigBlind={bigBlind ?? 20}
-                            minRaise={(maxBet ?? 0) + (bigBlind ?? 0)}
-                            raiseAmount={raiseAmount}
-                            onRaiseAmountChange={setRaiseAmount}
-                            onFold={() => onAction?.('FOLD')}
-                            onCheck={() => onAction?.('CHECK')}
-                            onRaise={handleRaise}
-                            maxBet={maxBet}
-                        />
-                    </div>
+            <AnimatePresence mode="wait">
+                {isPlayerTurn && onAction && (
+                    <motion.div
+                        key={isLoading ? 'spinner' : 'controls'}
+                        layoutId="raise-controls"
+                        className="absolute right-4 bottom-3"
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.9 }}
+                        transition={{ duration: 0.2 }}
+                    >
+                        {isLoading ? (
+                            <div
+                                className="flex items-center justify-center p-2 rounded-xl backdrop-blur border"
+                                style={{
+                                    borderColor: pendingAction === 'fold' ? 'rgba(239, 68, 68, 0.3)' :
+                                        pendingAction === 'check' ? 'rgba(34, 197, 94, 0.3)' :
+                                            pendingAction === 'raise' ? 'rgba(234, 179, 8, 0.3)' :
+                                                'rgba(255, 255, 255, 0.1)',
+                                }}
+                            >
+                                <Spinner variant="ring" size={24} className="text-white" />
+                            </div>
+                        ) : (
+                            <VerticalRaiseControls
+                                potTotal={potTotal}
+                                playerBalance={playerBalance ?? 1000}
+                                currentBet={currentBet ?? 0}
+                                bigBlind={bigBlind ?? 20}
+                                minRaise={(maxBet ?? 0) + (bigBlind ?? 0)}
+                                raiseAmount={raiseAmount}
+                                onRaiseAmountChange={setRaiseAmount}
+                                onFold={handleFold}
+                                onCheck={handleCheck}
+                                onRaise={handleRaise}
+                                maxBet={maxBet}
+                            />
+                        )}
+                    </motion.div>
                 )}
             </AnimatePresence>
 
