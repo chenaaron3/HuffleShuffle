@@ -6,7 +6,6 @@ import { BackgroundBlurToggle } from '~/components/ui/background-blur-toggle';
 import { CardSlot } from '~/components/ui/card-slot';
 import { RollingNumber } from '~/components/ui/chip-animations';
 import { TextHoverEffect } from '~/components/ui/text-hover-effect';
-import { PLAYER_ACTION_TIMEOUT_MS } from '~/constants/timer';
 import { useTimerBorder } from '~/hooks/use-timer-border';
 import { api } from '~/utils/api';
 
