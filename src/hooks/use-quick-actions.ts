@@ -42,6 +42,20 @@ export function useQuickActions({
   // Extract currentBet to ensure effect re-runs when bet value changes
   const myCurrentBet = currentSeat?.currentBet ?? 0;
 
+  // Reset quick action when transitioning out of betting round
+  const prevGameState = React.useRef<string | undefined>(gameState);
+  React.useEffect(() => {
+    // If we transitioned from BETTING to a different state, reset the quick action
+    if (
+      prevGameState.current === "BETTING" &&
+      gameState !== "BETTING" &&
+      quickAction !== null
+    ) {
+      setQuickAction(null);
+    }
+    prevGameState.current = gameState;
+  }, [gameState, quickAction]);
+
   // Execute quick action when it's the player's turn
   React.useEffect(() => {
     if (!quickAction || !currentSeat || gameState !== "BETTING") return;
