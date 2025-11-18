@@ -1054,10 +1054,8 @@ export const tableRouter = createTRPCRouter({
 
       // Notify clients of table update after successful transaction
       await notifyTableUpdate(input.tableId);
-
       // Process bot actions if it's a bot's turn
       await triggerBotActions(input.tableId);
-
       // Return fresh snapshot
       const snapshot = await summarizeTable(db, input.tableId);
       return redactSnapshotForUser(snapshot, userId);
