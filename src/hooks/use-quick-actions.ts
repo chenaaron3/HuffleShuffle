@@ -39,6 +39,9 @@ export function useQuickActions({
     },
   });
 
+  // Extract currentBet to ensure effect re-runs when bet value changes
+  const myCurrentBet = currentSeat?.currentBet ?? 0;
+
   // Execute quick action when it's the player's turn
   React.useEffect(() => {
     if (!quickAction || !currentSeat || gameState !== "BETTING") return;
@@ -46,37 +49,30 @@ export function useQuickActions({
     const isMyTurn = bettingActorSeatId === currentSeat.id;
     if (!isMyTurn) return;
 
-    const myCurrentBet = currentSeat.currentBet ?? 0;
     const canCheck = myCurrentBet === maxBet;
 
-    // Execute the quick action
-    const executeQuickAction = () => {
-      if (quickAction === "fold") {
-        action.mutate({ tableId: tableId!, action: "FOLD", params: {} });
-        setQuickAction(null);
-      } else if (quickAction === "check" && canCheck) {
+    if (quickAction === "fold") {
+      action.mutate({ tableId: tableId!, action: "FOLD", params: {} });
+      setQuickAction(null);
+    } else if (quickAction === "check" && canCheck) {
+      action.mutate({ tableId: tableId!, action: "CHECK", params: {} });
+      setQuickAction(null);
+    } else if (quickAction === "check-fold") {
+      if (canCheck) {
         action.mutate({ tableId: tableId!, action: "CHECK", params: {} });
-        setQuickAction(null);
-      } else if (quickAction === "check-fold") {
-        if (canCheck) {
-          action.mutate({ tableId: tableId!, action: "CHECK", params: {} });
-        } else {
-          action.mutate({ tableId: tableId!, action: "FOLD", params: {} });
-        }
-        setQuickAction(null);
+      } else {
+        action.mutate({ tableId: tableId!, action: "FOLD", params: {} });
       }
-      // For 'check' when can't check, do nothing (wait for manual action)
-    };
-
-    // Small delay to ensure turn has fully started
-    const timer = setTimeout(executeQuickAction, 100);
-    return () => clearTimeout(timer);
+      setQuickAction(null);
+    }
+    // For 'check' when can't check, do nothing (wait for manual action)
   }, [
     quickAction,
     currentSeat,
     gameState,
     bettingActorSeatId,
     maxBet,
+    myCurrentBet, // Add myCurrentBet as dependency so effect re-runs when bet changes
     tableId,
     action,
     setSnapshot,

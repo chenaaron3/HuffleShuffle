@@ -192,8 +192,6 @@ function SeatCard({
                             ? 'border-zinc-500/40 group-hover:border-zinc-300/70 cursor-pointer'
                             : 'border-zinc-500/40'
                         }`}
-                    aria-label={canMoveSeat ? 'Move to this seat' : 'Empty seat'}
-                    title={canMoveSeat ? 'Move to this seat' : 'Empty seat'}
                 >
                     {/* Centered text with hover feedback */}
                     {isMoving ? (

@@ -1,9 +1,7 @@
-import { AnimatePresence, motion } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { Coins } from 'lucide-react';
-import { useRef, useState } from 'react';
 import { Button } from '~/components/ui/button';
 import { RollingNumber } from '~/components/ui/chip-animations';
-import { GlareButton } from '~/components/ui/glare-button';
 import { GlowingEffect } from '~/components/ui/glowing-effect';
 import { Slider } from '~/components/ui/slider';
 import { Tooltip, TooltipContent, TooltipTrigger } from '~/components/ui/tooltip';
@@ -98,20 +96,20 @@ export function VerticalRaiseControls({
                     ease: "easeOut"
                 }
             }}
-            className="relative rounded-xl shadow-2xl w-80 bg-black/20 border border-white/10 p-3 backdrop-blur flex flex-col gap-3 overflow-hidden"
+            className="relative rounded-xl shadow-2xl w-80 bg-zinc-900/95 border border-white/10 p-3 backdrop-blur flex flex-col gap-3"
         >
-            {/* All In Button - Shiny Gold with Glare Effect */}
-            <div className="relative w-full rounded-lg">
-                <GlowingEffect disabled={false} spread={25} proximity={40} inactiveZone={0.3} borderWidth={2} className="rounded-lg" />
-                <GlareButton
-                    onClick={handleAllIn}
-                    disabled={isAllInDisabled}
-                    className="relative inline-flex items-center justify-center gap-1.5 w-full disabled:opacity-50 disabled:cursor-not-allowed font-medium px-2 py-1 rounded-lg border-0 text-white backdrop-blur transition-all duration-200 hover:scale-105 bg-gradient-to-r from-amber-500/90 via-yellow-400/90 to-amber-500/90 hover:from-amber-500 hover:via-yellow-400 hover:to-amber-500 shadow-[0_0_15px_rgba(251,191,36,0.5)] hover:shadow-[0_0_20px_rgba(251,191,36,0.7)]"
-                >
-                    <Coins className="w-3.5 h-3.5" />
-                    All In
-                </GlareButton>
-            </div>
+            <GlowingEffect disabled={false} spread={25} proximity={40} inactiveZone={0.3} borderWidth={2} variant="golden" className="rounded-xl" />
+            {/* All In Button */}
+            <Button
+                onClick={handleAllIn}
+                disabled={isAllInDisabled}
+                variant="default"
+                size="sm"
+                className="w-full bg-amber-500 hover:bg-amber-600 text-white"
+            >
+                <Coins className="w-3.5 h-3.5" />
+                All In
+            </Button>
 
             {/* Horizontal Slider with Official Tooltip */}
             <div className="w-full space-y-3">
@@ -145,54 +143,44 @@ export function VerticalRaiseControls({
                 </div>
             </div>
 
-            {/* Quick Action Buttons - Two Rows */}
-            <div className="flex flex-col gap-1.5 w-full">
-                {/* Top Row: Pot Buttons - Heat Map Gradient */}
-                <div className="flex gap-1.5 w-full">
-                    {/* Quarter Pot Button - Light Yellow to Medium Yellow */}
-                    <div className="relative flex-1 rounded-lg">
-                        <Button
-                            onClick={handleQuarterPot}
-                            disabled={isQuarterPotDisabled}
-                            className="relative inline-flex items-center justify-center text-xs w-full disabled:opacity-50 disabled:cursor-not-allowed font-medium px-2 py-1 rounded-lg border-0 text-white backdrop-blur transition-all duration-200 hover:scale-105 bg-gradient-to-r from-yellow-300/70 to-yellow-500/70 hover:from-yellow-300/80 hover:to-yellow-500/80"
-                        >
-                            <span className="text-base">¼</span><span>Pot</span>
-                        </Button>
-                    </div>
-
-                    {/* Half Pot Button - Medium Yellow to Orange */}
-                    <div className="relative flex-1 rounded-lg">
-                        <Button
-                            onClick={handleHalfPot}
-                            disabled={isHalfPotDisabled}
-                            className="relative inline-flex items-center justify-center text-xs w-full disabled:opacity-50 disabled:cursor-not-allowed font-medium px-2 py-1 rounded-lg border-0 text-white backdrop-blur transition-all duration-200 hover:scale-105 bg-gradient-to-r from-yellow-500/70 to-orange-500/70 hover:from-yellow-500/80 hover:to-orange-500/80"
-                        >
-                            <span className="text-base">½</span><span>Pot</span>
-                        </Button>
-                    </div>
-
-                    {/* Three Quarter Pot Button - Orange to Red */}
-                    <div className="relative flex-1 rounded-lg">
-                        <Button
-                            onClick={handleThreeQuarterPot}
-                            disabled={isThreeQuarterPotDisabled}
-                            className="relative inline-flex items-center justify-center text-xs w-full disabled:opacity-50 disabled:cursor-not-allowed font-medium px-2 py-1 rounded-lg border-0 text-white backdrop-blur transition-all duration-200 hover:scale-105 bg-gradient-to-r from-orange-500/70 to-red-500/70 hover:from-orange-500/80 hover:to-red-500/80"
-                        >
-                            <span className="text-base">¾</span><span>Pot</span>
-                        </Button>
-                    </div>
-
-                    {/* Full Pot Button - Red to Dark Red */}
-                    <div className="relative flex-1 rounded-lg">
-                        <Button
-                            onClick={handleFullPot}
-                            disabled={isFullPotDisabled}
-                            className="relative inline-flex items-center justify-center text-xs w-full disabled:opacity-50 disabled:cursor-not-allowed font-medium px-2 py-1 rounded-lg border-0 text-white backdrop-blur transition-all duration-200 hover:scale-105 bg-gradient-to-r from-red-500/70 to-red-700/70 hover:from-red-500/80 hover:to-red-700/80"
-                        >
-                            Pot
-                        </Button>
-                    </div>
-                </div>
+            {/* Quick Action Buttons - Pot Buttons */}
+            <div className="flex gap-1.5 w-full">
+                <Button
+                    onClick={handleQuarterPot}
+                    disabled={isQuarterPotDisabled}
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 text-xs bg-yellow-500/20 hover:bg-yellow-500/30 border-yellow-500/50 text-white"
+                >
+                    <span className="text-base">¼</span><span>Pot</span>
+                </Button>
+                <Button
+                    onClick={handleHalfPot}
+                    disabled={isHalfPotDisabled}
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 text-xs bg-orange-500/20 hover:bg-orange-500/30 border-orange-500/50 text-white"
+                >
+                    <span className="text-base">½</span><span>Pot</span>
+                </Button>
+                <Button
+                    onClick={handleThreeQuarterPot}
+                    disabled={isThreeQuarterPotDisabled}
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 text-xs bg-orange-600/20 hover:bg-orange-600/30 border-orange-600/50 text-white"
+                >
+                    <span className="text-base">¾</span><span>Pot</span>
+                </Button>
+                <Button
+                    onClick={handleFullPot}
+                    disabled={isFullPotDisabled}
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 text-xs bg-red-500/20 hover:bg-red-500/30 border-red-500/50 text-white"
+                >
+                    Pot
+                </Button>
             </div>
 
             {/* Divider */}
@@ -203,40 +191,35 @@ export function VerticalRaiseControls({
             {/* Main Action Buttons - Fold, Check/Call, Raise */}
             {(onFold || onCheck || onRaise) && (
                 <div className="flex gap-2 w-full">
-                    {/* Fold Button */}
                     {onFold && (
-                        <div className="relative flex-1 rounded-lg">
-                            <Button
-                                onClick={onFold}
-                                className="relative inline-flex items-center justify-center w-full font-medium px-2 py-2 rounded-lg border-0 text-white backdrop-blur transition-all duration-200 hover:scale-105 bg-red-600/70 hover:bg-red-600/80"
-                            >
-                                Fold
-                            </Button>
-                        </div>
+                        <Button
+                            onClick={onFold}
+                            variant="default"
+                            size="sm"
+                            className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+                        >
+                            Fold
+                        </Button>
                     )}
-
-                    {/* Check/Call Button */}
                     {onCheck && (
-                        <div className="relative flex-1 rounded-lg">
-                            <Button
-                                onClick={onCheck}
-                                className="relative inline-flex items-center justify-center w-full font-medium px-2 py-2 rounded-lg border-0 text-white backdrop-blur transition-all duration-200 hover:scale-105 bg-green-600/70 hover:bg-green-600/80"
-                            >
-                                {maxBet ? 'Call' : 'Check'}
-                            </Button>
-                        </div>
+                        <Button
+                            onClick={onCheck}
+                            variant="default"
+                            size="sm"
+                            className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                        >
+                            {maxBet ? 'Call' : 'Check'}
+                        </Button>
                     )}
-
-                    {/* Raise Button */}
                     {onRaise && (
-                        <div className="relative flex-1 rounded-lg">
-                            <Button
-                                onClick={onRaise}
-                                className="relative gap-1 inline-flex items-center justify-center w-full font-medium px-2 py-2 rounded-lg border-0 text-white backdrop-blur transition-all duration-200 hover:scale-105 bg-orange-500/70 hover:bg-orange-500/80"
-                            >
-                                Raise <RollingNumber value={raiseAmount} prefix="$" className="font-semibold" />
-                            </Button>
-                        </div>
+                        <Button
+                            onClick={onRaise}
+                            variant="default"
+                            size="sm"
+                            className="flex-1 bg-orange-500 hover:bg-orange-600 text-white"
+                        >
+                            Raise <RollingNumber value={raiseAmount} prefix="$" className="font-semibold" />
+                        </Button>
                     )}
                 </div>
             )}

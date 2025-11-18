@@ -21,15 +21,6 @@ const actionDescriptions = {
 
 export function QuickActions({ value, onChange, disabled, gameState, isMyTurn = false }: QuickActionsProps) {
     const [hoveredAction, setHoveredAction] = useState<QuickActionType>(null);
-
-    // Clear selection when game state changes (new betting round)
-    useEffect(() => {
-        if (value && gameState) {
-            // When betting round changes, clear the selection
-            onChange(null);
-        }
-    }, [gameState]); // Only depend on gameState to detect round changes
-
     // Show during betting or dealing phases
     const dealingStates = ['DEAL_HOLE_CARDS', 'DEAL_FLOP', 'DEAL_TURN', 'DEAL_RIVER'];
     const shouldShow = gameState === 'BETTING' || dealingStates.includes(gameState ?? '');
@@ -42,10 +33,10 @@ export function QuickActions({ value, onChange, disabled, gameState, isMyTurn = 
     const displayedAction = hoveredAction || value;
 
     return (
-        <div className="h-full rounded-xl border border-zinc-500/50 bg-zinc-900/50 backdrop-blur shadow-2xl p-4 w-full flex flex-col justify-between">
+        <div className="h-full rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md shadow-[0_8px_32px_rgba(0,0,0,0.4)] p-5 w-full flex flex-col justify-between gap-5">
             {/* Header */}
             <div>
-                <h3 className="text-sm font-bold text-white">Auto-Play Actions</h3>
+                <h3 className="text-sm font-semibold text-white/90">Auto-Play Actions</h3>
             </div>
 
             {/* Toggle Group */}
@@ -56,7 +47,7 @@ export function QuickActions({ value, onChange, disabled, gameState, isMyTurn = 
                     // Allow deselecting by clicking the same button again
                     onChange(newValue === value ? null : (newValue as QuickActionType));
                 }}
-                className="grid grid-cols-3 gap-2"
+                className="grid grid-cols-3 gap-2.5"
                 disabled={disabled}
             >
                 <ToggleGroupItem
@@ -65,16 +56,16 @@ export function QuickActions({ value, onChange, disabled, gameState, isMyTurn = 
                     onMouseEnter={() => setHoveredAction('fold')}
                     onMouseLeave={() => setHoveredAction(null)}
                     className={cn(
-                        "px-3 py-2 h-auto rounded-lg border flex items-center justify-center gap-1.5",
-                        "data-[state=on]:bg-red-500/20 data-[state=on]:text-red-400 data-[state=on]:border-red-500/50 data-[state=on]:ring-2 data-[state=on]:ring-red-500/30",
-                        "hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/30",
-                        "border-zinc-700/50 bg-zinc-800/50 text-zinc-300",
-                        "transition-all duration-200",
+                        "px-3 py-2.5 h-auto rounded-xl border flex items-center justify-center gap-1.5",
+                        "data-[state=on]:bg-[#B5332F]/20 data-[state=on]:text-white data-[state=on]:border-[#B5332F]/40 data-[state=on]:ring-2 data-[state=on]:ring-[#B5332F]/20",
+                        "hover:bg-[#B5332F]/10 hover:text-white/90 hover:border-[#B5332F]/30",
+                        "border-white/10 bg-white/5 text-white/70",
+                        "transition-all duration-200 active:scale-[1.03]",
                         disabled && "opacity-50 cursor-not-allowed"
                     )}
                 >
                     <span className="text-sm">🚫</span>
-                    <span className="font-semibold text-xs">Fold</span>
+                    <span className="font-medium text-xs">Fold</span>
                 </ToggleGroupItem>
 
                 <ToggleGroupItem
@@ -83,16 +74,16 @@ export function QuickActions({ value, onChange, disabled, gameState, isMyTurn = 
                     onMouseEnter={() => setHoveredAction('check')}
                     onMouseLeave={() => setHoveredAction(null)}
                     className={cn(
-                        "px-3 py-2 h-auto rounded-lg border flex items-center justify-center gap-1.5",
-                        "data-[state=on]:bg-blue-500/20 data-[state=on]:text-blue-400 data-[state=on]:border-blue-500/50 data-[state=on]:ring-2 data-[state=on]:ring-blue-500/30",
-                        "hover:bg-blue-500/10 hover:text-blue-400 hover:border-blue-500/30",
-                        "border-zinc-700/50 bg-zinc-800/50 text-zinc-300",
-                        "transition-all duration-200",
+                        "px-3 py-2.5 h-auto rounded-xl border flex items-center justify-center gap-1.5",
+                        "data-[state=on]:bg-[#2EA043]/20 data-[state=on]:text-white data-[state=on]:border-[#2EA043]/40 data-[state=on]:ring-2 data-[state=on]:ring-[#2EA043]/20",
+                        "hover:bg-[#2EA043]/10 hover:text-white/90 hover:border-[#2EA043]/30",
+                        "border-white/10 bg-white/5 text-white/70",
+                        "transition-all duration-200 active:scale-[1.03]",
                         disabled && "opacity-50 cursor-not-allowed"
                     )}
                 >
                     <span className="text-sm">✓</span>
-                    <span className="font-semibold text-xs">Check</span>
+                    <span className="font-medium text-xs">Check</span>
                 </ToggleGroupItem>
 
                 <ToggleGroupItem
@@ -101,16 +92,16 @@ export function QuickActions({ value, onChange, disabled, gameState, isMyTurn = 
                     onMouseEnter={() => setHoveredAction('check-fold')}
                     onMouseLeave={() => setHoveredAction(null)}
                     className={cn(
-                        "px-3 py-2 h-auto rounded-lg border flex items-center justify-center gap-1.5",
-                        "data-[state=on]:bg-yellow-500/20 data-[state=on]:text-yellow-400 data-[state=on]:border-yellow-500/50 data-[state=on]:ring-2 data-[state=on]:ring-yellow-500/30",
-                        "hover:bg-yellow-500/10 hover:text-yellow-400 hover:border-yellow-500/30",
-                        "border-zinc-700/50 bg-zinc-800/50 text-zinc-300",
-                        "transition-all duration-200",
+                        "px-3 py-2.5 h-auto rounded-xl border flex items-center justify-center gap-1.5",
+                        "data-[state=on]:bg-[#F3C36A]/20 data-[state=on]:text-white data-[state=on]:border-[#F3C36A]/40 data-[state=on]:ring-2 data-[state=on]:ring-[#F3C36A]/20",
+                        "hover:bg-[#F3C36A]/10 hover:text-white/90 hover:border-[#F3C36A]/30",
+                        "border-white/10 bg-white/5 text-white/70",
+                        "transition-all duration-200 active:scale-[1.03]",
                         disabled && "opacity-50 cursor-not-allowed"
                     )}
                 >
                     <span className="text-sm">⚡</span>
-                    <span className="font-semibold text-xs whitespace-nowrap">C/F</span>
+                    <span className="font-medium text-xs whitespace-nowrap">C/F</span>
                 </ToggleGroupItem>
             </ToggleGroup>
 
@@ -127,10 +118,10 @@ export function QuickActions({ value, onChange, disabled, gameState, isMyTurn = 
                             className="w-full"
                         >
                             <p className={cn(
-                                "text-xs leading-relaxed",
-                                displayedAction === 'fold' && "text-red-300",
-                                displayedAction === 'check' && "text-blue-300",
-                                displayedAction === 'check-fold' && "text-yellow-300"
+                                "text-xs leading-relaxed font-medium",
+                                displayedAction === 'fold' && "text-[#B5332F]/90",
+                                displayedAction === 'check' && "text-[#2EA043]/90",
+                                displayedAction === 'check-fold' && "text-[#F3C36A]/90"
                             )}>
                                 {actionDescriptions[displayedAction]}
                             </p>
@@ -144,7 +135,7 @@ export function QuickActions({ value, onChange, disabled, gameState, isMyTurn = 
                             transition={{ duration: 0.15 }}
                             className="w-full"
                         >
-                            <p className="text-xs text-zinc-400">
+                            <p className="text-xs text-white/50 font-medium">
                                 No action selected. You'll need to act manually.
                             </p>
                         </motion.div>
