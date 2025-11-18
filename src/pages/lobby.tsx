@@ -46,6 +46,42 @@ export default function LobbyPage() {
         }
     }, [existingSeat, router]);
 
+    const createTable = <div className="rounded-lg border border-white/10 bg-zinc-900/50 p-4">
+        <h3 className="mb-3 text-lg font-medium">Create a Table</h3>
+        <div className="space-y-3">
+            <label className="block text-sm text-zinc-300">
+                Name
+                <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="mt-1 w-full rounded-md border border-white/10 bg-black/50 px-3 py-2 outline-none ring-0" />
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+                <label className="block text-sm text-zinc-300">
+                    Small blind
+                    <input type="number" value={form.smallBlind}
+                        onChange={(e) => setForm({ ...form, smallBlind: Number(e.target.value) })}
+                        className="mt-1 w-full rounded-md border border-white/10 bg-black/50 px-3 py-2 outline-none ring-0" />
+                </label>
+                <label className="block text-sm text-zinc-300">
+                    Big blind
+                    <input type="number" value={form.bigBlind}
+                        onChange={(e) => setForm({ ...form, bigBlind: Number(e.target.value) })}
+                        className="mt-1 w-full rounded-md border border-white/10 bg-black/50 px-3 py-2 outline-none ring-0" />
+                </label>
+            </div>
+            <label className="mt-3 block text-sm text-zinc-300">
+                Max seats
+                <input type="number" min="2" max={MAX_SEATS_PER_TABLE} value={form.maxSeats}
+                    onChange={(e) => setForm({ ...form, maxSeats: Number(e.target.value) })}
+                    className="mt-1 w-full rounded-md border border-white/10 bg-black/50 px-3 py-2 outline-none ring-0" />
+            </label>
+            <button
+                onClick={() => createMutation.mutate({ name: form.name, smallBlind: form.smallBlind, bigBlind: form.bigBlind, maxSeats: form.maxSeats })}
+                className="w-full rounded-md bg-white px-4 py-2 font-medium text-black hover:bg-zinc-200"
+            >
+                Create Table
+            </button>
+        </div>
+    </div>;
+
     return (
         <>
             <Head>
@@ -106,41 +142,7 @@ export default function LobbyPage() {
 
                     <aside className="space-y-6">
                         {isDealer ? (
-                            <div className="rounded-lg border border-white/10 bg-zinc-900/50 p-4">
-                                <h3 className="mb-3 text-lg font-medium">Create a Table</h3>
-                                <div className="space-y-3">
-                                    <label className="block text-sm text-zinc-300">
-                                        Name
-                                        <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="mt-1 w-full rounded-md border border-white/10 bg-black/50 px-3 py-2 outline-none ring-0" />
-                                    </label>
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <label className="block text-sm text-zinc-300">
-                                            Small blind
-                                            <input type="number" value={form.smallBlind}
-                                                onChange={(e) => setForm({ ...form, smallBlind: Number(e.target.value) })}
-                                                className="mt-1 w-full rounded-md border border-white/10 bg-black/50 px-3 py-2 outline-none ring-0" />
-                                        </label>
-                                        <label className="block text-sm text-zinc-300">
-                                            Big blind
-                                            <input type="number" value={form.bigBlind}
-                                                onChange={(e) => setForm({ ...form, bigBlind: Number(e.target.value) })}
-                                                className="mt-1 w-full rounded-md border border-white/10 bg-black/50 px-3 py-2 outline-none ring-0" />
-                                        </label>
-                                    </div>
-                                    <label className="mt-3 block text-sm text-zinc-300">
-                                        Max seats
-                                        <input type="number" min="2" max={MAX_SEATS_PER_TABLE} value={form.maxSeats}
-                                            onChange={(e) => setForm({ ...form, maxSeats: Number(e.target.value) })}
-                                            className="mt-1 w-full rounded-md border border-white/10 bg-black/50 px-3 py-2 outline-none ring-0" />
-                                    </label>
-                                    <button
-                                        onClick={() => createMutation.mutate({ name: form.name, smallBlind: form.smallBlind, bigBlind: form.bigBlind, maxSeats: form.maxSeats })}
-                                        className="w-full rounded-md bg-white px-4 py-2 font-medium text-black hover:bg-zinc-200"
-                                    >
-                                        Create Table
-                                    </button>
-                                </div>
-                            </div>
+                            <></>
                         ) : (
                             <div className="rounded-lg border border-white/10 bg-zinc-900/50 p-4">
                                 <h3 className="mb-3 text-lg font-medium">Set Buy-In</h3>
@@ -154,10 +156,8 @@ export default function LobbyPage() {
                             </div>
                         )}
                     </aside>
-                </div>
-            </main>
+                </div >
+            </main >
         </>
     );
 }
-
-
