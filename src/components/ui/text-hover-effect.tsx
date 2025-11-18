@@ -58,7 +58,7 @@ export const TextHoverEffect = ({
             className="select-none"
         >
             <defs>
-                {/* Animated gradient with more vibrant colors */}
+                {/* Animated gradient with vibrant colors */}
                 <linearGradient
                     id={textGradientId}
                     gradientUnits="userSpaceOnUse"
@@ -82,9 +82,9 @@ export const TextHoverEffect = ({
                     )}
                 </linearGradient>
 
-                {/* Glow filter for extra flashiness */}
+                {/* Glow filter - subtle */}
                 <filter id={`glow-${uniqueId}`} x="-50%" y="-50%" width="200%" height="200%">
-                    <feGaussianBlur stdDeviation="3" result="coloredBlur" />
+                    <feGaussianBlur stdDeviation="2" result="coloredBlur" />
                     <feMerge>
                         <feMergeNode in="coloredBlur" />
                         <feMergeNode in="SourceGraphic" />
@@ -122,36 +122,15 @@ export const TextHoverEffect = ({
                 y="50%"
                 textAnchor="middle"
                 dominantBaseline="middle"
-                strokeWidth="0.4"
-                className="fill-transparent stroke-zinc-500 font-[helvetica] text-7xl font-bold"
+                strokeWidth="0.3"
+                className="fill-transparent stroke-zinc-400 font-[helvetica] text-7xl font-bold"
                 animate={{
-                    opacity: hovered ? [0.6, 0.8, 0.6] : 1,
-                    strokeWidth: hovered ? [0.4, 0.5, 0.4] : 0.4,
+                    opacity: hovered ? [0.4, 0.6, 0.4] : 0.5,
+                    strokeWidth: hovered ? [0.3, 0.4, 0.3] : 0.3,
                 }}
                 transition={{
                     duration: 1.5,
                     repeat: hovered ? Infinity : 0,
-                    ease: "easeInOut",
-                }}
-            >
-                {text}
-            </motion.text>
-
-            {/* Animated stroke drawing effect */}
-            <motion.text
-                x="50%"
-                y="50%"
-                textAnchor="middle"
-                dominantBaseline="middle"
-                strokeWidth="0.5"
-                className="fill-transparent stroke-neutral-200 font-[helvetica] text-7xl font-bold dark:stroke-neutral-800"
-                initial={{ strokeDashoffset: 1000, strokeDasharray: 1000 }}
-                animate={{
-                    strokeDashoffset: 0,
-                    strokeDasharray: 1000,
-                }}
-                transition={{
-                    duration: 3,
                     ease: "easeInOut",
                 }}
             >
@@ -165,12 +144,12 @@ export const TextHoverEffect = ({
                 textAnchor="middle"
                 dominantBaseline="middle"
                 stroke={`url(#${textGradientId})`}
-                strokeWidth={hovered ? "0.6" : "0.4"}
+                strokeWidth={hovered ? "0.5" : "0.35"}
                 mask={`url(#${textMaskId})`}
                 filter={`url(#glow-${uniqueId})`}
                 className="fill-transparent font-[helvetica] text-7xl font-bold"
                 animate={{
-                    strokeWidth: hovered ? [0.5, 0.7, 0.5] : 0.4,
+                    strokeWidth: hovered ? [0.4, 0.6, 0.4] : 0.35,
                 }}
                 transition={{
                     duration: 1,
