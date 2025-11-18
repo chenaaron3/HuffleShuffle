@@ -12,15 +12,21 @@ import { QuickActions } from '~/components/ui/quick-actions';
 import { SeatSection } from '~/components/ui/seat-section';
 import { useBackgroundBlur } from '~/hooks/use-background-blur';
 import { useDealerTimer } from '~/hooks/use-dealer-timer';
+import { useQuickActions } from '~/hooks/use-quick-actions';
 import { useTableEvents } from '~/hooks/use-table-events';
+import { useTableQuery } from '~/hooks/use-table-query';
+import {
+    useActivePlayerName, useBettingActorSeatId, useBlindSeatNumbers, useCommunityCards,
+    useCurrentSeat, useCurrentUserSeatId, useDealSeatId, useEffectiveBlinds, useGameState,
+    useHighlightedSeatId, useMaxBet, useOriginalSeats, usePaddedSeats, useTableSnapshot,
+    useTotalPot, useWinningCards
+} from '~/hooks/use-table-selectors';
 import { api } from '~/utils/api';
 import { generateRsaKeyPairForTable, rsaDecryptBase64 } from '~/utils/crypto';
 import { disconnectPusherClient, getPusherClient } from '~/utils/pusher-client';
 import { SIGNALS } from '~/utils/signal-constants';
 
 import { LiveKitRoom, RoomAudioRenderer, StartAudio } from '@livekit/components-react';
-
-import type { SeatWithPlayer } from '~/server/api/routers/table';
 
 export default function TableView() {
     const router = useRouter();
@@ -30,21 +36,15 @@ export default function TableView() {
     const { enabled: backgroundBlurEnabled } = useBackgroundBlur();
     const isDealerRole = session?.user?.role === 'dealer';
 
-    const tableQuery = api.table.get.useQuery({ tableId: id ?? '' }, { enabled: !!id });
-    const [snapshot, setSnapshot] = React.useState(tableQuery.data);
-
-    // Update snapshot when tableQuery data changes
-    React.useEffect(() => {
-        if (tableQuery.data) {
-            setSnapshot(tableQuery.data);
-        }
-    }, [tableQuery.data]);
+    // Use the hook that manages query and updates store
+    const tableQuery = useTableQuery(id);
+    const updateSnapshot = tableQuery.updateSnapshot;
 
     const action = api.table.action.useMutation({
         onSuccess: (data) => {
-            // Update snapshot directly with returned gameplay state
+            // Update store with returned gameplay state
             if (data) {
-                setSnapshot(data);
+                updateSnapshot(data);
             }
         },
         onError: (error) => {
@@ -57,8 +57,8 @@ export default function TableView() {
     const changeSeat = api.table.changeSeat.useMutation({
         onSuccess: (data) => {
             if (data) {
-                // Keep local state and cache in sync
-                setSnapshot(data);
+                // Update store and cache
+                updateSnapshot(data);
                 utils.table.get.setData({ tableId: id ?? '' }, data);
             }
         },
@@ -86,33 +86,38 @@ export default function TableView() {
 
     const [showSetup, setShowSetup] = React.useState<boolean>(false);
     const [movingSeat, setMovingSeat] = React.useState<number | null>(null);
-    const [quickAction, setQuickAction] = React.useState<'fold' | 'check' | 'check-fold' | null>(null);
 
-    // Create padded seats array on client side - array index matches seat number
-    const paddedSeats = React.useMemo(() => {
-        if (!snapshot?.table?.maxSeats || !snapshot?.seats) return [];
-
-        const maxSeats = snapshot.table.maxSeats;
-        return Array.from({ length: maxSeats }, (_, index) => {
-            const seat = snapshot.seats.find(s => s.seatNumber === index);
-            return seat || null;
-        });
-    }, [snapshot?.table?.maxSeats, snapshot?.seats]);
-
-    const seats = paddedSeats; // For rendering (includes nulls for empty seats)
-    const originalSeats = snapshot?.seats ?? []; // For calculations (only actual seats)
-
-    const state: string | undefined = snapshot?.game?.state as any;
-    const dealSeatId = state === 'DEAL_HOLE_CARDS' ? (snapshot?.game?.assignedSeatId ?? null) : null;
-    const bettingActorSeatId = state === 'BETTING' ? (snapshot?.game?.assignedSeatId ?? null) : null;
-    const currentUserSeatId = originalSeats.find((s: SeatWithPlayer) => s.playerId === session?.user?.id)?.id ?? null;
-    const highlightedSeatId = dealSeatId ?? bettingActorSeatId;
-
-    const currentSeat = originalSeats.find((s: SeatWithPlayer) => s.playerId === session?.user?.id) as SeatWithPlayer | undefined;
+    // Use selector hooks for computed values
+    const snapshot = useTableSnapshot();
+    const seats = usePaddedSeats(); // For rendering (includes nulls for empty seats)
+    const originalSeats = useOriginalSeats(); // For calculations (only actual seats)
+    const state = useGameState();
+    const dealSeatId = useDealSeatId();
+    const bettingActorSeatId = useBettingActorSeatId();
+    const highlightedSeatId = useHighlightedSeatId();
+    const currentUserSeatId = useCurrentUserSeatId(session?.user?.id);
+    const currentSeat = useCurrentSeat(session?.user?.id);
     const [handRoomName, setHandRoomName] = React.useState<string | null>(null);
 
     // --- Event feed managed by hook ---
     const { events, refreshEvents: refreshEventFeed } = useTableEvents({ tableId: id });
+
+    // Use selector hooks for computed values
+    const allWinningCards = useWinningCards();
+    const totalPot = useTotalPot();
+    const { effectiveSmallBlind, effectiveBigBlind } = useEffectiveBlinds();
+    const activePlayerName = useActivePlayerName();
+    const maxBet = useMaxBet();
+    const { smallBlindIdx, bigBlindIdx, dealerButtonIdx } = useBlindSeatNumbers();
+
+    // --- Quick actions hook ---
+    const { quickAction, setQuickAction } = useQuickActions({
+        tableId: id,
+        currentSeat,
+        gameState: state,
+        bettingActorSeatId,
+        maxBet,
+    });
 
     // --- Dealer timer hook ---
     const isDealerAtTable = isDealerRole && snapshot?.table?.dealerId === session?.user?.id;
@@ -123,43 +128,6 @@ export default function TableView() {
         turnStartTime: snapshot?.game?.turnStartTime ?? null,
         isDealer: !!isDealerAtTable,
     });
-
-    // Memoize winning cards calculation to prevent unnecessary re-renders
-    const allWinningCards = React.useMemo(() => {
-        const winningCards = new Set<string>();
-        if (state === 'SHOWDOWN') {
-            originalSeats.forEach((seat: SeatWithPlayer) => {
-                if (Array.isArray(seat.winningCards)) {
-                    seat.winningCards.forEach((card: string) => {
-                        winningCards.add(card);
-                    });
-                }
-            });
-        }
-        return Array.from(winningCards);
-    }, [state, originalSeats]);
-
-    // Memoize pot total calculation to prevent unnecessary re-renders
-    const totalPot = React.useMemo(() => {
-        return (snapshot?.game?.potTotal ?? 0);
-    }, [snapshot?.game?.potTotal, originalSeats]);
-
-    const blindState = snapshot?.blinds;
-    const effectiveSmallBlind = blindState?.effectiveSmallBlind ?? snapshot?.table?.smallBlind ?? 10;
-    const effectiveBigBlind = blindState?.effectiveBigBlind ?? snapshot?.table?.bigBlind ?? 20;
-
-    // Memoize active player name calculation to prevent unnecessary re-renders
-    const activePlayerName = React.useMemo(() => {
-        if (state === 'BETTING') {
-            return originalSeats.find((s: SeatWithPlayer) => s.id === bettingActorSeatId)?.player?.name ?? undefined;
-        }
-        return undefined;
-    }, [state, originalSeats, bettingActorSeatId]);
-
-    // Memoize maximum bet calculation to prevent unnecessary re-renders
-    const maxBet = React.useMemo(() => {
-        return Math.max(...originalSeats.filter(s => s.seatStatus !== 'folded').map(s => s.currentBet), 0);
-    }, [originalSeats]);
     React.useEffect(() => {
         (async () => {
             if (!id || !currentSeat?.encryptedUserNonce) return;
@@ -182,41 +150,7 @@ export default function TableView() {
             }, 100);
             return () => clearTimeout(timer);
         }
-    }, [state]); // Removed tableQuery dependency
-
-    // Execute quick action when it's the player's turn
-    React.useEffect(() => {
-        if (!quickAction || !currentSeat || state !== 'BETTING') return;
-
-        const isMyTurn = bettingActorSeatId === currentSeat.id;
-        if (!isMyTurn) return;
-
-        const myCurrentBet = currentSeat.currentBet ?? 0;
-        const canCheck = myCurrentBet === maxBet;
-
-        // Execute the quick action
-        const executeQuickAction = () => {
-            if (quickAction === 'fold') {
-                action.mutate({ tableId: id!, action: 'FOLD', params: {} });
-                setQuickAction(null);
-            } else if (quickAction === 'check' && canCheck) {
-                action.mutate({ tableId: id!, action: 'CHECK', params: {} });
-                setQuickAction(null);
-            } else if (quickAction === 'check-fold') {
-                if (canCheck) {
-                    action.mutate({ tableId: id!, action: 'CHECK', params: {} });
-                } else {
-                    action.mutate({ tableId: id!, action: 'FOLD', params: {} });
-                }
-                setQuickAction(null);
-            }
-            // For 'check' when can't check, do nothing (wait for manual action)
-        };
-
-        // Small delay to ensure turn has fully started
-        const timer = setTimeout(executeQuickAction, 100);
-        return () => clearTimeout(timer);
-    }, [quickAction, currentSeat, state, bettingActorSeatId, maxBet, id, action]);
+    }, [state]);
 
     // Pusher subscription for real-time table updates
     React.useEffect(() => {
@@ -246,39 +180,14 @@ export default function TableView() {
         };
     }, []);
 
-    const dealerSeatId = snapshot?.game?.dealerButtonSeatId ?? null;
-    const dealerSeat = dealerSeatId ? seats.find((s: SeatWithPlayer | null) => s?.id === dealerSeatId) : null;
-    const dealerSeatNumber = dealerSeat?.seatNumber ?? -1;
-
-    // Find the next occupied seats for blinds (not just next seat numbers)
-    // Skip eliminated players when determining blind positions
-    const findNextOccupiedSeat = (startSeatNumber: number): number => {
-        if (startSeatNumber < 0) return -1;
-
-        const totalSeats = snapshot?.table?.maxSeats ?? 8;
-        for (let i = 1; i < totalSeats; i++) {
-            const nextSeatNumber = (startSeatNumber + i) % totalSeats;
-            const seat = seats[nextSeatNumber] || null;
-            if (seat !== null && seat.seatStatus !== 'eliminated') {
-                return nextSeatNumber;
-            }
-        }
-        return -1; // No occupied seats found
-    };
-
-    const smallBlindSeatNumber = findNextOccupiedSeat(dealerSeatNumber);
-    const bigBlindSeatNumber = smallBlindSeatNumber >= 0 ? findNextOccupiedSeat(smallBlindSeatNumber) : -1;
-
-    // Array indices now match seat numbers since array is padded
-    const smallBlindIdx = smallBlindSeatNumber;
-    const bigBlindIdx = bigBlindSeatNumber;
+    const communityCards = useCommunityCards();
 
     function getDealtSet() {
         const dealt = new Set<string>();
-        if (snapshot?.game?.communityCards) {
-            snapshot.game.communityCards.forEach((c) => dealt.add(c));
+        if (communityCards.length > 0) {
+            communityCards.forEach((c) => dealt.add(c));
         }
-        originalSeats.forEach((s: SeatWithPlayer) => {
+        originalSeats.forEach((s) => {
             (s.cards ?? []).forEach((c: string) => dealt.add(c));
         });
         return dealt;
@@ -336,12 +245,12 @@ export default function TableView() {
                         <div className="flex h-full gap-4 px-4 py-4">
                             {/* Left side seats (4, 3, 2, 1) */}
                             <SeatSection
-                                key={`left-${snapshot?.game?.id}`}
+                                key={`left-${tableIdStr}`}
                                 seats={seats.slice(0, 4)}
                                 highlightedSeatId={highlightedSeatId}
                                 smallBlindIdx={smallBlindIdx}
                                 bigBlindIdx={bigBlindIdx}
-                                dealerButtonIdx={dealerSeatNumber}
+                                dealerButtonIdx={dealerButtonIdx}
                                 myUserId={session?.user?.id ?? null}
                                 side="left"
                                 gameState={state}
@@ -367,7 +276,7 @@ export default function TableView() {
                             <div className="flex flex-1 flex-col items-center gap-3">
                                 {/* Dealer Camera with Community Cards Overlay */}
                                 <DealerCamera
-                                    communityCards={snapshot?.game?.communityCards ?? []}
+                                    communityCards={communityCards}
                                     potTotal={totalPot}
                                     gameStatus={state}
                                     activePlayerName={activePlayerName}
@@ -434,12 +343,12 @@ export default function TableView() {
 
                             {/* Right side seats (5, 6, 7, 8) */}
                             <SeatSection
-                                key={`right-${snapshot?.game?.id}`}
+                                key={`right-${tableIdStr}`}
                                 seats={seats.slice(4, 8)}
                                 highlightedSeatId={highlightedSeatId}
                                 smallBlindIdx={smallBlindIdx}
                                 bigBlindIdx={bigBlindIdx}
-                                dealerButtonIdx={dealerSeatNumber}
+                                dealerButtonIdx={dealerButtonIdx}
                                 myUserId={session?.user?.id ?? null}
                                 side="right"
                                 gameState={state}

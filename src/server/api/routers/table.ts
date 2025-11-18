@@ -63,7 +63,7 @@ export type SeatWithPlayer = SeatRow & {
 };
 type GameRow = typeof games.$inferSelect;
 type TableRow = typeof pokerTables.$inferSelect;
-type TableSnapshot = {
+export type TableSnapshot = {
   table: TableRow | null;
   seats: SeatWithPlayer[];
   game: GameRow | null;

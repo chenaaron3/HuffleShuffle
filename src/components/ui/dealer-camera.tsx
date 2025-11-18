@@ -150,15 +150,17 @@ export function DealerCamera({
                 </div>
             </div>
 
-            {/* Turn Indicator - Bottom Center */}
-            <TurnIndicator
-                gameStatus={gameStatus}
-                isJoinable={isJoinable}
-                isDealer={isDealer ?? false}
-                isPlayerTurn={isPlayerTurn}
-                isDealerTurn={isDealerTurn}
-                activePlayerName={activePlayerName}
-            />
+            {/* Turn Indicator - Bottom Left */}
+            <div className="absolute bottom-4 left-4">
+                <TurnIndicator
+                    gameStatus={gameStatus}
+                    isJoinable={isJoinable}
+                    isDealer={isDealer ?? false}
+                    isPlayerTurn={isPlayerTurn}
+                    isDealerTurn={isDealerTurn}
+                    activePlayerName={activePlayerName}
+                />
+            </div>
 
             {/* Action Buttons Overlay - Center when it's the user's turn or dealer's turn */}
             <AnimatePresence mode="wait">
@@ -200,10 +202,9 @@ export function DealerCamera({
 
             {/* Horizontal Raise Controls - Bottom Right */}
             <AnimatePresence>
-                {isPlayerTurn && onAction && (
+                {isPlayerTurn && onAction && !isLoading && (
                     <div className="absolute right-4 bottom-3">
                         <VerticalRaiseControls
-                            isLoading={isLoading ?? false}
                             potTotal={potTotal}
                             playerBalance={playerBalance ?? 1000}
                             currentBet={currentBet ?? 0}

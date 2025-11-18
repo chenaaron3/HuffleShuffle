@@ -8,7 +8,6 @@ import { Slider } from '~/components/ui/slider';
 import { Tooltip, TooltipContent, TooltipTrigger } from '~/components/ui/tooltip';
 
 interface VerticalRaiseControlsProps {
-    isLoading?: boolean;
     potTotal?: number;
     playerBalance?: number;
     currentBet?: number;
@@ -23,7 +22,6 @@ interface VerticalRaiseControlsProps {
 }
 
 export function VerticalRaiseControls({
-    isLoading = false,
     potTotal = 0,
     playerBalance = 1000,
     currentBet = 0,
@@ -85,7 +83,7 @@ export function VerticalRaiseControls({
                 <GlowingEffect disabled={false} spread={25} proximity={40} inactiveZone={0.3} borderWidth={2} className="rounded-lg" />
                 <GlareButton
                     onClick={handleAllIn}
-                    disabled={isLoading || isAllInDisabled}
+                    disabled={isAllInDisabled}
                     className="relative inline-flex items-center justify-center gap-1.5 w-full disabled:opacity-50 disabled:cursor-not-allowed font-medium px-2 py-1 rounded-lg border-0 text-white backdrop-blur transition-all duration-200 hover:scale-105 bg-gradient-to-r from-amber-500/90 via-yellow-400/90 to-amber-500/90 hover:from-amber-500 hover:via-yellow-400 hover:to-amber-500 shadow-[0_0_15px_rgba(251,191,36,0.5)] hover:shadow-[0_0_20px_rgba(251,191,36,0.7)]"
                 >
                     <Coins className="w-3.5 h-3.5" />
@@ -133,7 +131,7 @@ export function VerticalRaiseControls({
                     <div className="relative flex-1 rounded-lg">
                         <Button
                             onClick={handleQuarterPot}
-                            disabled={isLoading || isQuarterPotDisabled}
+                            disabled={isQuarterPotDisabled}
                             className="relative inline-flex items-center justify-center text-xs w-full disabled:opacity-50 disabled:cursor-not-allowed font-medium px-2 py-1 rounded-lg border-0 text-white backdrop-blur transition-all duration-200 hover:scale-105 bg-gradient-to-r from-yellow-300/70 to-yellow-500/70 hover:from-yellow-300/80 hover:to-yellow-500/80"
                         >
                             <span className="text-base">¼</span><span>Pot</span>
@@ -144,7 +142,7 @@ export function VerticalRaiseControls({
                     <div className="relative flex-1 rounded-lg">
                         <Button
                             onClick={handleHalfPot}
-                            disabled={isLoading || isHalfPotDisabled}
+                            disabled={isHalfPotDisabled}
                             className="relative inline-flex items-center justify-center text-xs w-full disabled:opacity-50 disabled:cursor-not-allowed font-medium px-2 py-1 rounded-lg border-0 text-white backdrop-blur transition-all duration-200 hover:scale-105 bg-gradient-to-r from-yellow-500/70 to-orange-500/70 hover:from-yellow-500/80 hover:to-orange-500/80"
                         >
                             <span className="text-base">½</span><span>Pot</span>
@@ -155,7 +153,7 @@ export function VerticalRaiseControls({
                     <div className="relative flex-1 rounded-lg">
                         <Button
                             onClick={handleThreeQuarterPot}
-                            disabled={isLoading || isThreeQuarterPotDisabled}
+                            disabled={isThreeQuarterPotDisabled}
                             className="relative inline-flex items-center justify-center text-xs w-full disabled:opacity-50 disabled:cursor-not-allowed font-medium px-2 py-1 rounded-lg border-0 text-white backdrop-blur transition-all duration-200 hover:scale-105 bg-gradient-to-r from-orange-500/70 to-red-500/70 hover:from-orange-500/80 hover:to-red-500/80"
                         >
                             <span className="text-base">¾</span><span>Pot</span>
@@ -166,7 +164,7 @@ export function VerticalRaiseControls({
                     <div className="relative flex-1 rounded-lg">
                         <Button
                             onClick={handleFullPot}
-                            disabled={isLoading || isFullPotDisabled}
+                            disabled={isFullPotDisabled}
                             className="relative inline-flex items-center justify-center text-xs w-full disabled:opacity-50 disabled:cursor-not-allowed font-medium px-2 py-1 rounded-lg border-0 text-white backdrop-blur transition-all duration-200 hover:scale-105 bg-gradient-to-r from-red-500/70 to-red-700/70 hover:from-red-500/80 hover:to-red-700/80"
                         >
                             Pot
@@ -188,10 +186,9 @@ export function VerticalRaiseControls({
                         <div className="relative flex-1 rounded-lg">
                             <Button
                                 onClick={onFold}
-                                disabled={isLoading}
-                                className="relative inline-flex items-center justify-center w-full disabled:opacity-50 disabled:cursor-not-allowed font-medium px-2 py-2 rounded-lg border-0 text-white backdrop-blur transition-all duration-200 hover:scale-105 bg-red-600/70 hover:bg-red-600/80"
+                                className="relative inline-flex items-center justify-center w-full font-medium px-2 py-2 rounded-lg border-0 text-white backdrop-blur transition-all duration-200 hover:scale-105 bg-red-600/70 hover:bg-red-600/80"
                             >
-                                {isLoading ? '...' : 'Fold'}
+                                Fold
                             </Button>
                         </div>
                     )}
@@ -201,10 +198,9 @@ export function VerticalRaiseControls({
                         <div className="relative flex-1 rounded-lg">
                             <Button
                                 onClick={onCheck}
-                                disabled={isLoading}
-                                className="relative inline-flex items-center justify-center w-full disabled:opacity-50 disabled:cursor-not-allowed font-medium px-2 py-2 rounded-lg border-0 text-white backdrop-blur transition-all duration-200 hover:scale-105 bg-green-600/70 hover:bg-green-600/80"
+                                className="relative inline-flex items-center justify-center w-full font-medium px-2 py-2 rounded-lg border-0 text-white backdrop-blur transition-all duration-200 hover:scale-105 bg-green-600/70 hover:bg-green-600/80"
                             >
-                                {isLoading ? '...' : (maxBet ? 'Call' : 'Check')}
+                                {maxBet ? 'Call' : 'Check'}
                             </Button>
                         </div>
                     )}
@@ -214,14 +210,9 @@ export function VerticalRaiseControls({
                         <div className="relative flex-1 rounded-lg">
                             <Button
                                 onClick={onRaise}
-                                disabled={isLoading}
-                                className="relative gap-1 inline-flex items-center justify-center w-full disabled:opacity-50 disabled:cursor-not-allowed font-medium px-2 py-2 rounded-lg border-0 text-white backdrop-blur transition-all duration-200 hover:scale-105 bg-orange-500/70 hover:bg-orange-500/80"
+                                className="relative gap-1 inline-flex items-center justify-center w-full font-medium px-2 py-2 rounded-lg border-0 text-white backdrop-blur transition-all duration-200 hover:scale-105 bg-orange-500/70 hover:bg-orange-500/80"
                             >
-                                {isLoading ? '...' : (
-                                    <>
-                                        Raise <RollingNumber value={raiseAmount} prefix="$" className="font-semibold" />
-                                    </>
-                                )}
+                                Raise <RollingNumber value={raiseAmount} prefix="$" className="font-semibold" />
                             </Button>
                         </div>
                     )}
