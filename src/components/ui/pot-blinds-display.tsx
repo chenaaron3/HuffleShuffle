@@ -32,15 +32,22 @@ export function PotAndBlindsDisplay({ potTotal, blinds, className }: PotAndBlind
             setTick(0);
             return;
         }
+        // Reset tick if we get a fresh update from server to avoid double counting
+        setTick(0);
+
         const interval = setInterval(() => {
             setTick((prev) => prev + 1);
         }, 1000);
         return () => clearInterval(interval);
-    }, [isTimerRunning]);
+    }, [isTimerRunning, elapsedSeconds]);
 
     // Calculate timer values
     let secondsUntilNextIncrease: number | null = null;
     let progressPercent = 0;
+
+    // Default blinds to what the server says
+    let displaySmallBlind = blinds?.effectiveSmallBlind;
+    let displayBigBlind = blinds?.effectiveBigBlind;
 
     if (blinds && stepSeconds > 0) {
         const liveElapsedSeconds = isTimerRunning ? elapsedSeconds + tick : elapsedSeconds;
@@ -49,6 +56,22 @@ export function PotAndBlindsDisplay({ potTotal, blinds, className }: PotAndBlind
 
         // Calculate progress (0 to 100)
         progressPercent = ((stepSeconds - secondsUntilNextIncrease) / stepSeconds) * 100;
+
+        // Calculate local blind increase
+        // If we have passed the step threshold locally before server update
+        const steps = Math.floor(liveElapsedSeconds / stepSeconds);
+        if (steps > 0 && blinds.multiplier > 0) {
+            // Derive base blinds (current / current_multiplier)
+            // Note: The 'blinds' prop has the state from the last server snapshot.
+            // So blinds.effectiveSmallBlind is base * blinds.multiplier
+            const baseSmall = blinds.effectiveSmallBlind / blinds.multiplier;
+            const baseBig = blinds.effectiveBigBlind / blinds.multiplier;
+
+            const currentMultiplier = Math.max(1, Math.pow(2, steps));
+
+            displaySmallBlind = Math.round(baseSmall * currentMultiplier);
+            displayBigBlind = Math.round(baseBig * currentMultiplier);
+        }
     }
 
     if (!isTimerRunning) {
@@ -100,7 +123,7 @@ export function PotAndBlindsDisplay({ potTotal, blinds, className }: PotAndBlind
 
                         <div className="relative z-10 flex items-center gap-1.5 text-sm font-bold text-zinc-200">
                             <span className="text-emerald-500/80 text-[10px] uppercase font-bold tracking-wider">Blinds</span>
-                            <span>{blinds.effectiveSmallBlind}/{blinds.effectiveBigBlind}</span>
+                            <span>{displaySmallBlind}/{displayBigBlind}</span>
                         </div>
 
                         {/* Expanded Timer View on Hover */}
