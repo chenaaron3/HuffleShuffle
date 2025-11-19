@@ -288,6 +288,7 @@ export default function TableView() {
                                     activePlayerName={activePlayerName}
                                     winningCards={allWinningCards}
                                     dealerUserId={snapshot?.table?.dealerId ?? undefined}
+                                    blinds={snapshot?.blinds ?? undefined}
                                     isDealer={isDealerRole}
                                     isJoinable={snapshot?.isJoinable ?? false}
                                     currentUserSeatId={currentUserSeatId}

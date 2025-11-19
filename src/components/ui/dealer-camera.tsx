@@ -9,9 +9,12 @@ import { cn } from '~/lib/utils';
 import { ParticipantTile, useTracks, VideoTrack } from '@livekit/components-react';
 
 import { ActionButtons } from './action-buttons';
+import { PotAndBlindsDisplay } from './pot-blinds-display';
 import { Spinner } from './spinner';
 import { TurnIndicator } from './turn-indicator';
 import { VerticalRaiseControls } from './vertical-raise-controls';
+
+import type { BlindState } from '~/server/api/blind-timer';
 
 interface DealerCameraProps {
     communityCards: string[];
@@ -20,6 +23,7 @@ interface DealerCameraProps {
     activePlayerName?: string;
     winningCards?: string[]; // Cards that make up the winning hand
     dealerUserId?: string;
+    blinds?: BlindState;
     // Action button props
     isDealer?: boolean;
     isJoinable?: boolean;
@@ -45,6 +49,7 @@ export function DealerCamera({
     activePlayerName,
     winningCards,
     dealerUserId,
+    blinds,
     isDealer,
     isJoinable,
     currentUserSeatId,
@@ -148,22 +153,12 @@ export function DealerCamera({
                 </div>
             </div>
 
-            {/* Pot Total Overlay - Center Top */}
+            {/* Pot Total & Blinds Overlay - Center Top */}
             <div id="pot-display" className="absolute top-4 right-4 transform z-40">
-                <div
-                    className="backdrop-blur-sm rounded-xl shadow-2xl bg-zinc-900/95 border border-zinc-500/50 px-6 py-3"
-                >
-                    <div className="text-center">
-                        <RollingNumber
-                            value={potTotal}
-                            className="text-xl font-bold text-zinc-100"
-                            prefix="$"
-                        />
-                        <div className="text-xs text-zinc-400 font-medium">
-                            Pot Total
-                        </div>
-                    </div>
-                </div>
+                <PotAndBlindsDisplay
+                    potTotal={potTotal}
+                    blinds={blinds}
+                />
             </div>
 
             {/* Turn Indicator - Bottom Left */}
