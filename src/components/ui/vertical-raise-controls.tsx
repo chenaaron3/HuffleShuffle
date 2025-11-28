@@ -1,10 +1,12 @@
 import { motion } from 'framer-motion';
 import { Coins } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { Button } from '~/components/ui/button';
 import { RollingNumber } from '~/components/ui/chip-animations';
 import { GlowingEffect } from '~/components/ui/glowing-effect';
 import { Slider } from '~/components/ui/slider';
 import { Tooltip, TooltipContent, TooltipTrigger } from '~/components/ui/tooltip';
+import { cn } from '~/lib/utils';
 
 interface VerticalRaiseControlsProps {
     potTotal?: number;
@@ -40,6 +42,71 @@ export function VerticalRaiseControls({
     const halfPot = Math.floor(potTotal / 2);
     const threeQuarterPot = Math.floor((potTotal * 3) / 4);
     const fullPot = potTotal;
+
+    // State for editable input
+    const [inputValue, setInputValue] = useState<string>(raiseAmount.toString());
+    const [isEditing, setIsEditing] = useState(false);
+
+    // Sync input value when raiseAmount changes externally (from slider or buttons)
+    useEffect(() => {
+        if (!isEditing) {
+            setInputValue(raiseAmount.toString());
+        }
+    }, [raiseAmount, isEditing]);
+
+    // Validate and clamp value to valid range
+    const validateAndClamp = (value: number): number => {
+        // Clamp to valid range (minRaise to legalMaxBet)
+        return Math.max(minRaise, Math.min(value, legalMaxBet));
+    };
+
+    // Handle input change
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const rawValue = e.target.value;
+
+        // Allow empty input while typing
+        if (rawValue === '') {
+            setInputValue('');
+            return;
+        }
+
+        // Allow only integers (no decimals)
+        if (!/^\d*$/.test(rawValue)) {
+            return;
+        }
+
+        setInputValue(rawValue);
+    };
+
+    // Handle input blur - finalize the value
+    const handleInputBlur = () => {
+        setIsEditing(false);
+        const numValue = parseInt(inputValue, 10);
+
+        if (isNaN(numValue) || inputValue === '') {
+            // If invalid or empty, reset to current raiseAmount
+            setInputValue(raiseAmount.toString());
+        } else {
+            // Validate and clamp, then update
+            const validated = validateAndClamp(numValue);
+            setInputValue(validated.toString());
+            onRaiseAmountChange(validated);
+        }
+    };
+
+    // Handle input focus
+    const handleInputFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+        setIsEditing(true);
+        // Select all text so it can be replaced immediately
+        e.target.select();
+    };
+
+    // Handle Enter key to submit
+    const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter') {
+            e.currentTarget.blur(); // This will trigger handleInputBlur
+        }
+    };
 
     const handleQuarterPot = () => {
         onRaiseAmountChange(Math.min(quarterPot, legalMaxBet));
@@ -130,9 +197,25 @@ export function VerticalRaiseControls({
                     </TooltipTrigger>
                     <TooltipContent
                         side="bottom"
-                        className="text-white/80 bg-zinc-900/60 border border-zinc-700/50 text-xs py-1 px-2"
+                        className={cn(
+                            "text-white/80 bg-zinc-800/95 border text-xs p-0 shadow-lg transition-all cursor-text [&_svg]:hidden",
+                            isEditing
+                                ? "border-orange-400/80 shadow-orange-500/20"
+                                : "border-orange-500/40 hover:border-orange-400/60"
+                        )}
                     >
-                        <p>${raiseAmount}</p>
+                        <input
+                            type="text"
+                            value={inputValue}
+                            onChange={handleInputChange}
+                            onBlur={handleInputBlur}
+                            onFocus={handleInputFocus}
+                            onKeyDown={handleInputKeyDown}
+                            className="w-14 bg-transparent border-none outline-none text-white text-xs py-1.5 px-3 text-center focus:text-white focus:ring-2 focus:ring-orange-400/50 focus:bg-zinc-700/50 rounded cursor-text transition-all"
+                            placeholder={raiseAmount.toString()}
+                            inputMode="numeric"
+                            pattern="[0-9]*"
+                        />
                     </TooltipContent>
                 </Tooltip>
 

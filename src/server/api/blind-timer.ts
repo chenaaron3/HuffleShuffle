@@ -12,6 +12,7 @@ export type BlindState = {
 };
 
 export const DEFAULT_BLIND_STEP_SECONDS = 600;
+export const MAX_BLIND_MULTIPLIER = 64;
 
 export function sanitizeStepSeconds(value: number | null | undefined): number {
   if (typeof value !== "number" || Number.isNaN(value)) {
@@ -44,7 +45,7 @@ export function computeBlindState(
       : 0;
 
   const steps = stepSeconds > 0 ? Math.floor(elapsedSeconds / stepSeconds) : 0;
-  const multiplier = Math.max(1, 2 ** steps);
+  const multiplier = Math.min(MAX_BLIND_MULTIPLIER, Math.max(1, 2 ** steps));
 
   return {
     multiplier,

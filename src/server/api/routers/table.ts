@@ -1,49 +1,28 @@
-import { and, eq, gt, isNull, or, sql } from "drizzle-orm";
-import { AccessToken } from "livekit-server-sdk";
-import process from "process";
-import ts from "typescript";
-import { z } from "zod";
+import { and, eq, gt, isNull, or, sql } from 'drizzle-orm';
+import { AccessToken } from 'livekit-server-sdk';
+import process from 'process';
+import ts from 'typescript';
+import { z } from 'zod';
+import { createTRPCRouter, protectedProcedure, publicProcedure } from '~/server/api/trpc';
+import { db } from '~/server/db';
 import {
-  createTRPCRouter,
-  protectedProcedure,
-  publicProcedure,
-} from "~/server/api/trpc";
-import { db } from "~/server/db";
-import {
-  games,
-  MAX_SEATS_PER_TABLE,
-  piDevices,
-  pokerTables,
-  seats,
-  users,
-} from "~/server/db/schema";
-import { getRoomServiceClient } from "~/server/livekit";
-import { endHandStream, startHandStream } from "~/server/signal";
-import { rsaEncryptB64 } from "~/utils/crypto";
+    games, MAX_SEATS_PER_TABLE, piDevices, pokerTables, seats, users
+} from '~/server/db/schema';
+import { getRoomServiceClient } from '~/server/livekit';
+import { endHandStream, startHandStream } from '~/server/signal';
+import { rsaEncryptB64 } from '~/utils/crypto';
 
-import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
-import { TrackSource, TrackType } from "@livekit/protocol";
+import { SendMessageCommand, SQSClient } from '@aws-sdk/client-sqs';
+import { TrackSource, TrackType } from '@livekit/protocol';
 
-import { computeBlindState } from "../blind-timer";
+import { computeBlindState } from '../blind-timer';
+import { generateBotPublicKey, getBotIdForSeat, getBotName, isBot } from '../bot-constants';
 import {
-  generateBotPublicKey,
-  getBotIdForSeat,
-  getBotName,
-  isBot,
-} from "../bot-constants";
+    createSeatTransaction, executeBettingAction, removePlayerSeatTransaction, triggerBotActions
+} from '../game-helpers';
 import {
-  createSeatTransaction,
-  executeBettingAction,
-  removePlayerSeatTransaction,
-  triggerBotActions,
-} from "../game-helpers";
-import {
-  createNewGame,
-  dealCard,
-  notifyTableUpdate,
-  parseRankSuitToBarcode,
-  resetGame,
-} from "../game-logic";
+    createNewGame, dealCard, notifyTableUpdate, parseRankSuitToBarcode, resetGame
+} from '../game-logic';
 
 import type { BlindState } from "../blind-timer";
 import type { VideoGrant } from "livekit-server-sdk";
@@ -117,14 +96,33 @@ function redactSnapshotForUser(
   userId: string,
 ): TableSnapshot {
   const isShowdown = snapshot.game?.state === "SHOWDOWN";
+  const singleActive =
+    snapshot.seats.filter(
+      (s) => s.seatStatus === "active" || s.seatStatus === "all-in",
+    ).length === 1;
   const redactedSeats: SeatWithPlayer[] = snapshot.seats.map((s) => {
-    // During showdown, show all cards face up for all players
-    // For other states, only show cards face up for the current user
-    if (isShowdown || s.playerId === userId) {
-      return s; // Show actual cards
-    }
     const hiddenCount = (s.cards ?? []).length;
-    return { ...s, cards: Array(hiddenCount).fill("FD") } as SeatWithPlayer;
+    const hiddenCards = {
+      ...s,
+      cards: Array(hiddenCount).fill("FD"),
+    } as SeatWithPlayer;
+    // Show cards face up for the current user
+    if (s.playerId === userId) {
+      return s;
+    }
+    // Players who fold or are eliminated will never reveal their cards
+    if (s.seatStatus === "folded" || s.seatStatus === "eliminated") {
+      return hiddenCards;
+    }
+    if (isShowdown) {
+      // If there is only one active player (everyone else folded or are eliminated), then do not show
+      if (singleActive) {
+        return hiddenCards;
+      } else {
+        return s;
+      }
+    }
+    return hiddenCards;
   });
   return { ...snapshot, seats: redactedSeats };
 }
