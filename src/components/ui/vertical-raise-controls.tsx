@@ -13,7 +13,6 @@ interface VerticalRaiseControlsProps {
     playerBalance?: number;
     currentBet?: number;
     bigBlind?: number;
-    minRaise: number;
     raiseAmount: number;
     onRaiseAmountChange: (amount: number) => void;
     onFold?: () => void;
@@ -27,38 +26,41 @@ export function VerticalRaiseControls({
     playerBalance = 1000,
     currentBet = 0,
     bigBlind = 20,
-    minRaise,
     raiseAmount,
     onRaiseAmountChange,
     onFold,
     onCheck,
     onRaise,
-    maxBet
+    maxBet = 0
 }: VerticalRaiseControlsProps) {
-    const legalMaxBet = currentBet + playerBalance;
-    const sliderMax = Math.max(minRaise, legalMaxBet);
-    const allIn = legalMaxBet;
-    const quarterPot = Math.floor(potTotal / 4);
-    const halfPot = Math.floor(potTotal / 2);
-    const threeQuarterPot = Math.floor((potTotal * 3) / 4);
-    const fullPot = potTotal;
+    const maxBetAmount = Math.max(0, currentBet + playerBalance);
+    const availableAfterCall = Math.max(0, maxBetAmount - maxBet);
+    // If player can't afford full big blind raise, all-in becomes the minimum
+    const minRaise = Math.min(
+        maxBetAmount, // Can't exceed all-in
+        maxBet + Math.min(bigBlind || 0, availableAfterCall)
+    );
 
-    // State for editable input
-    const [inputValue, setInputValue] = useState<string>(raiseAmount.toString());
+    // Clamp value to valid range
+    const clampAmount = (value: number) => Math.max(minRaise, Math.min(value, maxBetAmount));
+    const validatedAmount = clampAmount(raiseAmount);
+
+    const handleAmountChange = (amount: number) => {
+        onRaiseAmountChange(clampAmount(amount));
+    };
+
+    const quarterPot = Math.floor(Math.max(0, potTotal) / 4);
+    const halfPot = Math.floor(Math.max(0, potTotal) / 2);
+    const threeQuarterPot = Math.floor((Math.max(0, potTotal) * 3) / 4);
+
+    const [inputValue, setInputValue] = useState<string>(validatedAmount.toString());
     const [isEditing, setIsEditing] = useState(false);
 
-    // Sync input value when raiseAmount changes externally (from slider or buttons)
     useEffect(() => {
         if (!isEditing) {
-            setInputValue(raiseAmount.toString());
+            setInputValue(validatedAmount.toString());
         }
-    }, [raiseAmount, isEditing]);
-
-    // Validate and clamp value to valid range
-    const validateAndClamp = (value: number): number => {
-        // Clamp to valid range (minRaise to legalMaxBet)
-        return Math.max(minRaise, Math.min(value, legalMaxBet));
-    };
+    }, [validatedAmount, isEditing]);
 
     // Handle input change
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -84,13 +86,11 @@ export function VerticalRaiseControls({
         const numValue = parseInt(inputValue, 10);
 
         if (isNaN(numValue) || inputValue === '') {
-            // If invalid or empty, reset to current raiseAmount
-            setInputValue(raiseAmount.toString());
+            setInputValue(validatedAmount.toString());
         } else {
-            // Validate and clamp, then update
-            const validated = validateAndClamp(numValue);
+            const validated = clampAmount(numValue);
             setInputValue(validated.toString());
-            onRaiseAmountChange(validated);
+            handleAmountChange(validated);
         }
     };
 
@@ -108,32 +108,17 @@ export function VerticalRaiseControls({
         }
     };
 
-    const handleQuarterPot = () => {
-        onRaiseAmountChange(Math.min(quarterPot, legalMaxBet));
-    };
+    const handleQuarterPot = () => handleAmountChange(quarterPot);
+    const handleHalfPot = () => handleAmountChange(halfPot);
+    const handleThreeQuarterPot = () => handleAmountChange(threeQuarterPot);
+    const handleFullPot = () => handleAmountChange(Math.max(0, potTotal));
+    const handleAllIn = () => handleAmountChange(maxBetAmount);
 
-    const handleHalfPot = () => {
-        onRaiseAmountChange(Math.min(halfPot, legalMaxBet));
-    };
-
-    const handleThreeQuarterPot = () => {
-        onRaiseAmountChange(Math.min(threeQuarterPot, legalMaxBet));
-    };
-
-    const handleFullPot = () => {
-        onRaiseAmountChange(Math.min(fullPot, legalMaxBet));
-    };
-
-    const handleAllIn = () => {
-        onRaiseAmountChange(Math.min(allIn, legalMaxBet));
-    };
-
-    // Check if options are below minimum allowed bet
     const isQuarterPotDisabled = quarterPot < minRaise;
     const isHalfPotDisabled = halfPot < minRaise;
     const isThreeQuarterPotDisabled = threeQuarterPot < minRaise;
-    const isFullPotDisabled = fullPot < minRaise;
-    const isAllInDisabled = allIn < minRaise;
+    const isFullPotDisabled = potTotal < minRaise;
+    const isAllInDisabled = playerBalance <= 0;
 
     return (
         <motion.div
@@ -185,12 +170,13 @@ export function VerticalRaiseControls({
                     <TooltipTrigger asChild>
                         <div className="w-full">
                             <Slider
-                                value={[raiseAmount]}
-                                onValueChange={(value) => onRaiseAmountChange(Math.min(value[0] ?? 0, legalMaxBet))}
-                                max={sliderMax}
+                                value={[validatedAmount]}
+                                onValueChange={(value) => handleAmountChange(value[0] ?? 0)}
+                                max={maxBetAmount}
                                 min={minRaise}
-                                step={bigBlind}
+                                step={bigBlind || 1}
                                 orientation="horizontal"
+                                disabled={maxBetAmount <= minRaise}
                                 className="w-full [&_[data-slot=slider-track]]:bg-zinc-800/70 [&_[data-slot=slider-range]]:bg-orange-500/90 [&_[data-slot=slider-thumb]]:bg-orange-400 [&_[data-slot=slider-thumb]]:border-orange-300 [&_[data-slot=slider-thumb]]:ring-2 [&_[data-slot=slider-thumb]]:ring-orange-300 [&_[data-slot=slider-thumb]]:drop-shadow-[0_0_12px_rgba(249,115,22,0.85)] [&_[data-slot=slider-thumb]]:transition-shadow"
                             />
                         </div>
@@ -212,7 +198,7 @@ export function VerticalRaiseControls({
                             onFocus={handleInputFocus}
                             onKeyDown={handleInputKeyDown}
                             className="w-14 bg-transparent border-none outline-none text-white text-xs py-1.5 px-3 text-center focus:text-white focus:ring-2 focus:ring-orange-400/50 focus:bg-zinc-700/50 rounded cursor-text transition-all"
-                            placeholder={raiseAmount.toString()}
+                            placeholder={validatedAmount.toString()}
                             inputMode="numeric"
                             pattern="[0-9]*"
                         />
@@ -222,7 +208,7 @@ export function VerticalRaiseControls({
                 {/* Min/Max Labels */}
                 <div className="flex justify-between w-full text-xs text-white/60">
                     <span>${minRaise}</span>
-                    <span>${legalMaxBet}</span>
+                    <span>${maxBetAmount}</span>
                 </div>
             </div>
 
@@ -291,7 +277,7 @@ export function VerticalRaiseControls({
                             size="sm"
                             className="flex-1 bg-green-600 hover:bg-green-700 text-white"
                         >
-                            {maxBet ? 'Call' : 'Check'}
+                            {maxBet > 0 ? 'Call' : 'Check'}
                         </Button>
                     )}
                     {onRaise && (
@@ -301,7 +287,7 @@ export function VerticalRaiseControls({
                             size="sm"
                             className="flex-1 bg-orange-500 hover:bg-orange-600 text-white"
                         >
-                            Raise <RollingNumber value={raiseAmount} prefix="$" className="font-semibold" />
+                            Raise <RollingNumber value={validatedAmount} prefix="$" className="font-semibold" />
                         </Button>
                     )}
                 </div>

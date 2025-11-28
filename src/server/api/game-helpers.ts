@@ -1,20 +1,14 @@
-import crypto from "crypto";
-import { and, eq, sql } from "drizzle-orm";
-import { db } from "~/server/db";
-import {
-  games,
-  piDevices,
-  pokerTables,
-  seats,
-  users,
-} from "~/server/db/schema";
-import { rsaEncryptB64 } from "~/utils/crypto";
+import crypto from 'crypto';
+import { and, eq, sql } from 'drizzle-orm';
+import { db } from '~/server/db';
+import { games, piDevices, pokerTables, seats, users } from '~/server/db/schema';
+import { rsaEncryptB64 } from '~/utils/crypto';
 
-import { isBot } from "./bot-constants";
-import { logCall, logCheck, logFold, logRaise } from "./game-event-logger";
-import { notifyTableUpdate } from "./game-logic";
-import { getNextActiveSeatId } from "./game-utils";
-import { evaluateBettingTransition } from "./hand-solver";
+import { isBot } from './bot-constants';
+import { logCall, logCheck, logFold, logRaise } from './game-event-logger';
+import { notifyTableUpdate } from './game-logic';
+import { getNextActiveSeatId } from './game-utils';
+import { evaluateBettingTransition } from './hand-solver';
 
 type Tx = {
   insert: typeof db.insert;
@@ -110,7 +104,7 @@ export async function executeBettingAction(
     params;
 
   // Calculate max bet from all non-folded, non-eliminated players
-  const maxBet = Math.max(
+  const maxPlayerBet = Math.max(
     ...orderedSeats
       .filter((s) => s.seatStatus !== "folded" && s.seatStatus !== "eliminated")
       .map((s) => s.currentBet),
@@ -121,9 +115,9 @@ export async function executeBettingAction(
 
   if (action === "RAISE") {
     const amount = raiseAmount ?? 0;
-    if (amount <= 0 || amount < maxBet) {
+    if (amount <= 0 || amount < maxPlayerBet) {
       throw new Error(
-        `Invalid raise amount, must be at least the max bet of ${maxBet}`,
+        `Invalid raise amount, must be at least the max bet of ${maxPlayerBet}`,
       );
     }
     const total = amount - actorSeat.currentBet;
@@ -153,7 +147,7 @@ export async function executeBettingAction(
       total: amount,
     });
   } else if (action === "CHECK") {
-    const need = maxBet - actorSeat.currentBet;
+    const need = maxPlayerBet - actorSeat.currentBet;
 
     if (need > 0) {
       // Player is calling (matching the bet)
@@ -188,7 +182,7 @@ export async function executeBettingAction(
 
       await logCheck(tx as any, tableId, game.id, {
         seatId: actorSeat.id,
-        total: maxBet,
+        total: maxPlayerBet,
       });
     }
   } else if (action === "FOLD") {

@@ -241,7 +241,6 @@ export function DealerCamera({
                                 playerBalance={playerBalance ?? 1000}
                                 currentBet={currentBet ?? 0}
                                 bigBlind={bigBlind ?? 20}
-                                minRaise={(maxBet ?? 0) + (bigBlind ?? 0)}
                                 raiseAmount={raiseAmount}
                                 onRaiseAmountChange={setRaiseAmount}
                                 onFold={handleFold}
