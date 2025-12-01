@@ -6,7 +6,9 @@ import { BackgroundBlurToggle } from '~/components/ui/background-blur-toggle';
 import { CardSlot } from '~/components/ui/card-slot';
 import { RollingNumber } from '~/components/ui/chip-animations';
 import { TextHoverEffect } from '~/components/ui/text-hover-effect';
+import { useEffectiveBigBlind } from '~/hooks/use-table-selectors';
 import { useTimerBorder } from '~/hooks/use-timer-border';
+import { useInteractionStore } from '~/stores/interaction-store';
 import { api } from '~/utils/api';
 
 import { ParticipantTile, TrackToggle, useTracks, VideoTrack } from '@livekit/components-react';
@@ -155,6 +157,14 @@ function SeatCard({
     const { mutate: mutateAudioMute, isPending: isMuting } = api.table.setParticipantAudioMuted.useMutation();
     const isSelf = !!myUserId && seat?.player?.id === myUserId;
     const showDealerMute = Boolean(dealerCanControlAudio && !isSelf && playerId && hasAudioTrack);
+    const effectiveBigBlind = useEffectiveBigBlind();
+    console.log(effectiveBigBlind);
+    const blindsRemaining = Math.ceil((seat?.buyIn ?? 0) / effectiveBigBlind);
+    const isTotalHovered = useInteractionStore((s) => s.isBlindsHovered);
+    const setTotalHovered = useInteractionStore((s) => s.setBlindsHovered);
+
+    const totalText = `$${(seat?.buyIn ?? 0)} total`;
+    const blindsText = `${blindsRemaining} ${blindsRemaining === 1 ? 'blind' : 'blinds'}`;
 
     const handleDealerToggleMute = React.useCallback(() => {
         if (!playerId || !audioPublication) return;
@@ -370,15 +380,36 @@ function SeatCard({
                                 {seat.lastAction}
                             </div>
                         )}
-                        {/* Total */}
+                        {/* Total / Blinds flip pill */}
                         <div
-                            className="rounded-full text-xs font-medium shadow-lg bg-green-600/30 border border-green-400/50 px-3 py-1 text-green-300"
+                            className="rounded-full text-xs font-medium shadow-lg bg-green-600/30 border border-green-400/50 px-3 py-1 text-green-300 cursor-default overflow-hidden"
+                            onMouseEnter={() => setTotalHovered(true)}
+                            onMouseLeave={() => setTotalHovered(false)}
                         >
-                            <RollingNumber
-                                value={seat.buyIn}
-                                prefix="$"
-                                suffix=" total"
-                            />
+                            <div className="relative overflow-hidden">
+                                {/* This span is relative to give the container its width */}
+                                <motion.span
+                                    className="block whitespace-nowrap"
+                                    animate={{
+                                        y: isTotalHovered ? '-100%' : '0%',
+                                        opacity: isTotalHovered ? 0 : 1,
+                                    }}
+                                    transition={{ duration: 0.18, ease: 'easeOut' }}
+                                >
+                                    {totalText}
+                                </motion.span>
+                                {/* This span is absolute, positioned below */}
+                                <motion.span
+                                    className="absolute top-0 left-0 right-0 whitespace-nowrap"
+                                    animate={{
+                                        y: isTotalHovered ? '0%' : '100%',
+                                        opacity: isTotalHovered ? 1 : 0,
+                                    }}
+                                    transition={{ duration: 0.18, ease: 'easeOut' }}
+                                >
+                                    {blindsText}
+                                </motion.span>
+                            </div>
                         </div>
                     </div>
 

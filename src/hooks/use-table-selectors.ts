@@ -80,6 +80,15 @@ export function useTotalPot() {
   return snapshot?.game?.potTotal ?? 0;
 }
 
+export function useEffectiveBigBlind() {
+  const snapshot = useTableStore((state) => state.snapshot);
+  return (
+    snapshot?.game?.effectiveBigBlind ??
+    snapshot?.blinds?.effectiveBigBlind ??
+    0
+  );
+}
+
 export function useCommunityCards() {
   const snapshot = useTableStore((state) => state.snapshot);
   return snapshot?.game?.communityCards ?? [];
