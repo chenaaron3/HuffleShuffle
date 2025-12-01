@@ -37,6 +37,28 @@ export const getNextActiveSeatId = (
   return orderedSeats[idx]!.id;
 };
 
+// Find the next seat that should receive hole cards.
+// Includes both "active" and "all-in" players (anyone not folded/eliminated).
+// This is needed because players can go all-in posting blinds before cards are dealt.
+export const getNextDealableSeatId = (
+  orderedSeats: Array<SeatRow>,
+  currentSeatId: string,
+) => {
+  const n = orderedSeats.length;
+  const mapIndex: Record<string, number> = {};
+  orderedSeats.forEach((s, i) => {
+    mapIndex[s.id] = i;
+  });
+  let idx = mapIndex[currentSeatId] ?? 0;
+  for (let i = 0; i < n; i++) {
+    idx = pickNextIndex(idx, n);
+    const status = orderedSeats[idx]!.seatStatus;
+    if (status === "active" || status === "all-in")
+      return orderedSeats[idx]!.id;
+  }
+  return orderedSeats[idx]!.id;
+};
+
 // Fetch all seats to be safe and filter by actives later
 export const fetchAllSeatsInOrder = async (
   tx: Tx,

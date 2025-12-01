@@ -9,7 +9,8 @@ import { updateTable } from '~/server/signal';
 
 import { computeBlindState } from './blind-timer';
 import {
-    activeCountOf, fetchAllSeatsInOrder, getNextActiveSeatId, nonEliminatedCountOf
+    activeCountOf, fetchAllSeatsInOrder, getNextActiveSeatId, getNextDealableSeatId,
+    nonEliminatedCountOf
 } from './game-utils';
 import { evaluateBettingTransition } from './hand-solver';
 
@@ -34,12 +35,15 @@ export async function ensureHoleCardsProgression(
   orderedSeats: SeatRow[],
   currentSeatId: string,
 ): Promise<void> {
-  // Check if all active players have two cards
+  // Check if all dealable players (active + all-in) have two cards
+  // Players who went all-in posting blinds still need their hole cards
   const allHaveTwo = orderedSeats
-    .filter((s: SeatRow) => s.seatStatus === "active")
+    .filter(
+      (s: SeatRow) => s.seatStatus === "active" || s.seatStatus === "all-in",
+    )
     .every((s: SeatRow) => s.cards.length >= 2);
   if (!allHaveTwo) {
-    const nextSeatId = getNextActiveSeatId(orderedSeats, currentSeatId);
+    const nextSeatId = getNextDealableSeatId(orderedSeats, currentSeatId);
     await tx
       .update(games)
       .set({ assignedSeatId: nextSeatId })

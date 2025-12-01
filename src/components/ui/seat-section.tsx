@@ -318,7 +318,7 @@ function SeatCard({
                 {/* Big/Small Blind/Dealer Button Overlay */}
                 {button && (
                     <div className="absolute top-2 left-2 rounded-lg bg-white px-2 py-1 text-xs font-semibold text-black shadow-lg border border-gray-400/50">
-                        DB
+                        BU
                     </div>
                 )}
                 {(small && !button) && (
@@ -414,11 +414,10 @@ function SeatCard({
                     </div>
 
                     {/* Cards Section - Bottom Right */}
-                    <div className="flex gap-1">
+                    <div className="flex gap-1 flex-row-reverse">
                         {/* Always show 2 card slots - either placeholders or actual cards */}
                         {Array.from({ length: 2 }, (_, index) => {
                             const card = Array.isArray(seat.cards) ? seat.cards[index] : null;
-
                             return (
                                 <CardSlot
                                     key={`seat-${seat.id}-card-slot-${index}`}
