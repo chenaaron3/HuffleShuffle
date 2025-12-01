@@ -114,10 +114,11 @@ export function VerticalRaiseControls({
     const handleFullPot = () => handleAmountChange(Math.max(0, potTotal));
     const handleAllIn = () => handleAmountChange(maxBetAmount);
 
-    const isQuarterPotDisabled = quarterPot < minRaise;
-    const isHalfPotDisabled = halfPot < minRaise;
-    const isThreeQuarterPotDisabled = threeQuarterPot < minRaise;
-    const isFullPotDisabled = potTotal < minRaise;
+    // Disable buttons if player can't afford the bet or if it's below minimum raise
+    const isQuarterPotDisabled = quarterPot < minRaise || quarterPot > maxBetAmount;
+    const isHalfPotDisabled = halfPot < minRaise || halfPot > maxBetAmount;
+    const isThreeQuarterPotDisabled = threeQuarterPot < minRaise || threeQuarterPot > maxBetAmount;
+    const isFullPotDisabled = potTotal < minRaise || potTotal > maxBetAmount;
     const isAllInDisabled = playerBalance <= 0;
 
     return (

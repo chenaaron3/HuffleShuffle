@@ -1,12 +1,5 @@
-import { relations, sql } from "drizzle-orm";
-import {
-  check,
-  index,
-  pgEnum,
-  pgTableCreator,
-  primaryKey,
-  uniqueIndex,
-} from "drizzle-orm/pg-core";
+import { relations, sql } from 'drizzle-orm';
+import { check, index, pgEnum, pgTableCreator, primaryKey, uniqueIndex } from 'drizzle-orm/pg-core';
 
 import type { AdapterAccount } from "next-auth/adapters";
 
@@ -241,6 +234,8 @@ export const games = createTable(
       .default(sql`'[]'::jsonb`), // Array of side pots with amount and eligible seat IDs
     betCount: d.integer().notNull().default(0),
     requiredBetCount: d.integer().notNull().default(0),
+    effectiveSmallBlind: d.integer().notNull().default(0), // Effective small blind at game start
+    effectiveBigBlind: d.integer().notNull().default(0), // Effective big blind at game start
     createdAt: d
       .timestamp({ withTimezone: true })
       .default(sql`CURRENT_TIMESTAMP`)

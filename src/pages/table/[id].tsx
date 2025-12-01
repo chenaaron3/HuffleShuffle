@@ -18,9 +18,8 @@ import { useTableEvents } from '~/hooks/use-table-events';
 import { useTableQuery } from '~/hooks/use-table-query';
 import {
     useActivePlayerName, useBettingActorSeatId, useBlindSeatNumbers, useCommunityCards,
-    useCurrentSeat, useCurrentUserSeatId, useDealSeatId, useEffectiveBlinds, useGameState,
-    useHighlightedSeatId, useMaxBet, useOriginalSeats, usePaddedSeats, useTableSnapshot,
-    useTotalPot, useWinningCards
+    useCurrentSeat, useCurrentUserSeatId, useDealSeatId, useGameState, useHighlightedSeatId,
+    useMaxBet, useOriginalSeats, usePaddedSeats, useTableSnapshot, useTotalPot, useWinningCards
 } from '~/hooks/use-table-selectors';
 import { api } from '~/utils/api';
 import { generateRsaKeyPairForTable, rsaDecryptBase64 } from '~/utils/crypto';
@@ -106,7 +105,6 @@ export default function TableView() {
     // Use selector hooks for computed values
     const allWinningCards = useWinningCards();
     const totalPot = useTotalPot();
-    const { effectiveSmallBlind, effectiveBigBlind } = useEffectiveBlinds();
     const activePlayerName = useActivePlayerName();
     const maxBet = useMaxBet();
     const { smallBlindIdx, bigBlindIdx, dealerButtonIdx } = useBlindSeatNumbers();
@@ -296,7 +294,7 @@ export default function TableView() {
                                     isLoading={action.isPending || leaveMutation.isPending || dealerLeaveMutation.isPending}
                                     currentBet={currentSeat?.currentBet ?? 0}
                                     playerBalance={currentSeat?.buyIn ?? 0}
-                                    bigBlind={effectiveBigBlind}
+                                    bigBlind={snapshot?.game?.effectiveBigBlind}
                                     maxBet={maxBet}
                                     onAction={(actionType, params) => {
                                         if (actionType === 'LEAVE') {

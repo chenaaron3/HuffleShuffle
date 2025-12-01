@@ -311,6 +311,11 @@ export async function createNewGame(
     seat.startingBalance = seat.buyIn; // Update in-memory object too
   }
 
+  // Compute effective blinds at game start (these will remain constant for the entire game)
+  const blindState = computeBlindState(table);
+  const effectiveSmallBlind = blindState.effectiveSmallBlind;
+  const effectiveBigBlind = blindState.effectiveBigBlind;
+
   // Create a new game object
   let dealerButtonSeatId = orderedSeats[0]!.id;
   if (previousGame) {
@@ -330,13 +335,15 @@ export async function createNewGame(
       sidePots: [],
       betCount: 0,
       requiredBetCount: 0,
+      effectiveSmallBlind,
+      effectiveBigBlind,
     })
     .returning();
   const game = createdRows?.[0];
   if (!game) throw new Error("Failed to create game");
 
   // Collect big and small blind
-  await collectBigAndSmallBlind(tx, table, orderedSeats, game);
+  await collectBigAndSmallBlind(tx, orderedSeats, game);
   const { smallBlindSeat } = getBigAndSmallBlindSeats(orderedSeats, game);
 
   // Small blind gets the first turn
@@ -369,9 +376,18 @@ export function getBigAndSmallBlindSeats(
   };
 }
 
+export function getBlindState(game: GameRow): {
+  effectiveSmallBlind: number;
+  effectiveBigBlind: number;
+} {
+  return {
+    effectiveSmallBlind: game.effectiveSmallBlind ?? 0,
+    effectiveBigBlind: game.effectiveBigBlind ?? 0,
+  };
+}
+
 async function collectBigAndSmallBlind(
   tx: Tx,
-  table: TableRow,
   orderedSeats: Array<SeatRow>,
   game: GameRow,
 ): Promise<void> {
@@ -379,7 +395,7 @@ async function collectBigAndSmallBlind(
     orderedSeats,
     game,
   );
-  const blinds = computeBlindState(table);
+  const blinds = getBlindState(game);
   const smallBlindValue = blinds.effectiveSmallBlind;
   const bigBlindValue = blinds.effectiveBigBlind;
 

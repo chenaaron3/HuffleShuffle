@@ -1,5 +1,5 @@
-import { useMemo } from "react";
-import { useTableStore } from "~/stores/table-store";
+import { useMemo } from 'react';
+import { useTableStore } from '~/stores/table-store';
 
 import type { SeatWithPlayer } from "~/server/api/routers/table";
 
@@ -101,16 +101,6 @@ export function useWinningCards() {
     }
     return Array.from(winningCards);
   }, [state, originalSeats]);
-}
-
-export function useEffectiveBlinds() {
-  const snapshot = useTableStore((state) => state.snapshot);
-  const blindState = snapshot?.blinds;
-  const effectiveSmallBlind =
-    blindState?.effectiveSmallBlind ?? snapshot?.table?.smallBlind ?? 10;
-  const effectiveBigBlind =
-    blindState?.effectiveBigBlind ?? snapshot?.table?.bigBlind ?? 20;
-  return { effectiveSmallBlind, effectiveBigBlind };
 }
 
 export function useActivePlayerName() {

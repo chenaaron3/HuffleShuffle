@@ -110,12 +110,12 @@ function redactSnapshotForUser(
     if (s.playerId === userId) {
       return s;
     }
-    // Players who fold or are eliminated will never reveal their cards
-    if (s.seatStatus === "folded" || s.seatStatus === "eliminated") {
+    // Players who fold will never reveal their cards
+    if (s.seatStatus === "folded") {
       return hiddenCards;
     }
     if (isShowdown) {
-      // If there is only one active player (everyone else folded or are eliminated), then do not show
+      // If there is only one active player (everyone else folded), then do not show
       if (singleActive) {
         return hiddenCards;
       } else {
