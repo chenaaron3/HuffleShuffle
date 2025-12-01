@@ -1,24 +1,17 @@
-import { and, eq, isNotNull, sql } from "drizzle-orm";
-import process from "process";
+import { and, eq, isNotNull, sql } from 'drizzle-orm';
+import process from 'process';
 import {
-  logEndGame,
-  logFlop,
-  logRiver,
-  logStartGame,
-  logTurn,
-} from "~/server/api/game-event-logger";
-import { db } from "~/server/db";
-import { games, pokerTables, seats } from "~/server/db/schema";
-import { updateTable } from "~/server/signal";
+    logEndGame, logFlop, logRiver, logStartGame, logTurn
+} from '~/server/api/game-event-logger';
+import { db } from '~/server/db';
+import { games, pokerTables, seats } from '~/server/db/schema';
+import { updateTable } from '~/server/signal';
 
-import { computeBlindState } from "./blind-timer";
+import { computeBlindState } from './blind-timer';
 import {
-  activeCountOf,
-  fetchAllSeatsInOrder,
-  getNextActiveSeatId,
-  nonEliminatedCountOf,
-} from "./game-utils";
-import { evaluateBettingTransition } from "./hand-solver";
+    activeCountOf, fetchAllSeatsInOrder, getNextActiveSeatId, nonEliminatedCountOf
+} from './game-utils';
+import { evaluateBettingTransition } from './hand-solver';
 
 type DB = typeof db;
 type SeatRow = typeof seats.$inferSelect;
@@ -389,21 +382,44 @@ async function collectBigAndSmallBlind(
   const blinds = computeBlindState(table);
   const smallBlindValue = blinds.effectiveSmallBlind;
   const bigBlindValue = blinds.effectiveBigBlind;
-  // Transfer buy-in into bets for big and small blind
+
+  // Collect small blind - if player doesn't have enough, go all-in
+  const smallBlindActual = Math.min(smallBlindValue, smallBlindSeat.buyIn);
+  const smallBlindNewBuyIn = smallBlindSeat.buyIn - smallBlindActual;
+  const smallBlindNewStatus = smallBlindNewBuyIn === 0 ? "all-in" : "active";
+
   await tx
     .update(seats)
     .set({
-      currentBet: smallBlindValue,
-      buyIn: sql`${seats.buyIn} - ${smallBlindValue}`,
+      currentBet: smallBlindActual,
+      buyIn: sql`${seats.buyIn} - ${smallBlindActual}`,
+      seatStatus: smallBlindNewStatus,
     })
     .where(eq(seats.id, smallBlindSeat.id));
+
+  // Update in-memory seat object
+  smallBlindSeat.currentBet = smallBlindActual;
+  smallBlindSeat.buyIn = smallBlindNewBuyIn;
+  smallBlindSeat.seatStatus = smallBlindNewStatus;
+
+  // Collect big blind - if player doesn't have enough, go all-in
+  const bigBlindActual = Math.min(bigBlindValue, bigBlindSeat.buyIn);
+  const bigBlindNewBuyIn = bigBlindSeat.buyIn - bigBlindActual;
+  const bigBlindNewStatus = bigBlindNewBuyIn === 0 ? "all-in" : "active";
+
   await tx
     .update(seats)
     .set({
-      currentBet: bigBlindValue,
-      buyIn: sql`${seats.buyIn} - ${bigBlindValue}`,
+      currentBet: bigBlindActual,
+      buyIn: sql`${seats.buyIn} - ${bigBlindActual}`,
+      seatStatus: bigBlindNewStatus,
     })
     .where(eq(seats.id, bigBlindSeat.id));
+
+  // Update in-memory seat object
+  bigBlindSeat.currentBet = bigBlindActual;
+  bigBlindSeat.buyIn = bigBlindNewBuyIn;
+  bigBlindSeat.seatStatus = bigBlindNewStatus;
 }
 
 export function parseBarcodeToRankSuit(barcode: string): {
