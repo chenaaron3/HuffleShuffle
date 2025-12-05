@@ -32,6 +32,7 @@ Huffle Shuffle is a real-time poker table management system that enables:
 ## Technology Stack
 
 ### Frontend
+
 - **Next.js 15** (App Router) with React 19
 - **TypeScript** for type safety
 - **tRPC** for type-safe API calls
@@ -42,6 +43,7 @@ Huffle Shuffle is a real-time poker table management system that enables:
 - **Pusher JS** for real-time events
 
 ### Backend
+
 - **Next.js API Routes** (tRPC + REST)
 - **Drizzle ORM** with PostgreSQL
 - **NextAuth.js** for authentication (Google OAuth)
@@ -50,6 +52,7 @@ Huffle Shuffle is a real-time poker table management system that enables:
 - **AWS SQS FIFO** for card scan message queue
 
 ### Infrastructure
+
 - **PostgreSQL** database
 - **AWS SQS FIFO** for message queuing
 - **AWS Lambda** for card ingestion (optional, can use always-on worker)
@@ -57,6 +60,7 @@ Huffle Shuffle is a real-time poker table management system that enables:
 - **Pusher** for WebSocket signaling
 
 ### Raspberry Pi Components
+
 - **Node.js** daemons for device management
 - **libcamera-vid** for hand camera streaming
 - **GStreamer** for dealer camera streaming
@@ -122,6 +126,7 @@ Huffle Shuffle is a real-time poker table management system that enables:
 ### Core Tables
 
 #### `users` (huffle-shuffle_user)
+
 - `id`: UUID primary key
 - `email`: User email (unique)
 - `name`: Display name
@@ -130,6 +135,7 @@ Huffle Shuffle is a real-time poker table management system that enables:
 - `publicKey`: Optional RSA public key for encryption
 
 #### `pokerTables` (huffle-shuffle_poker_table)
+
 - `id`: UUID primary key
 - `name`: Table name
 - `dealerId`: Foreign key to users (nullable, unique)
@@ -138,6 +144,7 @@ Huffle Shuffle is a real-time poker table management system that enables:
 - `maxSeats`: Integer (default 8)
 
 #### `seats` (huffle-shuffle_seat)
+
 - `id`: UUID primary key
 - `tableId`: Foreign key to pokerTables
 - `playerId`: Foreign key to users (unique per player)
@@ -156,6 +163,7 @@ Huffle Shuffle is a real-time poker table management system that enables:
 - `winningCards`: Text array (cards that made the winning hand)
 
 #### `games` (huffle-shuffle_game)
+
 - `id`: UUID primary key
 - `tableId`: Foreign key to pokerTables
 - `state`: Enum (see Game State Machine below)
@@ -172,6 +180,7 @@ Huffle Shuffle is a real-time poker table management system that enables:
 - `isCompleted`: Boolean
 
 #### `piDevices` (huffle-shuffle_pi_device)
+
 - `serial`: String primary key (device serial number)
 - `tableId`: Foreign key to pokerTables
 - `type`: Enum (`scanner` | `dealer` | `card` | `button`)
@@ -359,6 +368,7 @@ The card scanning system uses **AWS SQS FIFO** for reliable, ordered message pro
 ### Raspberry Pi Streaming
 
 #### Hand Camera (`raspberrypi/hand-daemon.ts`)
+
 - Listens on Pusher channel `device-{serial}` for `start-stream` / `stop-stream`
 - Decrypts `encryptedPiNonce` to get LiveKit room name
 - Runs `run_hand.sh` script:
@@ -366,6 +376,7 @@ The card scanning system uses **AWS SQS FIFO** for reliable, ordered message pro
   - Publishes via LiveKit CLI: `lk room join --publish h264://...`
 
 #### Dealer Camera (`raspberrypi/dealer-daemon.ts`)
+
 - Listens on Pusher channel `device-{serial}` for `dealer-start-stream` / `dealer-stop-stream`
 - Runs `run_dealer.sh` script:
   - Uses GStreamer + x264 for video capture
@@ -385,37 +396,56 @@ The card scanning system uses **AWS SQS FIFO** for reliable, ordered message pro
 ### Frontend Components
 
 #### `src/pages/table/[id].tsx`
+
 - Main table view page
 - Manages LiveKit room connection
 - Handles player actions and game state updates
 - Coordinates Pusher subscriptions for real-time updates
+- Requests camera and microphone permissions for players on page load
 
 #### `src/components/ui/seat-section.tsx`
+
 - Renders 4 seats (left or right side)
 - Displays player info, cards, chips, status indicators
 - Handles seat selection and movement
 - Shows blind indicators and dealer button
 
 #### `src/components/ui/dealer-camera.tsx`
+
 - Dealer camera view with community cards overlay
 - Pot and blinds display
 - Player action controls (bet, fold, check, raise)
 - Dealer controls (deal cards, reset table)
 
 #### `src/components/ui/hand-camera.tsx`
+
 - Player's hand camera view
 - Connects to encrypted LiveKit room
 
 #### `src/components/ui/quick-actions.tsx`
+
 - Quick betting controls (fold, check, call, raise)
 - Disabled when not player's turn
 
 #### `src/components/ui/event-feed.tsx`
+
 - Game event log (card deals, bets, folds, etc.)
+
+#### `src/components/ui/media-permissions-modal.tsx`
+
+- Self-contained modal component for requesting camera and microphone permissions
+- Automatically shows for players when joining a table (checks if permissions already granted)
+- Manages its own state and permission request logic
+- Provides "Allow" and "Skip" options
+- Explains why permissions are needed and what happens if skipped
+- Requests permissions before LiveKit connects
+- Allows page to continue loading even if permissions are denied
+- LiveKit handles connection gracefully with or without media permissions
 
 ### Backend Components
 
 #### `src/server/api/game-logic.ts`
+
 **Core game logic shared between tRPC and ingest worker:**
 
 - `dealCard(tx, tableId, game, cardCode)`: Deals card to seat or community
@@ -428,6 +458,7 @@ The card scanning system uses **AWS SQS FIFO** for reliable, ordered message pro
 - `notifyTableUpdate()`: Sends Pusher event to update clients
 
 #### `src/server/api/hand-solver.ts`
+
 **Poker hand evaluation:**
 
 - `solvePokerHand(cards)`: Evaluates single hand
@@ -436,6 +467,7 @@ The card scanning system uses **AWS SQS FIFO** for reliable, ordered message pro
 - Uses `pokersolver` library for hand ranking
 
 #### `src/server/api/game-helpers.ts`
+
 **Betting actions and helpers:**
 
 - `executeBettingAction()`: Processes RAISE, CHECK, FOLD actions
@@ -444,6 +476,7 @@ The card scanning system uses **AWS SQS FIFO** for reliable, ordered message pro
 - `triggerBotActions()`: Auto-actions for bot players
 
 #### `src/server/api/blind-timer.ts`
+
 **Blind level management:**
 
 - `computeBlindState(table)`: Calculates effective blinds based on timer
@@ -452,11 +485,13 @@ The card scanning system uses **AWS SQS FIFO** for reliable, ordered message pro
 ### State Management
 
 #### `src/stores/table-store.ts`
+
 - Zustand store for table snapshot
 - Updated via `useTableQuery` hook
 - Provides reactive state for components
 
 #### `src/hooks/use-table-selectors.ts`
+
 - Selector hooks for computed values:
   - `useTableSnapshot()`: Raw snapshot
   - `usePaddedSeats()`: Seats array padded to maxSeats (for rendering)

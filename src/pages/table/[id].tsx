@@ -8,6 +8,7 @@ import { TableSetupModal } from '~/components/TableSetupModal';
 import { DealerCamera } from '~/components/ui/dealer-camera';
 import { EventFeed } from '~/components/ui/event-feed';
 import { HandCamera } from '~/components/ui/hand-camera';
+import { MediaPermissionsModal } from '~/components/ui/media-permissions-modal';
 import { QuickActions } from '~/components/ui/quick-actions';
 import { SeatSection } from '~/components/ui/seat-section';
 import { useBackgroundBlur } from '~/hooks/use-background-blur';
@@ -35,6 +36,7 @@ export default function TableView() {
     const { data: session } = useSession();
     const { enabled: backgroundBlurEnabled } = useBackgroundBlur();
     const isDealerRole = session?.user?.role === 'dealer';
+    const isPlayer = session?.user?.role === 'player';
 
     // Use the hook that manages query and updates store
     const tableQuery = useTableQuery(id);
@@ -389,6 +391,7 @@ export default function TableView() {
             {session?.user?.role === 'dealer' && (
                 <TableSetupModal tableId={tableIdStr} open={showSetup} onClose={() => setShowSetup(false)} />
             )}
+            <MediaPermissionsModal isPlayer={isPlayer ?? false} />
         </>
     );
 }
