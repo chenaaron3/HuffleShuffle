@@ -165,7 +165,7 @@ export function RollingNumber({
             animate={isAnimating ? { scale: [1, 1.15, 1] } : {}}
             transition={{ duration: 0.25, repeat: isAnimating ? Infinity : 0, repeatType: "reverse" }}
         >
-            {displayValue.toFixed(0)}{suffix}
+            {prefix}{displayValue.toFixed(0)}{suffix}
         </motion.span>
     );
 }

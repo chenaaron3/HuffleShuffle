@@ -47,14 +47,18 @@ function convertCardsFromPokerSolver(cards: any[]): string[] {
   return cards.map((card) => {
     // Handle Card objects from pokersolver
     if (card && typeof card === "object" && card.value && card.suit) {
-      const rank = card.value.toUpperCase();
+      // Poker solver uses '1' for ace in ace-to-5 straights, convert to 'A'
+      const rankValue = card.value.toUpperCase();
+      const rank = rankValue === "1" ? "A" : rankValue;
       const suit = card.suit.toUpperCase();
       return `${rank}${suit}`;
     }
     // Handle string format
     if (typeof card === "string" && card.length === 2) {
       // Convert from "Ad" format to "AS" format
-      const rank = card[0]?.toUpperCase();
+      // Poker solver uses '1' for ace in ace-to-5 straights, convert to 'A'
+      const rankValue = card[0]?.toUpperCase();
+      const rank = rankValue === "1" ? "A" : rankValue;
       const suit = card[1]?.toUpperCase();
       const suitMap: Record<string, string> = {
         D: "D", // Diamonds

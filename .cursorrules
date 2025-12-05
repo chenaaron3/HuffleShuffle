@@ -1,0 +1,180 @@
+# Huffle Shuffle - Cursor Rules
+
+## Primary Context Source
+
+**ALWAYS read `README.md` first** before making any changes or answering questions about this project.
+
+- At the start of each new chat, load `README.md` and use it as persistent context
+- Prefer README.md over prior chat memory when they conflict
+- The README.md is the **single source of truth** for understanding:
+  - Project architecture and design decisions
+  - Database schema and relationships
+  - API endpoints and their usage
+  - Game state machine and transitions
+  - Component responsibilities
+  - Development workflows
+  - Environment variables and configuration
+
+## README Maintenance Requirements
+
+### When to Update README
+
+**MANDATORY**: You MUST update `README.md` after any meaningful assistant-driven change, in the same turn before finishing.
+
+**Meaningful changes include**:
+
+- New endpoints or breaking changes to existing ones (tRPC or REST)
+- Schema or migration changes
+- New services/daemons, Pusher channels/events, or stream behavior
+- Updated environment variables or configuration
+- Significant refactors or file moves that affect discoverability
+- New features or components
+- Changes to game logic or state machine
+- Architecture changes
+
+**Trivial changes** (formatting, comments, variable naming) do not require a README update.
+
+### README Structure
+
+- Keep `README.md` concise and skimmable using bullet points
+- Maintain a top-of-file section named `## Project Status` with the following subsections:
+  - **Recent Changes** (newest first, keep focused and limited)
+  - **Open Tasks / Next Steps**
+  - **APIs & Routes** (high-level; link to files and list methods/actions)
+  - **Services & Daemons** (Pi daemons, scripts, Pusher events)
+  - **Database / Schema Notes** (enumerate key tables/enums/constraints)
+  - **Env/Config Notes** (list variable names only; no secrets)
+  - **Known Issues**
+- Link files/dirs with backticks (e.g., `src/server/api/routers/table.ts`)
+- Never expose secrets; redact sensitive values
+- Normalize the `## Project Status` section if it drifts, without removing user-authored content outside that section
+
+### How to Update README
+
+1. **Read the current README.md** to understand existing structure
+2. **Identify the relevant section(s)** that need updating
+3. **When updating, summarize meaningful diffs only** - prefer short, actionable bullets over long prose
+4. **Maintain consistency** with existing formatting and style
+5. **Update the Table of Contents** if adding new major sections
+6. **Use code blocks** for code examples (with proper language tags)
+7. **Use code references** for existing code (`startLine:endLine:filepath` format)
+8. **Keep descriptions clear and concise** - this is documentation for LLMs
+
+### README Update Checklist
+
+Before completing any feature or change, verify:
+
+- [ ] README.md has been updated with the new feature/change
+- [ ] `## Project Status` section updated if applicable
+- [ ] All relevant sections have been updated
+- [ ] Code examples are accurate and up-to-date
+- [ ] Environment variables are documented if new ones were added
+- [ ] API endpoints are documented if new ones were added
+- [ ] Database schema is documented if modified
+- [ ] Architecture diagrams/descriptions reflect the changes
+
+## Code Style and Patterns
+
+### Game Logic
+
+- **ALWAYS use shared game logic** from `src/server/api/game-logic.ts` for card dealing and game state management
+- **DO NOT duplicate** game logic between tRPC API and Lambda consumer
+- Use transaction-based database operations for consistency
+
+### Database Operations
+
+- Use **Drizzle ORM** for all database operations
+- Generate migrations after schema changes: `npm run db:generate`
+- Never write raw SQL unless absolutely necessary
+
+### State Management
+
+- Use **Zustand store** (`src/stores/table-store.ts`) for table state
+- Use **selector hooks** (`src/hooks/use-table-selectors.ts`) for computed values
+- Keep state updates in sync with backend
+
+### Type Safety
+
+- Use TypeScript types from `src/server/api/routers/table.ts` for table-related types
+- Maintain type safety across frontend and backend
+- Use Zod schemas for input validation in tRPC
+
+## Common Patterns
+
+### Adding a New API Endpoint
+
+1. Add to `tableRouter` in `src/server/api/routers/table.ts`
+2. Use `protectedProcedure` or `publicProcedure` as appropriate
+3. Add role checks if needed (`ensureDealerRole`, `ensurePlayerRole`)
+4. Update README.md "API Routes & Endpoints" section AND "Project Status" → "APIs & Routes"
+5. Add input/output type documentation
+
+### Adding a New Database Field
+
+1. Update schema in `src/server/db/schema.ts`
+2. Run `npm run db:generate` to create migration
+3. Review migration file in `drizzle/` directory
+4. Update README.md "Database Schema" section AND "Project Status" → "Database / Schema Notes"
+5. Update any affected queries or mutations
+
+### Adding a New Component
+
+1. Create component in appropriate directory (`src/components/ui/` or `src/components/`)
+2. Use existing component patterns (see `seat-section.tsx`, `dealer-camera.tsx` for examples)
+3. Update README.md "Key Components" section
+4. Document component props and usage
+
+### Modifying Game State Machine
+
+1. Update state enum in `src/server/db/schema.ts` if adding new states
+2. Update transition logic in `src/server/api/game-logic.ts`
+3. Update `src/server/api/hand-solver.ts` if affecting showdown logic
+4. Update README.md "Game State Machine" section with new states/transitions
+5. Update frontend components that depend on game state
+
+## Testing Considerations
+
+- Game logic changes should be tested with the test suite
+- Database migrations should be tested in development before production
+- Card scanning logic should be tested with test mode or mock messages
+- State machine transitions should be validated
+
+## File Organization
+
+- **Game Logic**: `src/server/api/game-logic.ts` (shared between API and consumer)
+- **Hand Evaluation**: `src/server/api/hand-solver.ts`
+- **Betting Logic**: `src/server/api/game-helpers.ts`
+- **Utilities**: `src/server/api/game-utils.ts`
+- **API Routes**: `src/server/api/routers/table.ts`
+- **Database Schema**: `src/server/db/schema.ts`
+- **Frontend State**: `src/stores/table-store.ts`
+- **Selectors**: `src/hooks/use-table-selectors.ts`
+- **Main Table View**: `src/pages/table/[id].tsx`
+
+## Important Constraints
+
+1. **Never duplicate game logic** - always use shared functions from `game-logic.ts`
+2. **Maintain FIFO ordering** for card scans (critical for poker)
+3. **Preserve eliminated status** when resetting games
+4. **Redact cards** from other players except in SHOWDOWN state
+5. **Validate all inputs** using Zod schemas
+6. **Use transactions** for multi-step database operations
+7. **Notify clients** via Pusher after state changes (`notifyTableUpdate`)
+
+## When in Doubt
+
+1. **Read README.md** - it likely has the answer
+2. **Check existing patterns** - look at similar implementations
+3. **Follow the architecture** - don't introduce new patterns without updating docs
+4. **Update documentation** - if you had to figure something out, document it
+
+## Communication
+
+When making changes:
+
+- Explain what you're changing and why
+- Reference relevant sections of README.md
+- Note if README.md needs updating
+- Provide context about how the change fits into the overall architecture
+
+Remember: The README.md is not just documentation - it's the **primary context source** for understanding this codebase. Keep it accurate, comprehensive, and up-to-date.
