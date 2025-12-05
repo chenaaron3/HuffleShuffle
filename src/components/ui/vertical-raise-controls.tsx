@@ -121,6 +121,13 @@ export function VerticalRaiseControls({
     const isFullPotDisabled = potTotal < minRaise || potTotal > maxBetAmount;
     const isAllInDisabled = playerBalance <= 0;
 
+    // Determine if it's a Call or Check
+    // Call: currentBet < maxBet (need to match the bet)
+    // Check: currentBet === maxBet (already matched, no action needed)
+    const isCall = maxBet > 0 && currentBet < maxBet;
+    // Call amount is limited by player's available balance (may be all-in)
+    const callAmount = isCall ? Math.min(maxBet - currentBet, playerBalance) : 0;
+
     return (
         <motion.div
             key="raise-controls"
@@ -278,7 +285,13 @@ export function VerticalRaiseControls({
                             size="sm"
                             className="flex-1 bg-green-600 hover:bg-green-700 text-white"
                         >
-                            {maxBet > 0 ? 'Call' : 'Check'}
+                            {isCall ? (
+                                <>
+                                    Call <RollingNumber value={callAmount} prefix="$" className="font-semibold" />
+                                </>
+                            ) : (
+                                'Check'
+                            )}
                         </Button>
                     )}
                     {onRaise && (

@@ -118,8 +118,8 @@ export function DealerCamera({
             )}
 
             {/* Community Cards Overlay - Top Left */}
-            <div className="absolute top-4 left-4 flex flex-col gap-2">
-                <div className="flex gap-2">
+            {communityCards.length > 0 && (
+                <div className="absolute top-2 left-2 sm:top-4 sm:left-4 z-30 flex items-center gap-2 sm:gap-2.5">
                     <AnimatePresence mode="popLayout">
                         {communityCards.map((card: string, index: number) => {
                             // Check if this community card is part of the winning hand
@@ -130,20 +130,20 @@ export function DealerCamera({
 
                             return (
                                 <motion.div
-                                    key={`community-card-${card}`} // More stable key for community cards
+                                    key={`community-card-${card}`}
                                     className="relative"
-                                    initial={{ opacity: 0, y: 30, scale: 0.8 }}
+                                    initial={{ opacity: 0, y: 20, scale: 0.8 }}
                                     animate={{ opacity: 1, y: 0, scale: 1 }}
-                                    exit={{ opacity: 0, y: -30, scale: 0.8 }}
+                                    exit={{ opacity: 0, y: -20, scale: 0.8 }}
                                     transition={{
-                                        duration: 0.5,
-                                        delay: index * 0.15,
+                                        duration: 0.4,
+                                        delay: index * 0.1,
                                         ease: "easeOut"
                                     }}
                                 >
                                     <CardImage
                                         code={card}
-                                        size={75}
+                                        size={65}
                                         highlighted={isWinningCard}
                                     />
                                 </motion.div>
@@ -151,7 +151,7 @@ export function DealerCamera({
                         })}
                     </AnimatePresence>
                 </div>
-            </div>
+            )}
 
             {/* Pot Total & Blinds Overlay - Center Top */}
             <div id="pot-display" className="absolute top-4 right-4 transform z-40">
