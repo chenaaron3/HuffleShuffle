@@ -98,7 +98,10 @@ function redactSnapshotForUser(
   const isShowdown = snapshot.game?.state === "SHOWDOWN";
   const singleActive =
     snapshot.seats.filter(
-      (s) => s.seatStatus === "active" || s.seatStatus === "all-in",
+      (s) =>
+        s.seatStatus === "active" ||
+        s.seatStatus === "all-in" ||
+        (s.seatStatus === "eliminated" && s.cards.length > 0), // eliminated but played counts
     ).length === 1;
   const redactedSeats: SeatWithPlayer[] = snapshot.seats.map((s) => {
     const hiddenCount = (s.cards ?? []).length;
