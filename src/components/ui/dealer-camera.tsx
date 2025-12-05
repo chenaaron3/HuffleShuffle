@@ -119,7 +119,7 @@ export function DealerCamera({
 
             {/* Community Cards Overlay - Top Left */}
             {communityCards.length > 0 && (
-                <div className="absolute top-2 left-2 sm:top-4 sm:left-4 z-30 flex items-center gap-2 sm:gap-2.5">
+                <div className="absolute top-2 left-2 sm:top-4 sm:left-4 z-30 flex items-center gap-1">
                     <AnimatePresence mode="popLayout">
                         {communityCards.map((card: string, index: number) => {
                             // Check if this community card is part of the winning hand
