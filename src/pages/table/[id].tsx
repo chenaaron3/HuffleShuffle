@@ -391,7 +391,7 @@ export default function TableView() {
             {session?.user?.role === 'dealer' && (
                 <TableSetupModal tableId={tableIdStr} open={showSetup} onClose={() => setShowSetup(false)} />
             )}
-            <MediaPermissionsModal isPlayer={isPlayer ?? false} />
+            {/* <MediaPermissionsModal isPlayer={isPlayer ?? false} /> */}
         </>
     );
 }
