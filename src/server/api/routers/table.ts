@@ -108,6 +108,8 @@ function redactSnapshotForUser(
     const hiddenCards = {
       ...s,
       cards: Array(hiddenCount).fill("FD"),
+      handType: null,
+      handDescription: null,
     } as SeatWithPlayer;
     // Show cards face up for the current user
     if (s.playerId === userId) {
