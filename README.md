@@ -13,6 +13,7 @@ A Next.js T3-based poker table management and streaming control system that inte
 - [Card Scanning & Ingestion](#card-scanning--ingestion)
 - [Video Streaming](#video-streaming)
 - [Key Components](#key-components)
+- [Mobile Support](#mobile-support)
 - [Development Setup](#development-setup)
 - [Environment Variables](#environment-variables)
 - [Testing](#testing)
@@ -402,6 +403,7 @@ The card scanning system uses **AWS SQS FIFO** for reliable, ordered message pro
 - Handles player actions and game state updates
 - Coordinates Pusher subscriptions for real-time updates
 - Requests camera and microphone permissions for players on page load
+- Conditionally renders desktop or mobile layout based on screen size
 
 #### `src/components/ui/seat-section.tsx`
 
@@ -409,6 +411,7 @@ The card scanning system uses **AWS SQS FIFO** for reliable, ordered message pro
 - Displays player info, cards, chips, status indicators
 - Handles seat selection and movement
 - Shows blind indicators and dealer button
+- Supports `fullHeight` prop for mobile layouts
 
 #### `src/components/ui/dealer-camera.tsx`
 
@@ -416,6 +419,8 @@ The card scanning system uses **AWS SQS FIFO** for reliable, ordered message pro
 - Pot and blinds display
 - Player action controls (bet, fold, check, raise)
 - Dealer controls (deal cards, reset table)
+- Responsive sizing: `h-full` on mobile, `aspect-video` on desktop (`lg:` breakpoint)
+- Supports `hidePlayerBettingControls` prop to hide controls on mobile (shown in betting tab instead)
 
 #### `src/components/ui/hand-camera.tsx`
 
@@ -430,6 +435,53 @@ The card scanning system uses **AWS SQS FIFO** for reliable, ordered message pro
 #### `src/components/ui/event-feed.tsx`
 
 - Game event log (card deals, bets, folds, etc.)
+
+### Mobile Components (`src/components/ui/mobile/`)
+
+Mobile-specific components organized in a dedicated folder for landscape mobile devices:
+
+#### `src/components/ui/mobile/table-layout.tsx`
+
+- Wrapper component that conditionally renders desktop or mobile layout
+- Uses `useIsMobileLandscape` hook to detect mobile landscape orientation (< 1024px width, width > height)
+- Shows "Rotate Device" message for mobile portrait
+- Non-invasive architecture - doesn't modify child components
+
+#### `src/components/ui/mobile/table-tabs.tsx`
+
+- Tab navigation for mobile landscape view
+- Two tabs: "Dealer" and "Betting"
+- Toggle button on left middle of screen that switches between tabs
+- Icon changes based on active tab (shows destination tab icon)
+- Smooth transitions using Framer Motion
+
+#### `src/components/ui/mobile/betting-view.tsx`
+
+- Mobile betting interface layout
+- Top half: All 8 player seats in horizontal scrollable row
+- Bottom half: Horizontal scrollable layout with:
+  - Community cards (left)
+  - Hand camera (middle)
+  - Betting controls (right - `VerticalRaiseControls` or `QuickActions`)
+- Displays only when player is seated or it's their turn
+
+#### `src/components/ui/mobile/seat-section.tsx`
+
+- Renders all 8 seats horizontally for mobile betting view
+- Uses `SeatCard` component with `fullHeight={true}` prop
+- Each seat card is half the height of mobile screen
+- Scrollable horizontal layout with `overflow-x-auto`
+
+#### `src/components/ui/mobile/community-cards-display.tsx`
+
+- Displays community cards in horizontal row
+- Highlights winning cards during showdown
+- Extracted from `DealerCamera` for mobile reuse
+- Uses Framer Motion for card animations
+
+#### Mobile Hooks
+
+- `src/hooks/use-is-mobile-landscape.ts`: Detects mobile devices in landscape orientation
 
 #### `src/components/ui/media-permissions-modal.tsx`
 
@@ -694,11 +746,20 @@ huffle-shuffle/
 │   ├── app/                    # Next.js app router (API routes)
 │   ├── components/             # React components
 │   │   ├── ui/                 # UI components (seats, cards, etc.)
+│   │   │   ├── mobile/         # Mobile-specific components
+│   │   │   │   ├── betting-view.tsx
+│   │   │   │   ├── community-cards-display.tsx
+│   │   │   │   ├── seat-section.tsx
+│   │   │   │   ├── table-layout.tsx
+│   │   │   │   ├── table-tabs.tsx
+│   │   │   │   └── index.ts
+│   │   │   └── ...
 │   │   ├── livekit/            # LiveKit-specific components
 │   │   └── table-setup/        # Table configuration modals
 │   ├── hooks/                  # React hooks
 │   │   ├── use-table-selectors.ts  # Table state selectors
 │   │   ├── use-table-query.ts     # Table data fetching
+│   │   ├── use-is-mobile-landscape.ts  # Mobile landscape detection
 │   │   └── ...
 │   ├── pages/                  # Next.js pages
 │   │   └── table/[id].tsx     # Main table view
@@ -729,6 +790,37 @@ huffle-shuffle/
 └── public/                     # Static assets
 ```
 
+## Mobile Support
+
+### Mobile Landscape Layout
+
+The application supports mobile landscape orientation (< 1024px width, width > height) with a dedicated mobile layout:
+
+- **Tab-based Navigation**: Two tabs accessible via toggle button (left middle)
+  - **Dealer Tab**: Full-screen dealer camera view
+  - **Betting Tab**: Split view with player seats (top), community cards/hand camera/betting controls (bottom)
+- **Responsive Components**:
+  - Dealer camera uses `h-full` on mobile, `aspect-video` on desktop
+  - Seat cards support `fullHeight` prop for mobile layouts
+  - Betting controls extracted to separate component, hidden in dealer tab on mobile
+- **Non-invasive Architecture**: Mobile components don't modify desktop components
+- **Portrait Mode**: Shows "Rotate Device" message (only landscape supported)
+
+### Mobile Component Organization
+
+All mobile-specific components are organized in `src/components/ui/mobile/`:
+
+- Centralized location for easier maintenance
+- Clean separation from desktop components
+- Shared index file for convenient imports
+
+### Mobile Considerations
+
+- Tooltips hidden on mobile to prevent Portal positioning issues
+- Horizontal scrolling for seats and betting controls when content overflows
+- Full-height seat cards on mobile (half screen height)
+- Vertical raise controls only shown in betting tab on mobile
+
 ## Key Design Decisions
 
 1. **Shared Game Logic**: `game-logic.ts` is used by both tRPC API and Lambda consumer to ensure consistency
@@ -739,6 +831,7 @@ huffle-shuffle/
 6. **Redaction**: Cards hidden from other players except in SHOWDOWN
 7. **Zustand Store**: Lightweight state management for table snapshot
 8. **Selector Hooks**: Computed values derived from store for performance
+9. **Mobile-first Responsive Design**: Separate mobile components with conditional rendering, maintaining desktop functionality
 
 ## Common Tasks
 

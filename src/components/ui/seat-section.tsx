@@ -105,7 +105,7 @@ export function SeatSection({
     );
 }
 
-function SeatCard({
+export function SeatCard({
     seat,
     index,
     seatNumber,
@@ -123,6 +123,7 @@ function SeatCard({
     turnStartTime,
     tableId,
     dealerCanControlAudio,
+    fullHeight = false,
 }: {
     seat: SeatWithPlayer | null;
     index: number;
@@ -141,6 +142,7 @@ function SeatCard({
     turnStartTime?: Date | null;
     tableId: string;
     dealerCanControlAudio?: boolean;
+    fullHeight?: boolean;
 }) {
     const trackRefs = useTracks([Track.Source.Camera]);
     const audioRefs = useTracks([Track.Source.Microphone]);
@@ -186,9 +188,12 @@ function SeatCard({
 
     // Empty seat placeholder
     if (!seat) {
+        const heightClass = fullHeight ? 'h-full' : 'h-[22vh]';
+        const widthClass = fullHeight ? 'w-auto' : 'w-[34.22vh]';
         return (
             <div
-                className="group relative flex h-[22vh] w-[34.22vh] flex-col rounded-xl border border-dashed border-zinc-500/50 bg-zinc-900/30 backdrop-blur overflow-hidden"
+                className={`group relative flex ${heightClass} ${widthClass} flex-col rounded-xl border border-dashed border-zinc-500/50 bg-zinc-900/30 backdrop-blur overflow-hidden`}
+                style={fullHeight ? { aspectRatio: '34.22/22' } : undefined}
             >
                 {/* Empty Video Feed - Full Height */}
                 <div
@@ -254,12 +259,14 @@ function SeatCard({
 
     // Get complete border style (includes burning rope timer)
     const borderStyle = timerBorder.getBorderStyle(!!isWinner, !!active, gameState);
+    const heightClass = fullHeight ? 'h-full' : 'h-[22vh]';
+    const widthClass = fullHeight ? 'w-auto' : 'w-[34.22vh]';
 
     return (
         <motion.div
             id={`seat-${seat.id}`}
-            className="relative flex h-[22vh] w-[34.22vh] flex-col rounded-xl bg-zinc-900/60 backdrop-blur-sm overflow-visible"
-            style={borderStyle}
+            className={`relative flex ${heightClass} ${widthClass} flex-col rounded-xl bg-zinc-900/60 backdrop-blur-sm ${fullHeight ? 'overflow-visible' : 'overflow-visible'}`}
+            style={fullHeight ? { ...borderStyle, aspectRatio: '34.22/22' } : borderStyle}
         >
             {/* Video Feed - Full Height */}
             <div className="group relative h-full w-full overflow-hidden rounded-xl bg-black -z-10">

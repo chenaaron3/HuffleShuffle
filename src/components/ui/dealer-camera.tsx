@@ -40,6 +40,8 @@ interface DealerCameraProps {
     // Leave table props
     onLeaveTable?: () => void;
     isLeaving?: boolean;
+    // Hide player betting controls (e.g., for mobile where they're in betting tab)
+    hidePlayerBettingControls?: boolean;
 }
 
 export function DealerCamera({
@@ -63,7 +65,8 @@ export function DealerCamera({
     bigBlind,
     maxBet,
     onLeaveTable,
-    isLeaving
+    isLeaving,
+    hidePlayerBettingControls = false,
 }: DealerCameraProps) {
     const trackRefs = useTracks([Track.Source.Camera]);
     const dealerRef = dealerUserId
@@ -105,7 +108,7 @@ export function DealerCamera({
     };
 
     return (
-        <div className="relative w-full overflow-hidden border border-white/10 rounded-lg bg-black aspect-video">
+        <div className="relative w-full h-full lg:h-auto lg:aspect-video overflow-hidden border border-white/10 rounded-lg bg-black">
             {/* Main Dealer Video */}
             {dealerRef ? (
                 <ParticipantTile trackRef={dealerRef}>
@@ -213,7 +216,7 @@ export function DealerCamera({
 
             {/* Horizontal Raise Controls - Bottom Right */}
             <AnimatePresence mode="wait">
-                {isPlayerTurn && onAction && (
+                {isPlayerTurn && onAction && !hidePlayerBettingControls && (
                     <motion.div
                         key={isLoading ? 'spinner' : 'controls'}
                         layoutId="raise-controls"
