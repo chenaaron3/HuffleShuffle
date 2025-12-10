@@ -12,6 +12,7 @@ import { MediaPermissionsModal } from '~/components/ui/media-permissions-modal';
 import { QuickActions } from '~/components/ui/quick-actions';
 import { SeatSection } from '~/components/ui/seat-section';
 import { useBackgroundBlur } from '~/hooks/use-background-blur';
+import { useBlindIncreaseToast } from '~/hooks/use-blind-increase-toast';
 import { useDealerCardSound } from '~/hooks/use-dealer-card-sound';
 import { useDealerTimer } from '~/hooks/use-dealer-timer';
 import { useQuickActions } from '~/hooks/use-quick-actions';
@@ -134,6 +135,9 @@ export default function TableView() {
     useDealerCardSound({
         isDealer: !!isDealerAtTable,
     });
+
+    // --- Blind increase toast hook ---
+    useBlindIncreaseToast();
     React.useEffect(() => {
         (async () => {
             if (!id || !currentSeat?.encryptedUserNonce) return;

@@ -123,7 +123,7 @@ export function useDealerTimer({
     assignedSeatId,
     turnStartTime,
     isDealer,
-    timeoutMutation,
+    // timeoutMutation,
   ]);
 
   // Log when dependencies change

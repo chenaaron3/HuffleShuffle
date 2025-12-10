@@ -158,7 +158,6 @@ function SeatCard({
     const isSelf = !!myUserId && seat?.player?.id === myUserId;
     const showDealerMute = Boolean(dealerCanControlAudio && !isSelf && playerId && hasAudioTrack);
     const effectiveBigBlind = useEffectiveBigBlind();
-    console.log(effectiveBigBlind);
     const blindsRemaining = Math.ceil((seat?.buyIn ?? 0) / effectiveBigBlind);
     const isTotalHovered = useInteractionStore((s) => s.isBlindsHovered);
     const setTotalHovered = useInteractionStore((s) => s.setBlindsHovered);
@@ -290,7 +289,7 @@ function SeatCard({
                                 </ParticipantTile>
                             </div>
                             {showDealerMute && (
-                                <div className="pointer-events-auto absolute inset-0 flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                                <div className="pointer-events-auto absolute inset-0 flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-30">
                                     <button
                                         type="button"
                                         onClick={handleDealerToggleMute}
@@ -437,7 +436,7 @@ function SeatCard({
 
             <AnimatePresence>
                 {seat.currentBet > 0 && <motion.div
-                    className={`absolute top-1/2 transform -translate-y-1/2 z-20 ${side === 'right' ? 'left-0 -translate-x-1/2' : 'right-0 translate-x-1/2'}`}
+                    className={`absolute top-1/2 transform -translate-y-1/2 z-20 pointer-events-none ${side === 'right' ? 'left-0 -translate-x-1/2' : 'right-0 translate-x-1/2'}`}
                     initial={{ scale: 0, opacity: 0, rotate: -180 }}
                     animate={{ scale: 1, opacity: 1, rotate: 0 }}
                     exit={{ scale: 0, opacity: 0, rotate: 180 }}
@@ -459,7 +458,7 @@ function SeatCard({
 
             {/* Hand Type - Edge Positioned (same side as bet chip during showdown) */}
             {gameState === 'SHOWDOWN' && seat.handType && (
-                <div className={`absolute top-1/2 transform -translate-y-1/2 z-20 ${side === 'right'
+                <div className={`absolute top-1/2 transform -translate-y-1/2 z-20 pointer-events-none ${side === 'right'
                     ? 'left-0 -translate-x-1/2'
                     : 'right-0 translate-x-1/2'
                     }`}>

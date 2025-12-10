@@ -1,5 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import * as React from 'react';
+import { useLiveBlindState } from '~/hooks/use-live-blind-state';
 import { cn } from '~/lib/utils';
 
 import { RollingNumber } from './chip-animations';
@@ -19,65 +20,14 @@ function formatTimeRemaining(seconds: number): string {
 }
 
 export function PotAndBlindsDisplay({ potTotal, blinds, className }: PotAndBlindsDisplayProps) {
-    const [tick, setTick] = React.useState(0);
     const [isHovered, setIsHovered] = React.useState(false);
+    const liveBlindState = useLiveBlindState();
 
+    const displaySmallBlind = liveBlindState.effectiveSmallBlind;
+    const displayBigBlind = liveBlindState.effectiveBigBlind;
+    const secondsUntilNextIncrease = liveBlindState.secondsUntilNextIncrease;
+    const progressPercent = liveBlindState.progressPercent;
     const isTimerRunning = Boolean(blinds?.startedAt);
-    const elapsedSeconds = blinds?.elapsedSeconds ?? 0;
-    const stepSeconds = blinds?.stepSeconds ?? 0;
-
-    // Sync local tick with timer status
-    React.useEffect(() => {
-        if (!isTimerRunning) {
-            setTick(0);
-            return;
-        }
-        // Reset tick if we get a fresh update from server to avoid double counting
-        setTick(0);
-
-        const interval = setInterval(() => {
-            setTick((prev) => prev + 1);
-        }, 1000);
-        return () => clearInterval(interval);
-    }, [isTimerRunning, elapsedSeconds]);
-
-    // Calculate timer values
-    let secondsUntilNextIncrease: number | null = null;
-    let progressPercent = 0;
-
-    // Default blinds to what the server says
-    let displaySmallBlind = blinds?.effectiveSmallBlind;
-    let displayBigBlind = blinds?.effectiveBigBlind;
-
-    if (blinds && stepSeconds > 0) {
-        const liveElapsedSeconds = isTimerRunning ? elapsedSeconds + tick : elapsedSeconds;
-        const remainder = liveElapsedSeconds % stepSeconds;
-        secondsUntilNextIncrease = remainder === 0 ? stepSeconds : stepSeconds - remainder;
-
-        // Calculate progress (0 to 100)
-        progressPercent = ((stepSeconds - secondsUntilNextIncrease) / stepSeconds) * 100;
-
-        // Calculate local blind increase
-        // If we have passed the step threshold locally before server update
-        const steps = Math.floor(liveElapsedSeconds / stepSeconds);
-        if (steps > 0 && blinds.multiplier > 0) {
-            // Derive base blinds (current / current_multiplier)
-            // Note: The 'blinds' prop has the state from the last server snapshot.
-            // So blinds.effectiveSmallBlind is base * blinds.multiplier
-            const baseSmall = blinds.effectiveSmallBlind / blinds.multiplier;
-            const baseBig = blinds.effectiveBigBlind / blinds.multiplier;
-
-            const currentMultiplier = Math.max(1, Math.pow(2, steps));
-
-            displaySmallBlind = Math.round(baseSmall * currentMultiplier);
-            displayBigBlind = Math.round(baseBig * currentMultiplier);
-        }
-    }
-
-    if (!isTimerRunning) {
-        progressPercent = 0;
-        secondsUntilNextIncrease = stepSeconds;
-    }
 
     return (
         <motion.div
@@ -128,7 +78,7 @@ export function PotAndBlindsDisplay({ potTotal, blinds, className }: PotAndBlind
 
                         {/* Expanded Timer View on Hover */}
                         <AnimatePresence>
-                            {isHovered && isTimerRunning && secondsUntilNextIncrease !== null && (
+                            {isHovered && isTimerRunning && (
                                 <motion.div
                                     initial={{ opacity: 0, height: 0, marginTop: 0 }}
                                     animate={{ opacity: 1, height: 'auto', marginTop: 4 }}
