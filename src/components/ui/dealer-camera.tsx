@@ -186,16 +186,11 @@ export function DealerCamera({
                             }`}
                     >
                         <ActionButtons
-                            isDealer={isDealer ?? false}
                             isJoinable={isJoinable ?? false}
                             state={gameStatus}
                             isLoading={isLoading ?? false}
                             onAction={onAction ?? (() => { })}
-                            onDealCard={onDealCard}
                             onRandomCard={onRandomCard}
-                            raiseAmount={raiseAmount}
-                            onRaise={isPlayerTurn ? handleRaise : undefined}
-                            maxBet={maxBet}
                         />
                     </div>
                 )}
