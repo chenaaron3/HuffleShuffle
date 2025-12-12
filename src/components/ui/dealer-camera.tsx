@@ -176,15 +176,10 @@ export function DealerCamera({
                 />
             </div>
 
-            {/* Action Buttons Overlay - Center when it's the user's turn or dealer's turn */}
+            {/* Action Buttons Overlay - Dealer only */}
             <AnimatePresence mode="wait">
-                {((isPlayerTurn || isDealer) && onAction) && (
-                    <div
-                        className={`absolute flex ${isDealer
-                            ? 'bottom-4 right-4 justify-end items-end'
-                            : 'inset-0 items-center justify-center'
-                            }`}
-                    >
+                {(isDealer && onAction) && (
+                    <div className="absolute flex bottom-4 right-4 justify-end items-end">
                         <ActionButtons
                             isJoinable={isJoinable ?? false}
                             state={gameStatus}
