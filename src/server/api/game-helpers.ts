@@ -4,9 +4,7 @@ import { db } from '~/server/db';
 import { games, piDevices, pokerTables, seats, users } from '~/server/db/schema';
 import { rsaEncryptB64 } from '~/utils/crypto';
 
-import { isBot } from './bot-constants';
 import { logCall, logCheck, logFold, logRaise } from './game-event-logger';
-import { notifyTableUpdate } from './game-logic';
 import { getNextActiveSeatId } from './game-utils';
 import { evaluateBettingTransition } from './hand-solver';
 
@@ -223,83 +221,6 @@ export async function executeBettingAction(
   });
 
   return { updatedSeat, nextSeatId };
-}
-
-/**
- * Trigger bot actions in a loop until a human player's turn
- */
-export async function triggerBotActions(tableId: string): Promise<void> {
-  let iterations = 0;
-  const MAX_ITERATIONS = 20; // Safety limit
-
-  while (iterations < MAX_ITERATIONS) {
-    iterations++;
-
-    // Fetch current game state
-    const snapshot = await db.query.pokerTables.findFirst({
-      where: eq(pokerTables.id, tableId),
-      with: {
-        games: { orderBy: (g, { desc }) => [desc(g.createdAt)], limit: 1 },
-        seats: { orderBy: (s, { asc }) => [asc(s.seatNumber)] },
-      },
-    });
-
-    if (!snapshot) return;
-
-    const game = snapshot.games[0];
-    if (!game || game.isCompleted) return;
-    if (game.state !== "BETTING") return;
-    if (!game.assignedSeatId) return;
-
-    // Find the current seat
-    const currentSeat = snapshot.seats.find(
-      (s) => s.id === game.assignedSeatId,
-    );
-    if (!currentSeat) return;
-
-    // Stop if current player is not a bot
-    if (!isBot(currentSeat.playerId)) {
-      return;
-    }
-
-    // Execute bot action
-    await db.transaction(async (tx) => {
-      // Re-fetch within transaction
-      const orderedSeats = await tx.query.seats.findMany({
-        where: eq(seats.tableId, tableId),
-        orderBy: (s, { asc }) => [asc(s.seatNumber)],
-      });
-
-      const currentGame = await tx.query.games.findFirst({
-        where: eq(games.id, game.id),
-      });
-
-      if (!currentGame) throw new Error("Game not found");
-
-      const botSeat = orderedSeats.find((s) => s.id === currentSeat.id);
-      if (!botSeat || botSeat.seatStatus !== "active") return;
-
-      // Bot always uses CHECK action (handles check/call/all-in)
-      // executeBettingAction now handles everything: action, betCount, turn rotation, and betting transition
-      await executeBettingAction(tx, {
-        tableId,
-        game: currentGame,
-        actorSeat: botSeat,
-        orderedSeats,
-        action: "CHECK",
-      });
-    });
-
-    // Notify clients of table update after successful transaction
-    await notifyTableUpdate(tableId);
-
-    // Wait for 1 second
-    await new Promise((resolve) => setTimeout(resolve, 500));
-  }
-
-  if (iterations >= MAX_ITERATIONS) {
-    console.error("Bot actions: Max iterations reached");
-  }
 }
 
 /**

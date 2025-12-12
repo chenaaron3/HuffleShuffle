@@ -18,10 +18,10 @@ import { TrackSource, TrackType } from '@livekit/protocol';
 import { computeBlindState } from '../blind-timer';
 import { generateBotPublicKey, getBotIdForSeat, getBotName, isBot } from '../bot-constants';
 import {
-    createSeatTransaction, executeBettingAction, removePlayerSeatTransaction, triggerBotActions
+    createSeatTransaction, executeBettingAction, removePlayerSeatTransaction
 } from '../game-helpers';
 import {
-    createNewGame, dealCard, notifyTableUpdate, parseRankSuitToBarcode, resetGame
+    createNewGame, dealCard, notifyTableUpdate, parseRankSuitToBarcode, resetGame, triggerBotActions
 } from '../game-logic';
 
 import type { BlindState } from "../blind-timer";
@@ -958,7 +958,8 @@ export const tableRouter = createTRPCRouter({
       await notifyTableUpdate(input.tableId);
 
       // Process bot actions if it's a bot's turn
-      await triggerBotActions(input.tableId);
+      // This handles both player actions and DEAL_CARD actions that start betting rounds
+      await triggerBotActions(db, input.tableId);
 
       // transaction complete -> fetch committed snapshot
       const snapshot = await summarizeTable(db, input.tableId);
@@ -1058,7 +1059,7 @@ export const tableRouter = createTRPCRouter({
       // Notify clients of table update after successful transaction
       await notifyTableUpdate(input.tableId);
       // Process bot actions if it's a bot's turn
-      await triggerBotActions(input.tableId);
+      await triggerBotActions(db, input.tableId);
       // Return fresh snapshot
       const snapshot = await summarizeTable(db, input.tableId);
       return redactSnapshotForUser(snapshot, userId);

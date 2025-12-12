@@ -1,6 +1,6 @@
-import * as React from "react";
-import { useTableStore } from "~/stores/table-store";
-import { api } from "~/utils/api";
+import * as React from 'react';
+import { useTableStore } from '~/stores/table-store';
+import { api } from '~/utils/api';
 
 import type { QuickActionType } from "~/components/ui/quick-actions";
 import type { SeatWithPlayer } from "~/server/api/routers/table";

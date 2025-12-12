@@ -6,7 +6,9 @@ import postgres from 'postgres';
 
 import { DeleteMessageCommand, SQSClient } from '@aws-sdk/client-sqs';
 
-import { dealCard, notifyTableUpdate, parseBarcodeToRankSuit } from './link/game-logic';
+import {
+    dealCard, notifyTableUpdate, parseBarcodeToRankSuit, triggerBotActions
+} from './link/game-logic';
 import * as schema from './link/schema';
 
 import type {
@@ -42,15 +44,15 @@ type ScanMessage = { serial: string; barcode: string; ts: number };
 
 async function handleScan(msg: ScanMessage): Promise<void> {
   const { serial, barcode, ts } = msg;
-  const database = getDb();
+  const dbInstance = getDb();
 
-  const device = await database.query.piDevices.findFirst({
+  const device = await dbInstance.query.piDevices.findFirst({
     where: eq(schema.piDevices.serial, serial),
   });
   if (!device) throw new Error("Device not registered");
   if (device.type !== "scanner") throw new Error("Invalid device type");
 
-  await database
+  await dbInstance
     .update(schema.piDevices)
     .set({ lastSeenAt: sql`CURRENT_TIMESTAMP` })
     .where(eq(schema.piDevices.serial, serial));
@@ -58,7 +60,7 @@ async function handleScan(msg: ScanMessage): Promise<void> {
   const { rank, suit } = parseBarcodeToRankSuit(barcode);
   const code = `${rank}${suit}`;
 
-  await database.transaction(async (tx) => {
+  await dbInstance.transaction(async (tx) => {
     const tableId = device.tableId;
     if (!tableId) throw new Error("Device not assigned to a table");
 
@@ -71,6 +73,9 @@ async function handleScan(msg: ScanMessage): Promise<void> {
     await dealCard(tx, tableId, game ?? null, code);
   });
   await notifyTableUpdate(device.tableId);
+
+  // Process bot actions if a betting round started and it's a bot's turn
+  await triggerBotActions(dbInstance, device.tableId);
 }
 
 async function processRecord(
