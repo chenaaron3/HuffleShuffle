@@ -91,11 +91,25 @@ const summarizeTable = async (
   };
 };
 
-function redactSnapshotForUser(
+export function redactSnapshotForUser(
   snapshot: TableSnapshot,
   userId: string,
 ): TableSnapshot {
   const isShowdown = snapshot.game?.state === "SHOWDOWN";
+
+  // Count players by status to determine if all remaining players are all-in
+  const activeCount = snapshot.seats.filter(
+    (s) => s.seatStatus === "active",
+  ).length;
+  const allInCount = snapshot.seats.filter(
+    (s) => s.seatStatus === "all-in",
+  ).length;
+
+  // When all remaining players are all-in (no active players left),
+  // no more betting is possible - show cards for the "runout"
+  const allPlayersAllIn = activeCount === 0 && allInCount >= 2;
+
+  // Check if only one non-folded player remains (everyone else folded)
   const singleActive =
     snapshot.seats.filter(
       (s) =>
@@ -103,6 +117,7 @@ function redactSnapshotForUser(
         s.seatStatus === "all-in" ||
         (s.seatStatus === "eliminated" && s.cards.length > 0), // eliminated but played counts
     ).length === 1;
+
   const redactedSeats: SeatWithPlayer[] = snapshot.seats.map((s) => {
     const hiddenCount = (s.cards ?? []).length;
     const hiddenCards = {
@@ -118,6 +133,10 @@ function redactSnapshotForUser(
     // Players who fold will never reveal their cards
     if (s.seatStatus === "folded") {
       return hiddenCards;
+    }
+    // Show cards when all remaining players are all-in
+    if (allPlayersAllIn) {
+      return s;
     }
     if (isShowdown) {
       // If there is only one active player (everyone else folded), then do not show

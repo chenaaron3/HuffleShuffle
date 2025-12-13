@@ -252,7 +252,7 @@ The game progresses through these states:
 - **`get`**: Get table snapshot (redacted for caller)
   - Input: `{ tableId: string }`
   - Output: `TableSnapshot` (see types below)
-  - Redaction: Hides other players' cards unless in SHOWDOWN
+  - Redaction: Hides other players' cards unless in SHOWDOWN or all players are all-in
 
 #### Mutations
 
@@ -690,6 +690,9 @@ LIVEKIT_API_SECRET=             # LiveKit API secret
 # Run tests with database
 npm test
 
+# Run unit tests only (no database required)
+SKIP_ENV_VALIDATION=1 npx vitest run src/test/table.redact.test.ts
+
 # Type checking
 npm run typecheck
 
@@ -699,6 +702,10 @@ npm run lint
 # Format checking
 npm run format:check
 ```
+
+### Unit Tests
+
+- `src/test/table.redact.test.ts`: Tests for `redactSnapshotForUser` function (card visibility logic)
 
 ## Deployment
 
@@ -828,7 +835,7 @@ All mobile-specific components are organized in `src/components/ui/mobile/`:
 3. **RSA Encryption**: Per-table keypairs for securing LiveKit room names
 4. **State Machine**: Explicit game states with clear transitions
 5. **Side Pots**: JSONB storage for complex side pot calculations
-6. **Redaction**: Cards hidden from other players except in SHOWDOWN
+6. **Redaction**: Cards hidden from other players except in SHOWDOWN or when all remaining players are all-in (enables "runout" card reveal)
 7. **Zustand Store**: Lightweight state management for table snapshot
 8. **Selector Hooks**: Computed values derived from store for performance
 9. **Mobile-first Responsive Design**: Separate mobile components with conditional rendering, maintaining desktop functionality
