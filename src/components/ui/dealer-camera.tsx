@@ -206,7 +206,7 @@ export function DealerCamera({
 
             {/* Horizontal Raise Controls - Bottom Right */}
             <AnimatePresence mode="wait">
-                {isPlayerTurn && onAction && !hidePlayerBettingControls && (
+                {isPlayerTurn && onAction && (
                     <motion.div
                         key={isLoading ? 'spinner' : 'controls'}
                         layoutId="raise-controls"
