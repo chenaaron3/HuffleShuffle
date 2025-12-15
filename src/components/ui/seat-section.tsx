@@ -1,53 +1,54 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { Track } from 'livekit-client';
 import { Mic, MicOff } from 'lucide-react';
+import { useSession } from 'next-auth/react';
 import * as React from 'react';
 import { BackgroundBlurToggle } from '~/components/ui/background-blur-toggle';
 import { CardSlot } from '~/components/ui/card-slot';
 import { RollingNumber } from '~/components/ui/chip-animations';
 import { TextHoverEffect } from '~/components/ui/text-hover-effect';
-import { useEffectiveBigBlind } from '~/hooks/use-table-selectors';
+import { useTableQuery } from '~/hooks/use-table-query';
+import {
+    useBlindSeatNumbers, useCurrentUserSeatId, useEffectiveBigBlind, useGameState,
+    useHighlightedSeatId, useIsDealerRole, useIsJoinable, usePaddedSeats, useTableId,
+    useTurnStartTime
+} from '~/hooks/use-table-selectors';
 import { useTimerBorder } from '~/hooks/use-timer-border';
 import { useInteractionStore } from '~/stores/interaction-store';
 import { api } from '~/utils/api';
+import { generateRsaKeyPairForTable } from '~/utils/crypto';
 
 import { ParticipantTile, TrackToggle, useTracks, VideoTrack } from '@livekit/components-react';
 
 import type { SeatWithPlayer } from "~/server/api/routers/table";
 
 interface SeatSectionProps {
-    seats: (SeatWithPlayer | null)[];
-    highlightedSeatId: string | null;
-    smallBlindIdx: number;
-    bigBlindIdx: number;
-    dealerButtonIdx: number;
-    myUserId?: string | null;
     side: 'left' | 'right';
-    gameState?: string;
-    canMoveSeat?: boolean;
-    onMoveSeat?: (seatNumber: number) => void;
-    movingSeatNumber?: number | null;
-    turnStartTime?: Date | null;
-    tableId: string;
-    dealerCanControlAudio?: boolean;
 }
 
 export function SeatSection({
-    seats,
-    highlightedSeatId,
-    smallBlindIdx,
-    bigBlindIdx,
-    dealerButtonIdx,
-    myUserId,
     side,
-    gameState,
-    canMoveSeat,
-    onMoveSeat,
-    movingSeatNumber,
-    turnStartTime,
-    tableId,
-    dealerCanControlAudio,
 }: SeatSectionProps) {
+    const { data: session } = useSession();
+    const userId = session?.user?.id;
+
+    // Get data from Zustand store using selectors
+    const allSeats = usePaddedSeats();
+    const highlightedSeatId = useHighlightedSeatId();
+    const { smallBlindIdx, bigBlindIdx, dealerButtonIdx } = useBlindSeatNumbers();
+    const myUserId = userId ?? null;
+    const gameState = useGameState();
+    const isJoinable = useIsJoinable();
+    const currentUserSeatId = useCurrentUserSeatId(userId);
+    const canMoveSeat = Boolean(isJoinable && currentUserSeatId);
+    const turnStartTime = useTurnStartTime();
+    const tableId = useTableId(); // Guaranteed to be string
+    const isDealerRole = useIsDealerRole();
+    const dealerCanControlAudio = isDealerRole;
+
+    // Get seats for this side
+    const seats = side === 'left' ? allSeats.slice(0, 4) : allSeats.slice(4, 8);
+
     // Since seats array is now padded, array index matches seat number
     let displaySeats: (SeatWithPlayer | null)[] = [];
 
@@ -93,8 +94,6 @@ export function SeatSection({
                         side={side}
                         gameState={gameState}
                         canMoveSeat={canMoveSeat}
-                        onMoveSeat={onMoveSeat}
-                        isMoving={movingSeatNumber === seatNumber}
                         turnStartTime={turnStartTime}
                         tableId={tableId}
                         dealerCanControlAudio={dealerCanControlAudio}
@@ -118,8 +117,6 @@ export function SeatCard({
     side,
     gameState,
     canMoveSeat,
-    onMoveSeat,
-    isMoving,
     turnStartTime,
     tableId,
     dealerCanControlAudio,
@@ -137,13 +134,49 @@ export function SeatCard({
     side: 'left' | 'right';
     gameState?: string;
     canMoveSeat?: boolean;
-    onMoveSeat?: (seatNumber: number) => void;
-    isMoving?: boolean;
     turnStartTime?: Date | null;
     tableId: string;
     dealerCanControlAudio?: boolean;
     fullHeight?: boolean;
 }) {
+    // State and mutation for moving seats
+    const [isMoving, setIsMoving] = React.useState(false);
+    const tableQuery = useTableQuery(tableId ?? undefined);
+    const updateSnapshot = tableQuery.updateSnapshot;
+    const utils = api.useUtils();
+
+    const changeSeat = api.table.changeSeat.useMutation({
+        onSuccess: (data) => {
+            if (data && tableId) {
+                // Update store and cache
+                updateSnapshot(data);
+                utils.table.get.setData({ tableId }, data);
+            }
+        },
+        onError: (error) => {
+            console.error('Change seat failed:', error);
+            setIsMoving(false);
+        },
+        onSettled: () => {
+            setIsMoving(false);
+        },
+    });
+
+    const handleMoveSeat = React.useCallback(async () => {
+        if (isMoving || !canMoveSeat) return;
+        try {
+            setIsMoving(true);
+            const { publicKeyPem } = await generateRsaKeyPairForTable(tableId);
+            await changeSeat.mutateAsync({
+                tableId,
+                toSeatNumber: seatNumber,
+                userPublicKey: publicKeyPem,
+            });
+        } catch (e) {
+            console.error('Failed to generate keypair for seat move', e);
+            setIsMoving(false);
+        }
+    }, [tableId, isMoving, canMoveSeat, seatNumber, changeSeat, updateSnapshot, utils]);
     const trackRefs = useTracks([Track.Source.Camera]);
     const audioRefs = useTracks([Track.Source.Microphone]);
     const videoTrackRef = seat ? trackRefs.find(
@@ -197,9 +230,7 @@ export function SeatCard({
             >
                 {/* Empty Video Feed - Full Height */}
                 <div
-                    onClick={() => {
-                        if (!isMoving && canMoveSeat) onMoveSeat?.(seatNumber);
-                    }}
+                    onClick={handleMoveSeat}
                     className={`relative h-full w-full overflow-hidden rounded-xl border bg-zinc-800/60 ${isMoving
                         ? 'border-zinc-400/60 cursor-wait'
                         : canMoveSeat

@@ -34,10 +34,6 @@ export function useActions() {
 
   return {
     mutate: (action: TableAction, params?: any) => {
-      if (!tableId) {
-        console.error("Cannot perform action: tableId is missing");
-        return;
-      }
       actionMutation.mutate({ tableId, action, params });
     },
     isPending: actionMutation.isPending,

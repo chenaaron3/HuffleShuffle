@@ -23,10 +23,6 @@ export function LeaveTableButton() {
     const isLeaving = leaveMutation.isPending || dealerLeaveMutation.isPending;
 
     const handleLeaveTable = () => {
-        if (!tableId) {
-            console.error('Cannot leave table: tableId is missing');
-            return;
-        }
         if (isDealerRole) {
             dealerLeaveMutation.mutate({ tableId });
         } else {

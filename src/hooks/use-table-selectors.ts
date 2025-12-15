@@ -219,9 +219,20 @@ export function useBlinds() {
   return snapshot?.blinds;
 }
 
-export function useTableId() {
+export function useTableId(): string {
   const snapshot = useTableStore((state) => state.snapshot);
-  return snapshot?.table?.id;
+  const tableId = snapshot?.table?.id;
+  if (!tableId) {
+    throw new Error(
+      "useTableId must be called within a table context with a valid tableId",
+    );
+  }
+  return tableId;
+}
+
+export function useTurnStartTime() {
+  const snapshot = useTableStore((state) => state.snapshot);
+  return snapshot?.game?.turnStartTime ?? null;
 }
 
 export function useIsDealerRole() {

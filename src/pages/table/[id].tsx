@@ -20,13 +20,11 @@ import { useQuickActions } from '~/hooks/use-quick-actions';
 import { useTableEvents } from '~/hooks/use-table-events';
 import { useTableQuery } from '~/hooks/use-table-query';
 import {
-    useActivePlayerName, useBettingActorSeatId, useBlindSeatNumbers, useCommunityCards,
-    useCurrentSeat, useCurrentUserSeatId, useDealSeatId, useGameState, useHighlightedSeatId,
-    useIsDealerRole, useMaxBet, useOriginalSeats, usePaddedSeats, useTableSnapshot, useTotalPot,
-    useWinningCards
+    useBettingActorSeatId, useCurrentSeat, useCurrentUserSeatId, useGameState, useIsDealerRole,
+    useMaxBet, useOriginalSeats, usePaddedSeats, useTableSnapshot
 } from '~/hooks/use-table-selectors';
 import { api } from '~/utils/api';
-import { generateRsaKeyPairForTable, rsaDecryptBase64 } from '~/utils/crypto';
+import { rsaDecryptBase64 } from '~/utils/crypto';
 import { disconnectPusherClient, getPusherClient } from '~/utils/pusher-client';
 import { SIGNALS } from '~/utils/signal-constants';
 
@@ -35,56 +33,53 @@ import { LiveKitRoom, RoomAudioRenderer, StartAudio } from '@livekit/components-
 export default function TableView() {
     const router = useRouter();
     const { id } = router.query as { id?: string };
-    const tableIdStr = id ?? '';
     const { data: session } = useSession();
     const { enabled: backgroundBlurEnabled } = useBackgroundBlur();
     const isDealerRole = useIsDealerRole();
+
     // Use the hook that manages query and updates store
     const tableQuery = useTableQuery(id);
     const updateSnapshot = tableQuery.updateSnapshot;
 
-    const action = api.table.action.useMutation({
-        onSuccess: (data) => {
-            // Update store with returned gameplay state
-            if (data) {
-                updateSnapshot(data);
-            }
-        },
-        onError: (error) => {
-            console.error('Action failed:', error);
-            // Could add toast notification here
-        }
-    });
+    // Early return if no table ID
+    if (!id) {
+        return (
+            <>
+                <Head>
+                    <title>Table Not Found - HuffleShuffle</title>
+                </Head>
+                <main className="flex min-h-screen items-center justify-center bg-black text-white">
+                    <div className="text-zinc-400">Table not found</div>
+                </main>
+            </>
+        );
+    }
 
-    const utils = api.useUtils();
-    const changeSeat = api.table.changeSeat.useMutation({
-        onSuccess: (data) => {
-            if (data) {
-                // Update store and cache
-                updateSnapshot(data);
-                utils.table.get.setData({ tableId: id ?? '' }, data);
-            }
-        },
-        onError: (error) => {
-            console.error('Change seat failed:', error);
-        },
-        onSettled: () => {
-            setMovingSeat(null);
-        }
-    });
+    // Early return if table query is loading or has no data
+    // This ensures useTableId() will always return a valid string in child components
+    if (tableQuery.isLoading || !tableQuery.data?.table?.id) {
+        return (
+            <>
+                <Head>
+                    <title>Loading Table - HuffleShuffle</title>
+                </Head>
+                <main className="flex min-h-screen items-center justify-center bg-black text-white">
+                    <div className="text-zinc-400">Loading table...</div>
+                </main>
+            </>
+        );
+    }
 
+    const tableIdStr = id;
 
     const [showSetup, setShowSetup] = React.useState<boolean>(false);
-    const [movingSeat, setMovingSeat] = React.useState<number | null>(null);
 
     // Use selector hooks for computed values
     const snapshot = useTableSnapshot();
     const seats = usePaddedSeats(); // For rendering (includes nulls for empty seats)
     const originalSeats = useOriginalSeats(); // For calculations (only actual seats)
     const state = useGameState();
-    const dealSeatId = useDealSeatId();
     const bettingActorSeatId = useBettingActorSeatId();
-    const highlightedSeatId = useHighlightedSeatId();
     const currentUserSeatId = useCurrentUserSeatId(session?.user?.id);
     const currentSeat = useCurrentSeat(session?.user?.id);
     const [handRoomName, setHandRoomName] = React.useState<string | null>(null);
@@ -93,10 +88,7 @@ export default function TableView() {
     const { events, refreshEvents: refreshEventFeed } = useTableEvents({ tableId: id });
 
     // Use selector hooks for computed values
-    const allWinningCards = useWinningCards();
-    const totalPot = useTotalPot();
     const maxBet = useMaxBet();
-    const { smallBlindIdx, bigBlindIdx, dealerButtonIdx } = useBlindSeatNumbers();
 
     // --- Quick actions hook ---
     const { quickAction, setQuickAction } = useQuickActions({
@@ -176,8 +168,6 @@ export default function TableView() {
         };
     }, []);
 
-    const communityCards = useCommunityCards();
-
     // LiveKit: fetch token when tableId is known and user is part of the table
     const livekit = api.table.livekitToken.useQuery(
         { tableId: id ?? '' },
@@ -185,32 +175,6 @@ export default function TableView() {
     );
 
     const canRenderLivekit = Boolean(id && livekit.data?.token && livekit.data?.serverUrl);
-
-    // Shared seat section props for reuse in desktop and mobile layouts
-    const seatSectionProps = {
-        highlightedSeatId,
-        smallBlindIdx,
-        bigBlindIdx,
-        dealerButtonIdx,
-        myUserId: session?.user?.id ?? null,
-        gameState: state,
-        canMoveSeat: Boolean(snapshot?.isJoinable && currentUserSeatId),
-        movingSeatNumber: movingSeat,
-        turnStartTime: snapshot?.game?.turnStartTime ?? null,
-        tableId: tableIdStr,
-        dealerCanControlAudio: isDealerAtTable,
-        onMoveSeat: async (seatNumber: number) => {
-            if (!id || movingSeat !== null) return;
-            try {
-                setMovingSeat(seatNumber);
-                const { publicKeyPem } = await generateRsaKeyPairForTable(id);
-                await changeSeat.mutateAsync({ tableId: id, toSeatNumber: seatNumber, userPublicKey: publicKeyPem });
-            } catch (e) {
-                console.error('Failed to generate keypair for seat move', e);
-                setMovingSeat(null);
-            }
-        },
-    };
 
     return (
         <>
@@ -249,9 +213,7 @@ export default function TableView() {
                                         {/* Left side seats (4, 3, 2, 1) */}
                                         <SeatSection
                                             key={`left-${tableIdStr}`}
-                                            seats={seats.slice(0, 4)}
                                             side="left"
-                                            {...seatSectionProps}
                                         />
 
                                         {/* Center area with dealer cam and player controls */}
@@ -287,9 +249,7 @@ export default function TableView() {
                                         {/* Right side seats (5, 6, 7, 8) */}
                                         <SeatSection
                                             key={`right-${tableIdStr}`}
-                                            seats={seats.slice(4, 8)}
                                             side="right"
-                                            {...seatSectionProps}
                                         />
                                     </div>
                                     <TableAnimation
@@ -310,24 +270,9 @@ export default function TableView() {
                                 ),
                                 betting: (
                                     <MobileBettingView
-                                        seats={seats}
-                                        seatSectionProps={seatSectionProps}
-                                        tableId={tableIdStr}
-                                        gameState={state}
-                                        communityCards={communityCards}
-                                        winningCards={allWinningCards}
-                                        totalPot={totalPot}
-                                        currentSeat={currentSeat ?? null}
-                                        currentUserSeatId={currentUserSeatId}
-                                        bettingActorSeatId={bettingActorSeatId}
                                         handRoomName={handRoomName}
-                                        effectiveBigBlind={snapshot?.game?.effectiveBigBlind}
-                                        maxBet={maxBet}
                                         quickAction={quickAction}
                                         onQuickActionChange={setQuickAction}
-                                        onAction={(actionType, params) => {
-                                            action.mutate({ tableId: id!, action: actionType as any, params });
-                                        }}
                                     />
                                 ),
                             }}

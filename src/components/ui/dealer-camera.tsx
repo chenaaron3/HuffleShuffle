@@ -3,8 +3,7 @@ import { Track } from 'livekit-client';
 import { useSession } from 'next-auth/react';
 import { CardImage } from '~/components/ui/card-img';
 import {
-    useCommunityCards, useDealerId, useGameState, useIsDealerRole, useIsPlayerTurn, useTableId,
-    useWinningCards
+    useCommunityCards, useDealerId, useGameState, useIsDealerRole, useIsPlayerTurn, useWinningCards
 } from '~/hooks/use-table-selectors';
 
 import { ParticipantTile, useTracks, VideoTrack } from '@livekit/components-react';
@@ -25,12 +24,6 @@ export function DealerCamera({
 }: DealerCameraProps) {
     const { data: session } = useSession();
     const userId = session?.user?.id;
-
-    // Get tableId from Zustand store
-    const tableId = useTableId();
-    if (!tableId) {
-        return null; // Can't render without tableId
-    }
 
     // Get data from Zustand store using selectors
     const communityCards = useCommunityCards();

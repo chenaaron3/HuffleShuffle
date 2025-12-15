@@ -1,44 +1,33 @@
+import { useSession } from 'next-auth/react';
 import * as React from 'react';
+import {
+    useBlindSeatNumbers, useCurrentUserSeatId, useGameState, useHighlightedSeatId, useIsDealerRole,
+    useIsJoinable, usePaddedSeats, useTableId, useTurnStartTime
+} from '~/hooks/use-table-selectors';
 
 import { SeatCard } from '../seat-section';
-
-import type { SeatWithPlayer } from '~/server/api/routers/table';
-
-interface MobileSeatSectionProps {
-    seats: (SeatWithPlayer | null)[];
-    highlightedSeatId: string | null;
-    smallBlindIdx: number;
-    bigBlindIdx: number;
-    dealerButtonIdx: number;
-    myUserId: string | null;
-    gameState?: string;
-    canMoveSeat: boolean;
-    movingSeatNumber: number | null;
-    turnStartTime: Date | null;
-    tableId: string;
-    dealerCanControlAudio: boolean;
-    onMoveSeat: (seatNumber: number) => Promise<void>;
-}
 
 /**
  * Mobile seat section that renders all seats horizontally in a single row.
  * Designed for mobile landscape betting view.
  */
-export function MobileSeatSection({
-    seats,
-    highlightedSeatId,
-    smallBlindIdx,
-    bigBlindIdx,
-    dealerButtonIdx,
-    myUserId,
-    gameState,
-    canMoveSeat,
-    movingSeatNumber,
-    turnStartTime,
-    tableId,
-    dealerCanControlAudio,
-    onMoveSeat,
-}: MobileSeatSectionProps) {
+export function MobileSeatSection() {
+    const { data: session } = useSession();
+    const userId = session?.user?.id;
+
+    // Get data from Zustand store using selectors
+    const seats = usePaddedSeats();
+    const highlightedSeatId = useHighlightedSeatId();
+    const { smallBlindIdx, bigBlindIdx, dealerButtonIdx } = useBlindSeatNumbers();
+    const myUserId = userId ?? null;
+    const gameState = useGameState();
+    const isJoinable = useIsJoinable();
+    const currentUserSeatId = useCurrentUserSeatId(userId);
+    const canMoveSeat = Boolean(isJoinable && currentUserSeatId);
+    const turnStartTime = useTurnStartTime();
+    const tableId = useTableId(); // Guaranteed to be string
+    const isDealerRole = useIsDealerRole();
+    const dealerCanControlAudio = isDealerRole;
     return (
         <div className="flex flex-row gap-2 items-center h-full overflow-visible">
             {seats.map((seat, index) => {
@@ -64,8 +53,6 @@ export function MobileSeatSection({
                             side={index < 4 ? 'left' : 'right'} // For styling purposes
                             gameState={gameState}
                             canMoveSeat={canMoveSeat}
-                            onMoveSeat={onMoveSeat}
-                            isMoving={movingSeatNumber === seatNumber}
                             turnStartTime={turnStartTime}
                             tableId={tableId}
                             dealerCanControlAudio={dealerCanControlAudio}
