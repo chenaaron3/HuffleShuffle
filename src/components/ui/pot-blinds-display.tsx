@@ -20,7 +20,6 @@ export function PotAndBlindsDisplay({ className }: PotAndBlindsDisplayProps) {
     // Get data from Zustand store using selectors
     const potTotal = useTotalPot() ?? 0;
     const blinds = useBlinds();
-    const [isHovered, setIsHovered] = React.useState(false);
     const liveBlindState = useLiveBlindState();
 
     const displaySmallBlind = liveBlindState.effectiveSmallBlind;
@@ -35,8 +34,6 @@ export function PotAndBlindsDisplay({ className }: PotAndBlindsDisplayProps) {
                 "relative flex flex-col bg-zinc-900/95 backdrop-blur-sm rounded-xl shadow-2xl border border-zinc-500/50 overflow-hidden transition-all duration-300 ease-in-out",
                 className
             )}
-            onMouseEnter={() => setIsHovered(true)}
-            onMouseLeave={() => setIsHovered(false)}
             layout
         >
             <div className="relative z-10 flex flex-col items-end min-w-[140px]">
@@ -76,9 +73,9 @@ export function PotAndBlindsDisplay({ className }: PotAndBlindsDisplayProps) {
                             <span>{displaySmallBlind}/{displayBigBlind}</span>
                         </div>
 
-                        {/* Expanded Timer View on Hover */}
+                        {/* Always show timer while running */}
                         <AnimatePresence>
-                            {isHovered && isTimerRunning && (
+                            {isTimerRunning && (
                                 <motion.div
                                     initial={{ opacity: 0, height: 0, marginTop: 0 }}
                                     animate={{ opacity: 1, height: 'auto', marginTop: 4 }}
