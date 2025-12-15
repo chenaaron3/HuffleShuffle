@@ -22,7 +22,8 @@ import { useTableQuery } from '~/hooks/use-table-query';
 import {
     useActivePlayerName, useBettingActorSeatId, useBlindSeatNumbers, useCommunityCards,
     useCurrentSeat, useCurrentUserSeatId, useDealSeatId, useGameState, useHighlightedSeatId,
-    useMaxBet, useOriginalSeats, usePaddedSeats, useTableSnapshot, useTotalPot, useWinningCards
+    useIsDealerRole, useMaxBet, useOriginalSeats, usePaddedSeats, useTableSnapshot, useTotalPot,
+    useWinningCards
 } from '~/hooks/use-table-selectors';
 import { api } from '~/utils/api';
 import { generateRsaKeyPairForTable, rsaDecryptBase64 } from '~/utils/crypto';
@@ -37,7 +38,7 @@ export default function TableView() {
     const tableIdStr = id ?? '';
     const { data: session } = useSession();
     const { enabled: backgroundBlurEnabled } = useBackgroundBlur();
-    const isDealerRole = session?.user?.role === 'dealer';
+    const isDealerRole = useIsDealerRole();
     // Use the hook that manages query and updates store
     const tableQuery = useTableQuery(id);
     const updateSnapshot = tableQuery.updateSnapshot;
@@ -94,7 +95,6 @@ export default function TableView() {
     // Use selector hooks for computed values
     const allWinningCards = useWinningCards();
     const totalPot = useTotalPot();
-    const activePlayerName = useActivePlayerName();
     const maxBet = useMaxBet();
     const { smallBlindIdx, bigBlindIdx, dealerButtonIdx } = useBlindSeatNumbers();
 
@@ -231,7 +231,7 @@ export default function TableView() {
                         <AutoBackgroundBlur enabled={!isDealerRole && backgroundBlurEnabled} />
                         <div className="absolute z-10 right-0 flex max-w-7xl items-center gap-3 px-4">
                             <StartAudio label="Enable Audio" />
-                            {session?.user?.role === 'dealer' && (
+                            {isDealerRole && (
                                 <button
                                     onClick={() => setShowSetup(true)}
                                     className="ml-auto rounded-md bg-white px-3 py-2 text-sm font-medium text-black hover:bg-zinc-200"
@@ -343,7 +343,7 @@ export default function TableView() {
                     </div>
                 )}
             </main>
-            {session?.user?.role === 'dealer' && (
+            {isDealerRole && (
                 <TableSetupModal tableId={tableIdStr} open={showSetup} onClose={() => setShowSetup(false)} />
             )}
             {/* <MediaPermissionsModal isPlayer={isPlayer ?? false} /> */}

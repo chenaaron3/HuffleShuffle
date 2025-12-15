@@ -1,12 +1,10 @@
-import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/router';
-import { useIsJoinable, useTableId } from '~/hooks/use-table-selectors';
+import { useIsDealerRole, useIsJoinable, useTableId } from '~/hooks/use-table-selectors';
 import { api } from '~/utils/api';
 
 export function LeaveTableButton() {
     const router = useRouter();
-    const { data: session } = useSession();
-    const isDealerRole = session?.user?.role === 'dealer';
+    const isDealerRole = useIsDealerRole();
     const tableId = useTableId();
     const isJoinable = useIsJoinable();
 

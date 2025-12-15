@@ -1,23 +1,25 @@
+import { useSession } from 'next-auth/react';
 import { useEffect, useRef } from 'react';
 import { useSoundEffects } from '~/components/providers/SoundProvider';
+import {
+    useActivePlayerName, useGameState, useIsDealerRole, useIsJoinable, useIsPlayerTurn
+} from '~/hooks/use-table-selectors';
 
 interface TurnIndicatorProps {
-    gameStatus?: string;
-    isJoinable?: boolean;
-    isDealer: boolean;
-    isPlayerTurn: boolean;
-    isDealerTurn: boolean;
-    activePlayerName?: string;
+    // No props needed - all data comes from selectors
 }
 
-export function TurnIndicator({
-    gameStatus,
-    isJoinable,
-    isDealer,
-    isPlayerTurn,
-    isDealerTurn,
-    activePlayerName,
-}: TurnIndicatorProps) {
+export function TurnIndicator({ }: TurnIndicatorProps) {
+    const { data: session } = useSession();
+    const userId = session?.user?.id;
+
+    // Get data from Zustand store using selectors
+    const gameStatus = useGameState();
+    const isJoinable = useIsJoinable();
+    const isDealer = useIsDealerRole();
+    const activePlayerName = useActivePlayerName();
+    const isPlayerTurn = useIsPlayerTurn(userId);
+    const isDealerTurn = ['DEAL_HOLE_CARDS', 'DEAL_FLOP', 'DEAL_TURN', 'DEAL_RIVER'].includes(gameStatus ?? '');
     const { play } = useSoundEffects();
     const isViewerTurn = isDealer && isDealerTurn || !isDealer && isPlayerTurn;
     const previousViewerTurn = useRef(isViewerTurn);

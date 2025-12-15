@@ -3,8 +3,8 @@ import { Track } from 'livekit-client';
 import { useSession } from 'next-auth/react';
 import { CardImage } from '~/components/ui/card-img';
 import {
-    useActivePlayerName, useBettingActorSeatId, useBlinds, useCommunityCards, useCurrentUserSeatId,
-    useDealerId, useGameState, useIsJoinable, useTableId, useTotalPot, useWinningCards
+    useCommunityCards, useDealerId, useGameState, useIsDealerRole, useIsPlayerTurn, useTableId,
+    useWinningCards
 } from '~/hooks/use-table-selectors';
 
 import { ParticipantTile, useTracks, VideoTrack } from '@livekit/components-react';
@@ -25,7 +25,6 @@ export function DealerCamera({
 }: DealerCameraProps) {
     const { data: session } = useSession();
     const userId = session?.user?.id;
-    const isDealerRole = session?.user?.role === 'dealer';
 
     // Get tableId from Zustand store
     const tableId = useTableId();
@@ -33,21 +32,13 @@ export function DealerCamera({
         return null; // Can't render without tableId
     }
 
-    // Derive loading states
-    const isLoading = false; // Loading is now handled within components
-
     // Get data from Zustand store using selectors
     const communityCards = useCommunityCards();
-    const potTotal = useTotalPot();
     const gameStatus = useGameState();
-    const activePlayerName = useActivePlayerName();
     const winningCards = useWinningCards();
     const dealerUserId = useDealerId();
-    const blinds = useBlinds();
-    const isJoinable = useIsJoinable();
-    const currentUserSeatId = useCurrentUserSeatId(userId);
-    const bettingActorSeatId = useBettingActorSeatId();
-    const isDealer = isDealerRole;
+    const isDealer = useIsDealerRole();
+    const isPlayerTurn = useIsPlayerTurn(userId);
 
     const trackRefs = useTracks([Track.Source.Camera]);
     const dealerRef = dealerUserId
@@ -55,10 +46,6 @@ export function DealerCamera({
             (t) => t.participant.identity === dealerUserId && t.source === Track.Source.Camera,
         )
         : null;
-
-    // Check if it's the current user's turn
-    const isPlayerTurn = gameStatus === 'BETTING' && currentUserSeatId === bettingActorSeatId;
-    const isDealerTurn = ['DEAL_HOLE_CARDS', 'DEAL_FLOP', 'DEAL_TURN', 'DEAL_RIVER'].includes(gameStatus ?? '');
 
     return (
         <div className="relative w-full h-full lg:h-auto lg:aspect-video overflow-hidden border border-white/10 rounded-lg bg-black">
@@ -111,33 +98,19 @@ export function DealerCamera({
 
             {/* Pot Total & Blinds Overlay - Center Top */}
             <div id="pot-display" className="absolute top-4 right-4 transform z-40">
-                <PotAndBlindsDisplay
-                    potTotal={potTotal}
-                    blinds={blinds}
-                />
+                <PotAndBlindsDisplay />
             </div>
 
             {/* Turn Indicator - Bottom Left */}
             <div className="absolute bottom-4 left-4">
-                <TurnIndicator
-                    gameStatus={gameStatus}
-                    isJoinable={isJoinable}
-                    isDealer={isDealer ?? false}
-                    isPlayerTurn={isPlayerTurn}
-                    isDealerTurn={isDealerTurn}
-                    activePlayerName={activePlayerName}
-                />
+                <TurnIndicator />
             </div>
 
             {/* Action Buttons Overlay - Dealer only */}
             <AnimatePresence mode="wait">
                 {isDealer && (
                     <div className="absolute flex bottom-4 right-4 justify-end items-end">
-                        <ActionButtons
-                            isJoinable={isJoinable ?? false}
-                            state={gameStatus}
-                            isLoading={isLoading ?? false}
-                        />
+                        <ActionButtons />
                     </div>
                 )}
             </AnimatePresence>

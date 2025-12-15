@@ -2,18 +2,16 @@ import { motion } from 'framer-motion';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from '~/components/ui/button';
 import { useActions } from '~/hooks/use-actions';
-import { useCommunityCards, useOriginalSeats } from '~/hooks/use-table-selectors';
-
-type GameAction = "RESET_TABLE" | "START_GAME" | "DEAL_CARD";
+import {
+    useCommunityCards, useGameState, useIsJoinable, useOriginalSeats
+} from '~/hooks/use-table-selectors';
 
 interface Seat {
     cards?: string[] | null;
 }
 
 interface ActionButtonsProps {
-    isJoinable: boolean;
-    state?: string;
-    isLoading?: boolean;
+    // No props needed - all data comes from selectors
 }
 
 const RANKS = ['2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K', 'A'];
@@ -40,21 +38,21 @@ function pickRandomUndealt(communityCards: string[], seats: Seat[]): string | nu
     return remaining[idx] as string;
 }
 
-export function ActionButtons({
-    isJoinable,
-    state,
-    isLoading = false,
-}: ActionButtonsProps) {
+export function ActionButtons({ }: ActionButtonsProps) {
     const [autoDeal, setAutoDeal] = useState<boolean>(false);
 
     // Use actions hook
-    const { mutate: performAction } = useActions();
+    const { mutate: performAction, isPending: isLoading } = useActions();
 
-    // Get data from Zustand store
+    // Get data from Zustand store using selectors
+    const isJoinable = useIsJoinable() ?? false;
+    const gameStatus = useGameState();
     const communityCards = useCommunityCards();
     const seats = useOriginalSeats();
 
-    const isDealerTurn = state ? ['DEAL_HOLE_CARDS', 'DEAL_FLOP', 'DEAL_TURN', 'DEAL_RIVER', 'SHOWDOWN'].includes(state) : false;
+    const isDealerTurn = gameStatus
+        ? ['DEAL_HOLE_CARDS', 'DEAL_FLOP', 'DEAL_TURN', 'DEAL_RIVER', 'SHOWDOWN'].includes(gameStatus)
+        : false;
 
     // Callback that picks and deals a random card (for manual button click)
     const dealRandomCard = useCallback(() => {

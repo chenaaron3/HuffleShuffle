@@ -1,15 +1,12 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import * as React from 'react';
 import { useLiveBlindState } from '~/hooks/use-live-blind-state';
+import { useBlinds, useTotalPot } from '~/hooks/use-table-selectors';
 import { cn } from '~/lib/utils';
 
 import { RollingNumber } from './chip-animations';
 
-import type { BlindState } from '~/server/api/blind-timer';
-
 interface PotAndBlindsDisplayProps {
-    potTotal: number;
-    blinds?: BlindState;
     className?: string;
 }
 
@@ -19,7 +16,10 @@ function formatTimeRemaining(seconds: number): string {
     return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
-export function PotAndBlindsDisplay({ potTotal, blinds, className }: PotAndBlindsDisplayProps) {
+export function PotAndBlindsDisplay({ className }: PotAndBlindsDisplayProps) {
+    // Get data from Zustand store using selectors
+    const potTotal = useTotalPot() ?? 0;
+    const blinds = useBlinds();
     const [isHovered, setIsHovered] = React.useState(false);
     const liveBlindState = useLiveBlindState();
 

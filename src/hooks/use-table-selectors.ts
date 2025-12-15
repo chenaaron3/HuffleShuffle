@@ -1,3 +1,4 @@
+import { useSession } from 'next-auth/react';
 import { useMemo } from 'react';
 import { useTableStore } from '~/stores/table-store';
 
@@ -46,6 +47,15 @@ export function useBettingActorSeatId() {
   const state = useGameState();
   const snapshot = useTableStore((state) => state.snapshot);
   return state === "BETTING" ? (snapshot?.game?.assignedSeatId ?? null) : null;
+}
+
+export function useIsPlayerTurn(userId: string | undefined) {
+  const gameStatus = useGameState();
+  const currentUserSeatId = useCurrentUserSeatId(userId);
+  const bettingActorSeatId = useBettingActorSeatId();
+  return useMemo(() => {
+    return gameStatus === "BETTING" && currentUserSeatId === bettingActorSeatId;
+  }, [gameStatus, currentUserSeatId, bettingActorSeatId]);
 }
 
 export function useHighlightedSeatId() {
@@ -212,4 +222,9 @@ export function useBlinds() {
 export function useTableId() {
   const snapshot = useTableStore((state) => state.snapshot);
   return snapshot?.table?.id;
+}
+
+export function useIsDealerRole() {
+  const { data: session } = useSession();
+  return session?.user?.role === "dealer";
 }

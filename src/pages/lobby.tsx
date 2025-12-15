@@ -3,6 +3,7 @@ import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
+import { useIsDealerRole } from '~/hooks/use-table-selectors';
 import { MAX_SEATS_PER_TABLE } from '~/server/db/schema';
 import { api } from '~/utils/api';
 import { generateRsaKeyPairForTable } from '~/utils/crypto';
@@ -17,7 +18,7 @@ export default function LobbyPage() {
         enabled: status === 'authenticated',
     });
 
-    const isDealer = session?.user?.role === 'dealer';
+    const isDealer = useIsDealerRole();
     const createMutation = api.table.create.useMutation({
         onSuccess: async ({ tableId }) => {
             await refetch();
