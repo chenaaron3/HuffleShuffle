@@ -1,38 +1,61 @@
 import { motion } from 'framer-motion';
 import { Coins } from 'lucide-react';
+import { useSession } from 'next-auth/react';
 import { useEffect, useState } from 'react';
 import { Button } from '~/components/ui/button';
 import { RollingNumber } from '~/components/ui/chip-animations';
 import { GlowingEffect } from '~/components/ui/glowing-effect';
 import { Slider } from '~/components/ui/slider';
 import { Tooltip, TooltipContent, TooltipTrigger } from '~/components/ui/tooltip';
+import { useActions } from '~/hooks/use-actions';
+import {
+    useCurrentSeat, useEffectiveBigBlind, useMaxBet, useTotalPot
+} from '~/hooks/use-table-selectors';
 import { cn } from '~/lib/utils';
 
 interface VerticalRaiseControlsProps {
-    potTotal?: number;
-    playerBalance?: number;
-    currentBet?: number;
-    bigBlind?: number;
-    raiseAmount: number;
-    onRaiseAmountChange: (amount: number) => void;
-    onFold?: () => void;
-    onCheck?: () => void;
-    onRaise?: () => void;
-    maxBet?: number;
+    // No props needed - all data comes from selectors
 }
 
-export function VerticalRaiseControls({
-    potTotal = 0,
-    playerBalance = 1000,
-    currentBet = 0,
-    bigBlind = 20,
-    raiseAmount,
-    onRaiseAmountChange,
-    onFold,
-    onCheck,
-    onRaise,
-    maxBet = 0
-}: VerticalRaiseControlsProps) {
+export function VerticalRaiseControls({ }: VerticalRaiseControlsProps) {
+    const { data: session } = useSession();
+    const userId = session?.user?.id;
+
+    // Get data from Zustand store using selectors
+    const potTotal = useTotalPot() ?? 0;
+    const currentSeat = useCurrentSeat(userId);
+    const playerBalance = currentSeat?.buyIn ?? 1000;
+    const currentBet = currentSeat?.currentBet ?? 0;
+    const bigBlind = useEffectiveBigBlind() ?? 20;
+    const maxBet = useMaxBet() ?? 0;
+
+    // Use actions hook for mutations
+    const { mutate: performAction } = useActions();
+
+    // State for raise amount
+    const [raiseAmount, setRaiseAmount] = useState<number>(bigBlind);
+
+    // Update raise amount when big blind or max bet changes
+    useEffect(() => {
+        if (bigBlind && maxBet !== undefined) {
+            setRaiseAmount(maxBet + bigBlind);
+        }
+    }, [bigBlind, maxBet]);
+
+    // Handle raise action
+    const handleRaise = () => {
+        performAction('RAISE', { amount: raiseAmount });
+    };
+
+    // Handle fold action
+    const handleFold = () => {
+        performAction('FOLD');
+    };
+
+    // Handle check action
+    const handleCheck = () => {
+        performAction('CHECK');
+    };
     const maxBetAmount = Math.max(0, currentBet + playerBalance);
     const availableAfterCall = Math.max(0, maxBetAmount - maxBet);
     // If player can't afford full big blind raise, all-in becomes the minimum
@@ -46,7 +69,7 @@ export function VerticalRaiseControls({
     const validatedAmount = clampAmount(raiseAmount);
 
     const handleAmountChange = (amount: number) => {
-        onRaiseAmountChange(clampAmount(amount));
+        setRaiseAmount(clampAmount(amount));
     };
 
     const quarterPot = Math.floor(Math.max(0, potTotal) / 4);
@@ -261,51 +284,41 @@ export function VerticalRaiseControls({
             </div>
 
             {/* Divider */}
-            {(onFold || onCheck || onRaise) && (
-                <div className="w-full h-px bg-white/10" />
-            )}
+            <div className="w-full h-px bg-white/10" />
 
             {/* Main Action Buttons - Fold, Check/Call, Raise */}
-            {(onFold || onCheck || onRaise) && (
-                <div className="flex gap-2 w-full">
-                    {onFold && (
-                        <Button
-                            onClick={onFold}
-                            variant="default"
-                            size="sm"
-                            className="flex-1 bg-red-600 hover:bg-red-700 text-white"
-                        >
-                            Fold
-                        </Button>
+            <div className="flex gap-2 w-full">
+                <Button
+                    onClick={handleFold}
+                    variant="default"
+                    size="sm"
+                    className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+                >
+                    Fold
+                </Button>
+                <Button
+                    onClick={handleCheck}
+                    variant="default"
+                    size="sm"
+                    className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                >
+                    {isCall ? (
+                        <>
+                            Call <RollingNumber value={callAmount} prefix="$" className="font-semibold" />
+                        </>
+                    ) : (
+                        'Check'
                     )}
-                    {onCheck && (
-                        <Button
-                            onClick={onCheck}
-                            variant="default"
-                            size="sm"
-                            className="flex-1 bg-green-600 hover:bg-green-700 text-white"
-                        >
-                            {isCall ? (
-                                <>
-                                    Call <RollingNumber value={callAmount} prefix="$" className="font-semibold" />
-                                </>
-                            ) : (
-                                'Check'
-                            )}
-                        </Button>
-                    )}
-                    {onRaise && (
-                        <Button
-                            onClick={onRaise}
-                            variant="default"
-                            size="sm"
-                            className="flex-1 bg-orange-500 hover:bg-orange-600 text-white"
-                        >
-                            Raise <RollingNumber value={validatedAmount} prefix="$" className="font-semibold" />
-                        </Button>
-                    )}
-                </div>
-            )}
+                </Button>
+                <Button
+                    onClick={handleRaise}
+                    variant="default"
+                    size="sm"
+                    className="flex-1 bg-orange-500 hover:bg-orange-600 text-white"
+                >
+                    Raise <RollingNumber value={validatedAmount} prefix="$" className="font-semibold" />
+                </Button>
+            </div>
         </motion.div>
     );
 }

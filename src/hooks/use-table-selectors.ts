@@ -193,3 +193,23 @@ export function useBlindSeatNumbers() {
     paddedSeats,
   ]);
 }
+
+export function useDealerId() {
+  const snapshot = useTableStore((state) => state.snapshot);
+  return snapshot?.table?.dealerId ?? undefined;
+}
+
+export function useIsJoinable() {
+  const snapshot = useTableStore((state) => state.snapshot);
+  return snapshot?.isJoinable ?? false;
+}
+
+export function useBlinds() {
+  const snapshot = useTableStore((state) => state.snapshot);
+  return snapshot?.blinds;
+}
+
+export function useTableId() {
+  const snapshot = useTableStore((state) => state.snapshot);
+  return snapshot?.table?.id;
+}

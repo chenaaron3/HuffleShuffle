@@ -1,42 +1,93 @@
 import { motion } from 'framer-motion';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from '~/components/ui/button';
+import { useActions } from '~/hooks/use-actions';
+import { useCommunityCards, useOriginalSeats } from '~/hooks/use-table-selectors';
 
 type GameAction = "RESET_TABLE" | "START_GAME" | "DEAL_CARD";
+
+interface Seat {
+    cards?: string[] | null;
+}
 
 interface ActionButtonsProps {
     isJoinable: boolean;
     state?: string;
     isLoading?: boolean;
-    onAction: (action: GameAction, params?: any) => void;
-    onRandomCard?: () => void;
+}
+
+const RANKS = ['2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K', 'A'];
+const SUITS = ['s', 'h', 'd', 'c'];
+
+function getDealtSet(communityCards: string[], seats: Seat[]): Set<string> {
+    const dealt = new Set<string>();
+    if (communityCards.length > 0) {
+        communityCards.forEach((c) => dealt.add(c));
+    }
+    seats.forEach((s) => {
+        (s.cards ?? []).forEach((c: string) => dealt.add(c));
+    });
+    return dealt;
+}
+
+function pickRandomUndealt(communityCards: string[], seats: Seat[]): string | null {
+    const dealt = getDealtSet(communityCards, seats);
+    const deck: string[] = [];
+    for (const r of RANKS) for (const s of SUITS) deck.push(`${r}${s}`);
+    const remaining = deck.filter((c) => !dealt.has(c));
+    if (remaining.length === 0) return null;
+    const idx = Math.floor(Math.random() * remaining.length);
+    return remaining[idx] as string;
 }
 
 export function ActionButtons({
     isJoinable,
     state,
     isLoading = false,
-    onAction,
-    onRandomCard,
 }: ActionButtonsProps) {
     const [autoDeal, setAutoDeal] = useState<boolean>(false);
 
+    // Use actions hook
+    const { mutate: performAction } = useActions();
+
+    // Get data from Zustand store
+    const communityCards = useCommunityCards();
+    const seats = useOriginalSeats();
+
     const isDealerTurn = state ? ['DEAL_HOLE_CARDS', 'DEAL_FLOP', 'DEAL_TURN', 'DEAL_RIVER', 'SHOWDOWN'].includes(state) : false;
 
-    // Auto-deal: run onRandomCard every second when enabled and it's dealer's turn
+    // Callback that picks and deals a random card (for manual button click)
+    const dealRandomCard = useCallback(() => {
+        const code = pickRandomUndealt(communityCards, seats);
+        if (!code) return;
+        performAction('DEAL_CARD', { rank: code[0], suit: code[1] });
+    }, [communityCards, seats, performAction]);
+
+    // Use a callback ref pattern to avoid restarting interval when values change
+    const latestValuesRef = useRef({ communityCards, seats, performAction, isLoading });
+
+    // Update the ref whenever dependencies change
     useEffect(() => {
-        if (!autoDeal || !isDealerTurn || !onRandomCard) {
+        latestValuesRef.current = { communityCards, seats, performAction, isLoading };
+    }, [communityCards, seats, performAction, isLoading]);
+
+    // Auto-deal: run dealRandomCard every second when enabled and it's dealer's turn
+    useEffect(() => {
+        if (!autoDeal || !isDealerTurn) {
             return;
         }
 
         const interval = setInterval(() => {
+            const { communityCards, seats, performAction, isLoading } = latestValuesRef.current;
             if (!isLoading) {
-                onRandomCard();
+                const code = pickRandomUndealt(communityCards, seats);
+                if (!code) return;
+                performAction('DEAL_CARD', { rank: code[0], suit: code[1] });
             }
         }, 1000);
 
         return () => clearInterval(interval);
-    }, [autoDeal, isDealerTurn, onRandomCard, isLoading]);
+    }, [autoDeal, isDealerTurn]);
 
     return (
         <motion.div
@@ -52,9 +103,9 @@ export function ActionButtons({
                     <Button
                         onClick={() => {
                             if (isJoinable) {
-                                onAction('START_GAME')
+                                performAction('START_GAME')
                             } else {
-                                onAction('RESET_TABLE')
+                                performAction('RESET_TABLE')
                             }
                         }}
                         disabled={isLoading}
@@ -63,29 +114,25 @@ export function ActionButtons({
                         {isJoinable ? 'Start Game' : 'Reset Table'}
                     </Button>
 
-                    {onRandomCard && (
-                        <Button
-                            onClick={onRandomCard}
-                            disabled={isLoading || (!isJoinable && !isDealerTurn)}
-                            className="transition-all duration-200 hover:scale-105 hover:bg-purple-500/80 shadow-2xl inline-flex items-center justify-center font-semibold px-8 py-3 rounded-xl border text-white bg-purple-500/70 border-purple-300/80 backdrop-blur"
-                        >
-                            {isLoading ? 'Dealing...' : 'Deal Random'}
-                        </Button>
-                    )}
+                    <Button
+                        onClick={dealRandomCard}
+                        disabled={isLoading || (!isJoinable && !isDealerTurn)}
+                        className="transition-all duration-200 hover:scale-105 hover:bg-purple-500/80 shadow-2xl inline-flex items-center justify-center font-semibold px-8 py-3 rounded-xl border text-white bg-purple-500/70 border-purple-300/80 backdrop-blur"
+                    >
+                        {isLoading ? 'Dealing...' : 'Deal Random'}
+                    </Button>
 
                     {/* Auto-Deal Toggle */}
-                    {onRandomCard && (
-                        <label className="inline-flex items-center gap-2 text-white/80 font-medium cursor-pointer">
-                            <input
-                                type="checkbox"
-                                checked={autoDeal}
-                                onChange={(e) => setAutoDeal(e.target.checked)}
-                                disabled={isLoading}
-                                className="w-4 h-4 rounded border-white/30 bg-white/10 text-blue-500 focus:ring-blue-500 focus:ring-offset-0 cursor-pointer"
-                            />
-                            Auto-Deal
-                        </label>
-                    )}
+                    <label className="inline-flex items-center gap-2 text-white/80 font-medium cursor-pointer">
+                        <input
+                            type="checkbox"
+                            checked={autoDeal}
+                            onChange={(e) => setAutoDeal(e.target.checked)}
+                            disabled={isLoading}
+                            className="w-4 h-4 rounded border-white/30 bg-white/10 text-blue-500 focus:ring-blue-500 focus:ring-offset-0 cursor-pointer"
+                        />
+                        Auto-Deal
+                    </label>
                 </div>
             </div>
         </motion.div>

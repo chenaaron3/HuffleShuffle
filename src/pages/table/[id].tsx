@@ -38,8 +38,6 @@ export default function TableView() {
     const { data: session } = useSession();
     const { enabled: backgroundBlurEnabled } = useBackgroundBlur();
     const isDealerRole = session?.user?.role === 'dealer';
-    const isPlayer = session?.user?.role === 'player';
-
     // Use the hook that manages query and updates store
     const tableQuery = useTableQuery(id);
     const updateSnapshot = tableQuery.updateSnapshot;
@@ -74,19 +72,6 @@ export default function TableView() {
         }
     });
 
-    const leaveMutation = api.table.leave.useMutation({
-        onSuccess: () => {
-            // Redirect to lobby after successfully leaving
-            void router.push('/lobby');
-        },
-    });
-
-    const dealerLeaveMutation = api.table.dealerLeave.useMutation({
-        onSuccess: () => {
-            // Redirect to lobby after successfully leaving
-            void router.push('/lobby');
-        },
-    });
 
     const [showSetup, setShowSetup] = React.useState<boolean>(false);
     const [movingSeat, setMovingSeat] = React.useState<number | null>(null);
@@ -193,29 +178,6 @@ export default function TableView() {
 
     const communityCards = useCommunityCards();
 
-    function getDealtSet() {
-        const dealt = new Set<string>();
-        if (communityCards.length > 0) {
-            communityCards.forEach((c) => dealt.add(c));
-        }
-        originalSeats.forEach((s) => {
-            (s.cards ?? []).forEach((c: string) => dealt.add(c));
-        });
-        return dealt;
-    }
-
-    function pickRandomUndealt(): string | null {
-        const ranks = ['2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K', 'A'];
-        const suits = ['s', 'h', 'd', 'c'];
-        const dealt = getDealtSet();
-        const deck: string[] = [];
-        for (const r of ranks) for (const s of suits) deck.push(`${r}${s}`);
-        const remaining = deck.filter((c) => !dealt.has(c));
-        if (remaining.length === 0) return null;
-        const idx = Math.floor(Math.random() * remaining.length);
-        return remaining[idx] as string;
-    }
-
     // LiveKit: fetch token when tableId is known and user is part of the table
     const livekit = api.table.livekitToken.useQuery(
         { tableId: id ?? '' },
@@ -295,47 +257,7 @@ export default function TableView() {
                                         {/* Center area with dealer cam and player controls */}
                                         <div className="flex flex-1 flex-col items-center gap-3">
                                             {/* Dealer Camera with Community Cards Overlay */}
-                                            <DealerCamera
-                                                communityCards={communityCards}
-                                                potTotal={totalPot}
-                                                gameStatus={state}
-                                                activePlayerName={activePlayerName}
-                                                winningCards={allWinningCards}
-                                                dealerUserId={snapshot?.table?.dealerId ?? undefined}
-                                                blinds={snapshot?.blinds ?? undefined}
-                                                isDealer={isDealerRole}
-                                                isJoinable={snapshot?.isJoinable ?? false}
-                                                currentUserSeatId={currentUserSeatId}
-                                                bettingActorSeatId={bettingActorSeatId}
-                                                isLoading={action.isPending || leaveMutation.isPending || dealerLeaveMutation.isPending}
-                                                currentBet={currentSeat?.currentBet ?? 0}
-                                                playerBalance={currentSeat?.buyIn ?? 0}
-                                                bigBlind={snapshot?.game?.effectiveBigBlind}
-                                                maxBet={maxBet}
-                                                onAction={(actionType, params) => {
-                                                    if (actionType === 'LEAVE') {
-                                                        leaveMutation.mutate({ tableId: id! });
-                                                    } else {
-                                                        action.mutate({ tableId: id!, action: actionType as any, params });
-                                                    }
-                                                }}
-                                                onDealCard={(rank, suit) => {
-                                                    action.mutate({ tableId: id!, action: 'DEAL_CARD', params: { rank, suit } });
-                                                }}
-                                                onRandomCard={() => {
-                                                    const code = pickRandomUndealt();
-                                                    if (!code) return;
-                                                    action.mutate({ tableId: id!, action: 'DEAL_CARD', params: { rank: code[0], suit: code[1] } });
-                                                }}
-                                                onLeaveTable={() => {
-                                                    if (session?.user?.role === 'dealer') {
-                                                        dealerLeaveMutation.mutate({ tableId: id! });
-                                                    } else {
-                                                        leaveMutation.mutate({ tableId: id! });
-                                                    }
-                                                }}
-                                                isLeaving={leaveMutation.isPending || dealerLeaveMutation.isPending}
-                                            />
+                                            <DealerCamera />
 
                                             {/* Hand area: flex layout with centered camera and quick actions */}
                                             <div className="flex w-full items-start gap-3">
@@ -381,45 +303,6 @@ export default function TableView() {
                                     <div className="h-full w-full flex items-center justify-center p-2">
                                         <div className="w-full h-full max-w-full max-h-full flex items-center justify-center">
                                             <DealerCamera
-                                                communityCards={communityCards}
-                                                potTotal={totalPot}
-                                                gameStatus={state}
-                                                activePlayerName={activePlayerName}
-                                                winningCards={allWinningCards}
-                                                dealerUserId={snapshot?.table?.dealerId ?? undefined}
-                                                blinds={snapshot?.blinds ?? undefined}
-                                                isDealer={isDealerRole}
-                                                isJoinable={snapshot?.isJoinable ?? false}
-                                                currentUserSeatId={currentUserSeatId}
-                                                bettingActorSeatId={bettingActorSeatId}
-                                                isLoading={action.isPending || leaveMutation.isPending || dealerLeaveMutation.isPending}
-                                                currentBet={currentSeat?.currentBet ?? 0}
-                                                playerBalance={currentSeat?.buyIn ?? 0}
-                                                bigBlind={snapshot?.game?.effectiveBigBlind}
-                                                maxBet={maxBet}
-                                                onAction={(actionType, params) => {
-                                                    if (actionType === 'LEAVE') {
-                                                        leaveMutation.mutate({ tableId: id! });
-                                                    } else {
-                                                        action.mutate({ tableId: id!, action: actionType as any, params });
-                                                    }
-                                                }}
-                                                onDealCard={(rank, suit) => {
-                                                    action.mutate({ tableId: id!, action: 'DEAL_CARD', params: { rank, suit } });
-                                                }}
-                                                onRandomCard={() => {
-                                                    const code = pickRandomUndealt();
-                                                    if (!code) return;
-                                                    action.mutate({ tableId: id!, action: 'DEAL_CARD', params: { rank: code[0], suit: code[1] } });
-                                                }}
-                                                onLeaveTable={() => {
-                                                    if (session?.user?.role === 'dealer') {
-                                                        dealerLeaveMutation.mutate({ tableId: id! });
-                                                    } else {
-                                                        leaveMutation.mutate({ tableId: id! });
-                                                    }
-                                                }}
-                                                isLeaving={leaveMutation.isPending || dealerLeaveMutation.isPending}
                                                 hidePlayerBettingControls={true}
                                             />
                                         </div>

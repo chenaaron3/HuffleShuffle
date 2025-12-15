@@ -29,13 +29,6 @@ export function ChipStream({
 
     const [isVisible, setIsVisible] = useState(true);
 
-    console.log('IndependentChipStream: Creating independent stream', {
-        fromPosition,
-        toPosition,
-        amount,
-        color
-    });
-
     // Calculate number of chips based on amount (more chips for larger amounts)
     const chipCount = 10// Math.min(Math.max(Math.floor(amount / 25), 3), 12);
 

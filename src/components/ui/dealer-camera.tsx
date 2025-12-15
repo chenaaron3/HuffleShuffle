@@ -1,73 +1,54 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { Track } from 'livekit-client';
-import { useEffect, useState } from 'react';
-import { isDefaultClause } from 'typescript';
+import { useSession } from 'next-auth/react';
 import { CardImage } from '~/components/ui/card-img';
-import { RollingNumber } from '~/components/ui/chip-animations';
-import { cn } from '~/lib/utils';
+import {
+    useActivePlayerName, useBettingActorSeatId, useBlinds, useCommunityCards, useCurrentUserSeatId,
+    useDealerId, useGameState, useIsJoinable, useTableId, useTotalPot, useWinningCards
+} from '~/hooks/use-table-selectors';
 
 import { ParticipantTile, useTracks, VideoTrack } from '@livekit/components-react';
 
 import { ActionButtons } from './action-buttons';
+import { LeaveTableButton } from './leave-table-button';
 import { PotAndBlindsDisplay } from './pot-blinds-display';
-import { Spinner } from './spinner';
 import { TurnIndicator } from './turn-indicator';
 import { VerticalRaiseControls } from './vertical-raise-controls';
 
-import type { BlindState } from '~/server/api/blind-timer';
-
 interface DealerCameraProps {
-    communityCards: string[];
-    potTotal: number;
-    gameStatus?: string;
-    activePlayerName?: string;
-    winningCards?: string[]; // Cards that make up the winning hand
-    dealerUserId?: string;
-    blinds?: BlindState;
-    // Action button props
-    isDealer?: boolean;
-    isJoinable?: boolean;
-    currentUserSeatId?: string | null;
-    bettingActorSeatId?: string | null;
-    isLoading?: boolean;
-    onAction?: (action: any, params?: any) => void;
-    onDealCard?: (rank: string, suit: string) => void;
-    onRandomCard?: () => void;
-    currentBet?: number;
-    playerBalance?: number;
-    bigBlind?: number;
-    maxBet?: number;
-    // Leave table props
-    onLeaveTable?: () => void;
-    isLeaving?: boolean;
     // Hide player betting controls (e.g., for mobile where they're in betting tab)
     hidePlayerBettingControls?: boolean;
 }
 
 export function DealerCamera({
-    communityCards,
-    potTotal,
-    gameStatus,
-    activePlayerName,
-    winningCards,
-    dealerUserId,
-    blinds,
-    isDealer,
-    isJoinable,
-    currentUserSeatId,
-    bettingActorSeatId,
-    isLoading,
-    onAction,
-    onDealCard,
-    onRandomCard,
-    currentBet,
-    playerBalance,
-    bigBlind,
-    maxBet,
-    onLeaveTable,
-    isLeaving,
     hidePlayerBettingControls = false,
 }: DealerCameraProps) {
+    const { data: session } = useSession();
+    const userId = session?.user?.id;
+    const isDealerRole = session?.user?.role === 'dealer';
+
+    // Get tableId from Zustand store
+    const tableId = useTableId();
+    if (!tableId) {
+        return null; // Can't render without tableId
+    }
+
+    // Derive loading states
+    const isLoading = false; // Loading is now handled within components
+
+    // Get data from Zustand store using selectors
+    const communityCards = useCommunityCards();
+    const potTotal = useTotalPot();
+    const gameStatus = useGameState();
+    const activePlayerName = useActivePlayerName();
+    const winningCards = useWinningCards();
+    const dealerUserId = useDealerId();
+    const blinds = useBlinds();
+    const isJoinable = useIsJoinable();
+    const currentUserSeatId = useCurrentUserSeatId(userId);
+    const bettingActorSeatId = useBettingActorSeatId();
+    const isDealer = isDealerRole;
+
     const trackRefs = useTracks([Track.Source.Camera]);
     const dealerRef = dealerUserId
         ? trackRefs.find(
@@ -78,34 +59,6 @@ export function DealerCamera({
     // Check if it's the current user's turn
     const isPlayerTurn = gameStatus === 'BETTING' && currentUserSeatId === bettingActorSeatId;
     const isDealerTurn = ['DEAL_HOLE_CARDS', 'DEAL_FLOP', 'DEAL_TURN', 'DEAL_RIVER'].includes(gameStatus ?? '');
-    // State for raise amount
-    const [raiseAmount, setRaiseAmount] = useState<number>(bigBlind ?? 10);
-    const [pendingAction, setPendingAction] = useState<'fold' | 'check' | 'raise' | null>(null);
-
-    // Update raise amount when big blind or max bet changes
-    useEffect(() => {
-        if (bigBlind && maxBet !== undefined) {
-            setRaiseAmount(maxBet + bigBlind);
-        }
-    }, [bigBlind, maxBet]);
-
-    // Handle raise action
-    const handleRaise = () => {
-        setPendingAction('raise');
-        onAction?.('RAISE', { amount: raiseAmount });
-    };
-
-    // Handle fold action
-    const handleFold = () => {
-        setPendingAction('fold');
-        onAction?.('FOLD');
-    };
-
-    // Handle check action
-    const handleCheck = () => {
-        setPendingAction('check');
-        onAction?.('CHECK');
-    };
 
     return (
         <div className="relative w-full h-full lg:h-auto lg:aspect-video overflow-hidden border border-white/10 rounded-lg bg-black">
@@ -178,37 +131,25 @@ export function DealerCamera({
 
             {/* Action Buttons Overlay - Dealer only */}
             <AnimatePresence mode="wait">
-                {(isDealer && onAction) && (
+                {isDealer && (
                     <div className="absolute flex bottom-4 right-4 justify-end items-end">
                         <ActionButtons
                             isJoinable={isJoinable ?? false}
                             state={gameStatus}
                             isLoading={isLoading ?? false}
-                            onAction={onAction ?? (() => { })}
-                            onRandomCard={onRandomCard}
                         />
                     </div>
                 )}
             </AnimatePresence>
 
             {/* Leave Table Button - Bottom Left */}
-            {isJoinable && onLeaveTable && (
-                <div className="absolute bottom-4 left-4">
-                    <button
-                        onClick={onLeaveTable}
-                        disabled={isLeaving}
-                        className="transition-all duration-200 hover:scale-105 shadow-lg bg-red-600/90 text-white font-semibold px-4 py-2 rounded-lg border border-red-500/50 backdrop-blur"
-                    >
-                        {isLeaving ? 'Leaving...' : 'Leave Table'}
-                    </button>
-                </div>
-            )}
+            <LeaveTableButton />
 
             {/* Horizontal Raise Controls - Bottom Right */}
             <AnimatePresence mode="wait">
-                {isPlayerTurn && onAction && (
+                {isPlayerTurn && (
                     <motion.div
-                        key={isLoading ? 'spinner' : 'controls'}
+                        key="controls"
                         layoutId="raise-controls"
                         className="absolute right-4 bottom-3"
                         initial={{ opacity: 0, scale: 0.9 }}
@@ -216,32 +157,7 @@ export function DealerCamera({
                         exit={{ opacity: 0, scale: 0.9 }}
                         transition={{ duration: 0.2 }}
                     >
-                        {isLoading ? (
-                            <div
-                                className="flex items-center justify-center p-2 rounded-xl backdrop-blur border"
-                                style={{
-                                    borderColor: pendingAction === 'fold' ? 'rgba(239, 68, 68, 0.3)' :
-                                        pendingAction === 'check' ? 'rgba(34, 197, 94, 0.3)' :
-                                            pendingAction === 'raise' ? 'rgba(234, 179, 8, 0.3)' :
-                                                'rgba(255, 255, 255, 0.1)',
-                                }}
-                            >
-                                <Spinner variant="ring" size={24} className="text-white" />
-                            </div>
-                        ) : (
-                            <VerticalRaiseControls
-                                potTotal={potTotal}
-                                playerBalance={playerBalance ?? 1000}
-                                currentBet={currentBet ?? 0}
-                                bigBlind={bigBlind ?? 20}
-                                raiseAmount={raiseAmount}
-                                onRaiseAmountChange={setRaiseAmount}
-                                onFold={handleFold}
-                                onCheck={handleCheck}
-                                onRaise={handleRaise}
-                                maxBet={maxBet}
-                            />
-                        )}
+                        <VerticalRaiseControls />
                     </motion.div>
                 )}
             </AnimatePresence>
