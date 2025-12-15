@@ -404,14 +404,16 @@ The card scanning system uses **AWS SQS FIFO** for reliable, ordered message pro
 - Coordinates Pusher subscriptions for real-time updates
 - Requests camera and microphone permissions for players on page load
 - Conditionally renders desktop or mobile layout based on screen size
+- **Null handling**: Early returns if table ID is missing or table query is loading, ensuring child components always have valid table context
 
 #### `src/components/ui/seat-section.tsx`
 
 - Renders 4 seats (left or right side)
 - Displays player info, cards, chips, status indicators
-- Handles seat selection and movement
+- Handles seat selection and movement (move logic encapsulated in `SeatCard` component)
 - Shows blind indicators and dealer button
 - Supports `fullHeight` prop for mobile layouts
+- **Uses selectors**: Derives all data from Zustand store via selector hooks (no prop drilling)
 
 #### `src/components/ui/dealer-camera.tsx`
 
@@ -421,6 +423,8 @@ The card scanning system uses **AWS SQS FIFO** for reliable, ordered message pro
 - Dealer controls (deal cards, reset table)
 - Responsive sizing: `h-full` on mobile, `aspect-video` on desktop (`lg:` breakpoint)
 - Supports `hidePlayerBettingControls` prop to hide controls on mobile (shown in betting tab instead)
+- **Uses selectors**: Derives all data from Zustand store via selector hooks (no prop drilling)
+- **Encapsulated mutations**: Uses `useActions()` hook for player actions, `LeaveTableButton` for leave functionality
 
 #### `src/components/ui/hand-camera.tsx`
 
@@ -464,6 +468,7 @@ Mobile-specific components organized in a dedicated folder for landscape mobile 
   - Hand camera (middle)
   - Betting controls (right - `VerticalRaiseControls` or `QuickActions`)
 - Displays only when player is seated or it's their turn
+- **Uses selectors**: Derives all data from Zustand store via selector hooks (minimal props: `handRoomName`, `quickAction`, `onQuickActionChange`)
 
 #### `src/components/ui/mobile/seat-section.tsx`
 
@@ -471,6 +476,7 @@ Mobile-specific components organized in a dedicated folder for landscape mobile 
 - Uses `SeatCard` component with `fullHeight={true}` prop
 - Each seat card is half the height of mobile screen
 - Scrollable horizontal layout with `overflow-x-auto`
+- **Uses selectors**: Derives all data from Zustand store via selector hooks (no props needed)
 
 #### `src/components/ui/mobile/community-cards-display.tsx`
 
@@ -552,7 +558,19 @@ Mobile-specific components organized in a dedicated folder for landscape mobile 
   - `useBettingActorSeatId()`: Current player to act
   - `useTotalPot()`: Total pot amount
   - `useCommunityCards()`: Community cards array
+  - `useTableId()`: Table ID (guaranteed string, throws if null - null case handled at page level)
+  - `useIsPlayerTurn(userId)`: Whether it's the given user's turn
+  - `useIsDealerRole()`: Whether current user is a dealer
+  - `useTurnStartTime()`: When current player's turn started
   - And more...
+
+#### `src/hooks/use-actions.ts`
+
+- Wrapper hook around `api.table.action.useMutation`
+- Handles `onSuccess`/`onError` internally
+- Updates Zustand store automatically on success
+- Returns `mutate` function and `isPending` state
+- Used by components that need to perform table actions (e.g., `DealerCamera`, `ActionButtons`, `VerticalRaiseControls`)
 
 ## Development Setup
 
@@ -837,8 +855,10 @@ All mobile-specific components are organized in `src/components/ui/mobile/`:
 5. **Side Pots**: JSONB storage for complex side pot calculations
 6. **Redaction**: Cards hidden from other players except in SHOWDOWN or when all remaining players are all-in (enables "runout" card reveal)
 7. **Zustand Store**: Lightweight state management for table snapshot
-8. **Selector Hooks**: Computed values derived from store for performance
+8. **Selector Hooks**: Computed values derived from store for performance, eliminates prop drilling
 9. **Mobile-first Responsive Design**: Separate mobile components with conditional rendering, maintaining desktop functionality
+10. **Guaranteed Table Context**: `useTableId()` hook guarantees string return (throws if null), null case handled at page level - components never need null checks
+11. **Component Encapsulation**: Components encapsulate their own mutations and state (e.g., `SeatCard` handles move seat logic, `LeaveTableButton` handles leave mutations)
 
 ## Common Tasks
 

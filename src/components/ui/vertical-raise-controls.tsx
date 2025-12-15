@@ -67,6 +67,7 @@ export function VerticalRaiseControls({ }: VerticalRaiseControlsProps) {
     // Clamp value to valid range
     const clampAmount = (value: number) => Math.max(minRaise, Math.min(value, maxBetAmount));
     const validatedAmount = clampAmount(raiseAmount);
+    const isForcedAllIn = maxBetAmount <= minRaise;
 
     const handleAmountChange = (amount: number) => {
         setRaiseAmount(clampAmount(amount));
@@ -314,6 +315,7 @@ export function VerticalRaiseControls({ }: VerticalRaiseControlsProps) {
                     onClick={handleRaise}
                     variant="default"
                     size="sm"
+                    disabled={isForcedAllIn}
                     className="flex-1 bg-orange-500 hover:bg-orange-600 text-white"
                 >
                     Raise <RollingNumber value={validatedAmount} prefix="$" className="font-semibold" />
