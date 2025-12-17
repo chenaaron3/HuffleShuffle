@@ -35,45 +35,14 @@ export default function TableView() {
     const { id } = router.query as { id?: string };
     const { data: session } = useSession();
     const { enabled: backgroundBlurEnabled } = useBackgroundBlur();
+    const [showSetup, setShowSetup] = React.useState<boolean>(false);
     const isDealerRole = useIsDealerRole();
 
     // Use the hook that manages query and updates store
     const tableQuery = useTableQuery(id);
     const updateSnapshot = tableQuery.updateSnapshot;
 
-    // Early return if no table ID
-    if (!id) {
-        return (
-            <>
-                <Head>
-                    <title>Table Not Found - HuffleShuffle</title>
-                </Head>
-                <main className="flex min-h-screen items-center justify-center bg-black text-white">
-                    <div className="text-zinc-400">Table not found</div>
-                </main>
-            </>
-        );
-    }
-
-    // Early return if table query is loading or has no data
-    // This ensures useTableId() will always return a valid string in child components
-    if (tableQuery.isLoading || !tableQuery.data?.table?.id) {
-        return (
-            <>
-                <Head>
-                    <title>Loading Table - HuffleShuffle</title>
-                </Head>
-                <main className="flex min-h-screen items-center justify-center bg-black text-white">
-                    <div className="text-zinc-400">Loading table...</div>
-                </main>
-            </>
-        );
-    }
-
     const tableIdStr = id;
-
-    const [showSetup, setShowSetup] = React.useState<boolean>(false);
-
     // Use selector hooks for computed values
     const snapshot = useTableSnapshot();
     const seats = usePaddedSeats(); // For rendering (includes nulls for empty seats)
@@ -175,6 +144,35 @@ export default function TableView() {
     );
 
     const canRenderLivekit = Boolean(id && livekit.data?.token && livekit.data?.serverUrl);
+
+    // Early return if no table ID
+    if (!id || !tableIdStr) {
+        return (
+            <>
+                <Head>
+                    <title>Table Not Found - HuffleShuffle</title>
+                </Head>
+                <main className="flex min-h-screen items-center justify-center bg-black text-white">
+                    <div className="text-zinc-400">Table not found</div>
+                </main>
+            </>
+        );
+    }
+
+    // Early return if table query is loading or has no data
+    // This ensures useTableId() will always return a valid string in child components
+    if (tableQuery.isLoading || !tableQuery.data?.table?.id) {
+        return (
+            <>
+                <Head>
+                    <title>Loading Table - HuffleShuffle</title>
+                </Head>
+                <main className="flex min-h-screen items-center justify-center bg-black text-white">
+                    <div className="text-zinc-400">Loading table...</div>
+                </main>
+            </>
+        );
+    }
 
     return (
         <>
