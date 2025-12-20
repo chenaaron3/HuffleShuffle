@@ -9,6 +9,7 @@ import { updateTable } from '~/server/signal';
 
 import { computeBlindState } from './blind-timer';
 import { isBot } from './bot-constants';
+import { createBotGameState, makeBotDecision } from './bot-strategy';
 import { executeBettingAction } from './game-helpers';
 import {
     activeCountOf, fetchAllSeatsInOrder, getNextActiveSeatId, getNextDealableSeatId,
@@ -571,14 +572,20 @@ export async function triggerBotActions(
       const botSeat = orderedSeats.find((s) => s.id === currentSeat.id);
       if (!botSeat || botSeat.seatStatus !== "active") return;
 
-      // Bot always uses CHECK action (handles check/call/all-in)
-      // executeBettingAction now handles everything: action, betCount, turn rotation, and betting transition
+      // Create game state for bot decision
+      const gameState = createBotGameState(botSeat, currentGame, orderedSeats);
+
+      // Make intelligent decision
+      const decision = makeBotDecision(gameState);
+
+      // Execute the bot's decision
       await executeBettingAction(txInner, {
         tableId,
         game: currentGame,
         actorSeat: botSeat,
         orderedSeats,
-        action: "CHECK",
+        action: decision.action,
+        raiseAmount: decision.action === "RAISE" ? decision.amount : undefined,
       });
     });
 

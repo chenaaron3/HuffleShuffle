@@ -145,6 +145,21 @@ export async function evaluateBettingTransition(
   const updatedGame = await mergeBetsIntoPotGeneric(tx, gameObj, freshSeats);
   const cc = updatedGame.communityCards.length;
 
+  // Get side pots to determine all eligible players (including eliminated ones)
+  const sidePots =
+    (updatedGame.sidePots as Array<{
+      amount: number;
+      eligibleSeatIds: string[];
+    }>) || [];
+
+  // Collect all seat IDs eligible for any side pot
+  const allEligibleSeatIds = new Set<string>();
+  for (const pot of sidePots) {
+    for (const seatId of pot.eligibleSeatIds) {
+      allEligibleSeatIds.add(seatId);
+    }
+  }
+
   // Determine non-folded players (active + all-in)
   const contenders = freshSeats.filter(
     (s: SeatRow) => s.seatStatus === "active" || s.seatStatus === "all-in",
@@ -157,31 +172,41 @@ export async function evaluateBettingTransition(
   const shouldShowdown = nonFoldedCount === 1 || cc === 5;
 
   if (shouldShowdown) {
-    // SHOWDOWN - evaluate all non-folded players (active + all-in)
+    // SHOWDOWN - evaluate hands for:
+    // 1. All non-folded players (active + all-in) - for main pot/early wins
+    // 2. All players eligible for side pots (even if eliminated) - to ensure side pots are distributed
 
-    // Evaluate each player's hand
-    const hands = contenders.map((s: SeatRow) => {
-      const playerCards = [
-        ...(s.cards as string[]),
-        ...updatedGame.communityCards,
-      ];
-      const handResult = solvePokerHand(playerCards);
+    // Build set of seats to evaluate: contenders + any eligible eliminated players
+    const seatsToEvaluate = new Set(contenders.map((s) => s.id));
+    for (const seatId of allEligibleSeatIds) {
+      seatsToEvaluate.add(seatId);
+    }
 
-      // Log hand evaluation for debugging
-      console.log(`Player ${s.id} hand:`, {
-        cards: playerCards,
-        handType: handResult.name,
-        description: handResult.descr,
-        winningCards: handResult.cards,
-        score: handResult.score,
+    // Evaluate each player's hand (including eliminated players eligible for side pots)
+    const hands = freshSeats
+      .filter((s) => seatsToEvaluate.has(s.id) && s.cards.length > 0)
+      .map((s: SeatRow) => {
+        const playerCards = [
+          ...(s.cards as string[]),
+          ...updatedGame.communityCards,
+        ];
+        const handResult = solvePokerHand(playerCards);
+
+        // Log hand evaluation for debugging
+        console.log(`Player ${s.id} hand:`, {
+          cards: playerCards,
+          handType: handResult.name,
+          description: handResult.descr,
+          winningCards: handResult.cards,
+          score: handResult.score,
+        });
+
+        return {
+          seatId: s.id,
+          hand: handResult,
+          playerCards,
+        };
       });
-
-      return {
-        seatId: s.id,
-        hand: handResult,
-        playerCards,
-      };
-    });
 
     // Track total winnings per seat
     const seatWinnings: Record<string, number> = {};
@@ -199,12 +224,6 @@ export async function evaluateBettingTransition(
     }
 
     // Distribute each side pot to the best hand among eligible players
-    const sidePots =
-      (updatedGame.sidePots as Array<{
-        amount: number;
-        eligibleSeatIds: string[];
-      }>) || [];
-
     console.log("Distributing side pots:", sidePots);
 
     for (const pot of sidePots) {
@@ -268,16 +287,19 @@ export async function evaluateBettingTransition(
         .where(eq(seats.id, handData.seatId));
     }
 
-    // Mark players with 0 chips as eliminated
+    // Update elimination status after winnings are distributed
     const allSeatsAfterWinnings = await fetchAllSeatsInOrder(tx, tableId);
     for (const seat of allSeatsAfterWinnings) {
       if (seat.buyIn === 0 && seat.seatStatus !== "eliminated") {
+        // Mark players with 0 chips as eliminated
         await tx
           .update(seats)
           .set({ seatStatus: "eliminated" })
           .where(eq(seats.id, seat.id));
         console.log(`Player ${seat.id} eliminated (0 chips remaining)`);
       }
+      // Note: "all-in" players who win chips will be reset to "active" by resetGame()
+      // when the next game starts, so no need to change status here
     }
 
     // Emit End Game event with all winners
@@ -294,13 +316,15 @@ export async function evaluateBettingTransition(
       winners: allWinners,
     });
 
-    // Set game to showdown state
+    // Set game to showdown state and clear pot (all chips have been distributed)
     await tx
       .update(games)
       .set({
         state: "SHOWDOWN",
         isCompleted: true,
         turnStartTime: null, // Clear turn start time when game is completed
+        potTotal: 0, // Clear pot after distribution
+        sidePots: sql`'[]'::jsonb`, // Clear side pots after distribution
       })
       .where(eq(games.id, updatedGame.id));
     return;

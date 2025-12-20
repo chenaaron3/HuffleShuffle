@@ -118,54 +118,112 @@ export async function executeBettingAction(
         `Invalid raise amount, must be at least the max bet of ${maxPlayerBet}`,
       );
     }
-    const total = amount - actorSeat.currentBet;
-    if (actorSeat.buyIn < total) {
-      throw new Error("Insufficient chips to raise");
+
+    // Re-fetch seat within transaction to ensure we have latest values
+    const currentSeat = await tx.query.seats.findFirst({
+      where: eq(seats.id, actorSeat.id),
+    });
+    if (!currentSeat) {
+      throw new Error("Seat not found");
     }
 
-    const newBuyIn = actorSeat.buyIn - total;
+    // Calculate using fresh database values (not stale actorSeat)
+    const requestedTotal = amount - currentSeat.currentBet;
+
+    // Ensure requestedTotal is positive (can't raise to less than current bet)
+    if (requestedTotal <= 0) {
+      // Already at or above the raise amount, just check
+      await tx
+        .update(seats)
+        .set({ lastAction: "CHECK" })
+        .where(eq(seats.id, actorSeat.id));
+      return {
+        updatedSeat,
+        nextSeatId: getNextActiveSeatId(orderedSeats, actorSeat.id),
+      };
+    }
+
+    // If not enough chips for requested raise, go all-in with remaining chips
+    const actualTotal = Math.min(requestedTotal, currentSeat.buyIn);
+
+    // Safety check: ensure we don't go negative
+    if (actualTotal <= 0) {
+      // No chips to raise with, just check
+      await tx
+        .update(seats)
+        .set({ lastAction: "CHECK" })
+        .where(eq(seats.id, actorSeat.id));
+      return {
+        updatedSeat,
+        nextSeatId: getNextActiveSeatId(orderedSeats, actorSeat.id),
+      };
+    }
+
+    const newBuyIn = currentSeat.buyIn - actualTotal;
     const newStatus = newBuyIn === 0 ? "all-in" : "active";
 
+    // Use explicit values, not SQL expressions, to ensure consistency
     await tx
       .update(seats)
       .set({
-        buyIn: sql`${seats.buyIn} - ${total}`,
-        currentBet: sql`${seats.currentBet} + ${total}`,
+        buyIn: newBuyIn,
+        currentBet: currentSeat.currentBet + actualTotal,
         lastAction: "RAISE",
         seatStatus: newStatus,
       })
       .where(eq(seats.id, actorSeat.id));
 
     updatedSeat.buyIn = newBuyIn;
-    updatedSeat.currentBet += total;
+    updatedSeat.currentBet = currentSeat.currentBet + actualTotal;
     updatedSeat.seatStatus = newStatus;
 
     await logRaise(tx as any, tableId, game.id, {
       seatId: actorSeat.id,
-      total: amount,
+      total: currentSeat.currentBet + actualTotal, // Log actual final bet amount
     });
   } else if (action === "CHECK") {
-    const need = maxPlayerBet - actorSeat.currentBet;
+    // Re-fetch seat within transaction to ensure we have latest values
+    const currentSeat = await tx.query.seats.findFirst({
+      where: eq(seats.id, actorSeat.id),
+    });
+    if (!currentSeat) {
+      throw new Error("Seat not found");
+    }
+
+    // Calculate using fresh database values
+    const need = maxPlayerBet - currentSeat.currentBet;
 
     if (need > 0) {
       // Player is calling (matching the bet)
-      const actualBet = Math.min(need, actorSeat.buyIn);
-      const newBuyIn = actorSeat.buyIn - actualBet;
-      const newStatus = newBuyIn === 0 ? "all-in" : "active";
+      // Calculate actual bet - can't bet more than available
+      const actualBet = Math.min(need, currentSeat.buyIn);
 
-      await tx
-        .update(seats)
-        .set({
-          buyIn: sql`${seats.buyIn} - ${actualBet}`,
-          currentBet: sql`${seats.currentBet} + ${actualBet}`,
-          lastAction: "CALL",
-          seatStatus: newStatus,
-        })
-        .where(eq(seats.id, actorSeat.id));
+      // Safety check: ensure we don't go negative
+      if (actualBet <= 0) {
+        // No chips to call with, just check (already all-in or no chips)
+        await tx
+          .update(seats)
+          .set({ lastAction: "CHECK" })
+          .where(eq(seats.id, actorSeat.id));
+      } else {
+        const newBuyIn = currentSeat.buyIn - actualBet;
+        const newStatus = newBuyIn === 0 ? "all-in" : "active";
 
-      updatedSeat.buyIn = newBuyIn;
-      updatedSeat.currentBet += actualBet;
-      updatedSeat.seatStatus = newStatus;
+        // Use explicit values, not SQL expressions, to ensure consistency
+        await tx
+          .update(seats)
+          .set({
+            buyIn: newBuyIn,
+            currentBet: currentSeat.currentBet + actualBet,
+            lastAction: "CALL",
+            seatStatus: newStatus,
+          })
+          .where(eq(seats.id, actorSeat.id));
+
+        updatedSeat.buyIn = newBuyIn;
+        updatedSeat.currentBet = currentSeat.currentBet + actualBet;
+        updatedSeat.seatStatus = newStatus;
+      }
 
       await logCall(tx as any, tableId, game.id, {
         seatId: actorSeat.id,
