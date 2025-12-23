@@ -1,6 +1,6 @@
-import { z } from 'zod';
-import { db } from '~/server/db';
-import { gameEventEnum, gameEvents } from '~/server/db/schema';
+import { z } from "zod";
+import { db } from "~/server/db";
+import { gameEventEnum, gameEvents } from "~/server/db/schema";
 
 type Tx = {
   insert: typeof db.insert;
@@ -12,7 +12,7 @@ export type GameEventType = (typeof gameEventEnum.enumValues)[number];
 
 // --- Detail schemas per event ---
 const StartGameDetails = z.object({
-  dealerButtonSeatId: z.string(),
+  dealerButtonSeatId: z.string().nullable(),
 });
 
 const RaiseDetails = z.object({

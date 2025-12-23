@@ -327,11 +327,16 @@ export async function createNewGame(
     // If there was a previous game and it was NOT reset, progress the dealer button
     // If it WAS reset (via RESET_TABLE action), reuse the same button position
     if (previousGame.wasReset) {
-      dealerButtonSeatId = previousGame.dealerButtonSeatId!;
+      // If previous game had a null dealer button, fallback to first seat
+      dealerButtonSeatId =
+        previousGame.dealerButtonSeatId ?? orderedSeats[0]!.id;
     } else {
       // Normal game progression - advance the button
-      const prevButton = previousGame.dealerButtonSeatId!;
-      dealerButtonSeatId = getNextActiveSeatId(orderedSeats, prevButton);
+      const prevButton = previousGame.dealerButtonSeatId;
+      if (prevButton) {
+        dealerButtonSeatId = getNextActiveSeatId(orderedSeats, prevButton);
+      }
+      // If prevButton is null, dealerButtonSeatId remains as orderedSeats[0]!.id
     }
   }
   const createdRows = await (tx as DB)
