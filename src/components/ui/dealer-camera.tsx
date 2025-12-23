@@ -11,6 +11,7 @@ import { ParticipantTile, useTracks, VideoTrack } from '@livekit/components-reac
 import { ActionButtons } from './action-buttons';
 import { LeaveTableButton } from './leave-table-button';
 import { PotAndBlindsDisplay } from './pot-blinds-display';
+import { SidePotDetails } from './side-pot-details';
 import { TurnIndicator } from './turn-indicator';
 import { VerticalRaiseControls } from './vertical-raise-controls';
 
@@ -90,8 +91,9 @@ export function DealerCamera({
             )}
 
             {/* Pot Total & Blinds Overlay - Center Top */}
-            <div id="pot-display" className="absolute top-4 right-4 transform z-40">
+            <div id="pot-display" className="absolute top-4 right-4 transform z-40 flex flex-col gap-2 items-end">
                 <PotAndBlindsDisplay />
+                <SidePotDetails />
             </div>
 
             {/* Turn Indicator - Bottom Left */}

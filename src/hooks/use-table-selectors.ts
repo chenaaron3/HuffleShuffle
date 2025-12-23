@@ -1,6 +1,6 @@
-import { useSession } from 'next-auth/react';
-import { useMemo } from 'react';
-import { useTableStore } from '~/stores/table-store';
+import { useSession } from "next-auth/react";
+import { useMemo } from "react";
+import { useTableStore } from "~/stores/table-store";
 
 import type { SeatWithPlayer } from "~/server/api/routers/table";
 
@@ -238,4 +238,18 @@ export function useTurnStartTime() {
 export function useIsDealerRole() {
   const { data: session } = useSession();
   return session?.user?.role === "dealer";
+}
+
+export function useSidePotDetails() {
+  const snapshot = useTableStore((state) => state.snapshot);
+  return (
+    (snapshot?.game?.sidePotDetails as Array<{
+      potNumber: number;
+      amount: number;
+      betLevelRange: { min: number; max: number };
+      contributors: Array<{ seatId: string; contribution: number }>;
+      eligibleSeatIds: string[];
+      winners: Array<{ seatId: string; amount: number }>;
+    }>) ?? []
+  );
 }
