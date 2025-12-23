@@ -130,6 +130,13 @@ export function redactSnapshotForUser(
   // no more betting is possible - show cards for the "runout"
   const allPlayersAllIn = activeCount === 0 && allInCount >= 2;
 
+  // Check if all players but one are all-in and we're in a new betting round
+  // If a player goes all-in in the current betting round, betCount will be > 0,
+  // so we won't show cards (active player still needs to act).
+  // In subsequent betting rounds, betCount resets to 0, so we can show cards.
+  const oneActiveAllOthersAllIn =
+    activeCount === 1 && allInCount >= 1 && snapshot.game?.betCount === 0;
+
   // Check if only one non-folded player remains (everyone else folded)
   const singleActive =
     snapshot.seats.filter(
@@ -146,6 +153,7 @@ export function redactSnapshotForUser(
       cards: Array(hiddenCount).fill("FD"),
       handType: null,
       handDescription: null,
+      winningCards: [],
     } as SeatWithPlayer;
     // Show cards face up for the current user
     if (s.playerId === userId) {
@@ -157,6 +165,11 @@ export function redactSnapshotForUser(
     }
     // Show cards when all remaining players are all-in
     if (allPlayersAllIn) {
+      return s;
+    }
+    // Show cards when all players but one are all-in and we're in a new betting round
+    // (betCount === 0 means no all-in actions in current round, so safe to show)
+    if (oneActiveAllOthersAllIn) {
       return s;
     }
     if (isShowdown) {
@@ -904,9 +917,9 @@ export const tableRouter = createTRPCRouter({
 
         if (input.action === "RESET_TABLE") {
           if (!isDealerCaller) throw new Error("Only dealer can RESET_TABLE");
-          // If there was a previous game, mark it as complete
+          // If there was a previous game, mark it as complete and set wasReset flag
           if (game && !game.isCompleted) {
-            await resetGame(tx, game, orderedSeats, true); // Reset buyIn to startingBalance
+            await resetGame(tx, game, orderedSeats, true, true); // Reset buyIn to startingBalance, mark as reset
           }
           return { ok: true } as const;
         }

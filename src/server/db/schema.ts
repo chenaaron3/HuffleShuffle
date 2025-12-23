@@ -1,5 +1,12 @@
-import { relations, sql } from 'drizzle-orm';
-import { check, index, pgEnum, pgTableCreator, primaryKey, uniqueIndex } from 'drizzle-orm/pg-core';
+import { relations, sql } from "drizzle-orm";
+import {
+  check,
+  index,
+  pgEnum,
+  pgTableCreator,
+  primaryKey,
+  uniqueIndex,
+} from "drizzle-orm/pg-core";
 
 import type { AdapterAccount } from "next-auth/adapters";
 
@@ -236,6 +243,7 @@ export const games = createTable(
     requiredBetCount: d.integer().notNull().default(0),
     effectiveSmallBlind: d.integer().notNull().default(0), // Effective small blind at game start
     effectiveBigBlind: d.integer().notNull().default(0), // Effective big blind at game start
+    wasReset: d.boolean().notNull().default(false), // True if this game was reset via RESET_TABLE action (button should not advance on next game)
     createdAt: d
       .timestamp({ withTimezone: true })
       .default(sql`CURRENT_TIMESTAMP`)

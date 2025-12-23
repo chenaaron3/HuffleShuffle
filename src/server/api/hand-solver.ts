@@ -297,16 +297,16 @@ async function updateEliminationStatus(tx: Tx, tableId: string): Promise<void> {
 async function validateMoneyConservation(
   tx: Tx,
   tableId: string,
-  initialSeats: SeatRow[],
 ): Promise<void> {
-  // Calculate sum of starting balances (from before the game)
-  const totalStartingBalance = initialSeats.reduce(
+  // Fetch all seats after winnings are distributed to get final buyIn values
+  const finalSeats = await fetchAllSeatsInOrder(tx, tableId);
+
+  // Calculate sum of starting balances (startingBalance is set at game start and doesn't change during the game)
+  const totalStartingBalance = finalSeats.reduce(
     (sum, seat) => sum + seat.startingBalance,
     0,
   );
 
-  // Fetch all seats after winnings are distributed to get final buyIn values
-  const finalSeats = await fetchAllSeatsInOrder(tx, tableId);
   const totalFinalBuyIn = finalSeats.reduce((sum, seat) => sum + seat.buyIn, 0);
 
   // Validate that money is conserved
@@ -356,7 +356,7 @@ async function completeShowdown(
   await updateEliminationStatus(tx, tableId);
 
   // Validate that money is conserved (no money creation/destruction)
-  await validateMoneyConservation(tx, tableId, freshSeats);
+  await validateMoneyConservation(tx, tableId);
 
   // Emit End Game event with all winners
   const allWinners = Object.entries(seatWinnings)

@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import { redactSnapshotForUser } from '~/server/api/routers/table';
+import { describe, expect, it } from "vitest";
+import { redactSnapshotForUser } from "~/server/api/routers/table";
 
 import type { TableSnapshot, SeatWithPlayer } from "~/server/api/routers/table";
 
@@ -46,7 +46,9 @@ function createMockGame(overrides: Partial<any> = {}) {
     effectiveBigBlind: 10,
     turnStartTime: null,
     isCompleted: false,
+    wasReset: false,
     createdAt: new Date(),
+    updatedAt: null,
     ...overrides,
   };
 }
@@ -54,7 +56,14 @@ function createMockGame(overrides: Partial<any> = {}) {
 // Helper to create a mock table snapshot
 function createMockSnapshot(
   seats: SeatWithPlayer[],
-  gameState: string = "BETTING",
+  gameState:
+    | "BETTING"
+    | "DEAL_HOLE_CARDS"
+    | "DEAL_FLOP"
+    | "DEAL_TURN"
+    | "DEAL_RIVER"
+    | "SHOWDOWN"
+    | "RESET_TABLE" = "BETTING",
   gameOverrides: Partial<any> = {},
 ): TableSnapshot {
   return {
@@ -65,21 +74,22 @@ function createMockSnapshot(
       smallBlind: 5,
       bigBlind: 10,
       maxSeats: 8,
+      blindStepSeconds: 600,
+      blindTimerStartedAt: null,
       createdAt: new Date(),
-      blindTimerStart: null,
-      blindTimerScheduleMinutes: null,
+      updatedAt: null,
     },
     seats,
-    game: createMockGame({ state: gameState, ...gameOverrides }),
+    game: createMockGame({ state: gameState, ...gameOverrides }) as any,
     isJoinable: false,
     availableSeats: 6,
     blinds: {
+      multiplier: 1,
+      elapsedSeconds: 0,
+      stepSeconds: 600,
+      startedAt: null,
       effectiveSmallBlind: 5,
       effectiveBigBlind: 10,
-      currentLevelIndex: 0,
-      currentLevelLabel: "5/10",
-      nextLevelLabel: null,
-      msUntilNextLevel: null,
     },
   };
 }
@@ -113,6 +123,9 @@ describe("redactSnapshotForUser", () => {
         seatNumber: 1,
         cards: ["QS", "JH"],
         seatStatus: "active",
+        handType: "Straight",
+        handDescription: "Straight, Queen high",
+        winningCards: ["QS", "JH", "TC", "9D", "8S"],
       });
       const snapshot = createMockSnapshot([mySeat, otherSeat], "BETTING");
 
@@ -120,6 +133,9 @@ describe("redactSnapshotForUser", () => {
 
       expect(result.seats[0]!.cards).toEqual(["AS", "KH"]); // My cards visible
       expect(result.seats[1]!.cards).toEqual(["FD", "FD"]); // Other player hidden
+      expect(result.seats[1]!.handType).toBeNull(); // Hand type hidden
+      expect(result.seats[1]!.handDescription).toBeNull(); // Hand description hidden
+      expect(result.seats[1]!.winningCards).toEqual([]); // Winning cards hidden
     });
 
     it("never reveals folded player cards", () => {
@@ -135,15 +151,21 @@ describe("redactSnapshotForUser", () => {
         seatNumber: 1,
         cards: ["QS", "JH"],
         seatStatus: "folded",
+        handType: "One Pair",
+        handDescription: "Pair of Queens",
+        winningCards: ["QS", "QC"],
       });
       const snapshot = createMockSnapshot([activeSeat, foldedSeat], "SHOWDOWN");
 
       const result = redactSnapshotForUser(snapshot, "player-1");
 
       expect(result.seats[1]!.cards).toEqual(["FD", "FD"]); // Folded stays hidden
+      expect(result.seats[1]!.handType).toBeNull(); // Hand type hidden
+      expect(result.seats[1]!.handDescription).toBeNull(); // Hand description hidden
+      expect(result.seats[1]!.winningCards).toEqual([]); // Winning cards hidden
     });
 
-    it("clears handType and handDescription when hiding cards", () => {
+    it("clears handType, handDescription, and winningCards when hiding cards", () => {
       const mySeat = createMockSeat({
         id: "seat-1",
         playerId: "player-1",
@@ -158,6 +180,7 @@ describe("redactSnapshotForUser", () => {
         seatStatus: "active",
         handType: "One Pair",
         handDescription: "Pair of Queens",
+        winningCards: ["QS", "JH", "QC", "2D", "5H"],
       });
       const snapshot = createMockSnapshot([mySeat, otherSeat], "BETTING");
 
@@ -165,6 +188,7 @@ describe("redactSnapshotForUser", () => {
 
       expect(result.seats[1]!.handType).toBeNull();
       expect(result.seats[1]!.handDescription).toBeNull();
+      expect(result.seats[1]!.winningCards).toEqual([]);
     });
   });
 
@@ -197,6 +221,9 @@ describe("redactSnapshotForUser", () => {
         playerId: "player-1",
         cards: ["AS", "KH"],
         seatStatus: "active",
+        handType: "Two Pair",
+        handDescription: "Pair of Aces, Pair of Kings",
+        winningCards: ["AS", "KH", "AC", "KD", "2H"],
       });
       const foldedSeat = createMockSeat({
         id: "seat-2",
@@ -211,6 +238,9 @@ describe("redactSnapshotForUser", () => {
       const result = redactSnapshotForUser(snapshot, "player-2");
 
       expect(result.seats[0]!.cards).toEqual(["FD", "FD"]); // Winner's cards hidden
+      expect(result.seats[0]!.handType).toBeNull(); // Hand type hidden
+      expect(result.seats[0]!.handDescription).toBeNull(); // Hand description hidden
+      expect(result.seats[0]!.winningCards).toEqual([]); // Winning cards hidden
       expect(result.seats[1]!.cards).toEqual(["QS", "JH"]); // Own cards visible
     });
   });
@@ -301,7 +331,39 @@ describe("redactSnapshotForUser", () => {
       expect(result.seats[2]!.cards).toEqual(["FD", "FD"]); // Folded hidden
     });
 
-    it("does NOT reveal cards if one player is still active", () => {
+    it("does NOT reveal cards if one player is still active and betCount > 0 (player went all-in in current round)", () => {
+      const activeSeat = createMockSeat({
+        id: "seat-1",
+        playerId: "player-1",
+        cards: ["AS", "KH"],
+        seatStatus: "active",
+      });
+      const allInSeat = createMockSeat({
+        id: "seat-2",
+        playerId: "player-2",
+        seatNumber: 1,
+        cards: ["QS", "JH"],
+        seatStatus: "all-in",
+        handType: "One Pair",
+        handDescription: "Pair of Queens",
+        winningCards: ["QS", "QC"],
+      });
+      const snapshot = createMockSnapshot(
+        [activeSeat, allInSeat],
+        "BETTING",
+        { betCount: 1 }, // Player went all-in in current round
+      );
+
+      const result = redactSnapshotForUser(snapshot, "player-1");
+
+      expect(result.seats[0]!.cards).toEqual(["AS", "KH"]); // Own cards
+      expect(result.seats[1]!.cards).toEqual(["FD", "FD"]); // Still hidden (active player needs to act)
+      expect(result.seats[1]!.handType).toBeNull(); // Hand type hidden
+      expect(result.seats[1]!.handDescription).toBeNull(); // Hand description hidden
+      expect(result.seats[1]!.winningCards).toEqual([]); // Winning cards hidden
+    });
+
+    it("reveals cards when all players but one are all-in and betCount === 0 (new betting round)", () => {
       const activeSeat = createMockSeat({
         id: "seat-1",
         playerId: "player-1",
@@ -315,12 +377,102 @@ describe("redactSnapshotForUser", () => {
         cards: ["QS", "JH"],
         seatStatus: "all-in",
       });
-      const snapshot = createMockSnapshot([activeSeat, allInSeat], "BETTING");
+      const snapshot = createMockSnapshot(
+        [activeSeat, allInSeat],
+        "BETTING",
+        { betCount: 0 }, // New betting round, all-in happened in previous round
+      );
 
       const result = redactSnapshotForUser(snapshot, "player-1");
 
       expect(result.seats[0]!.cards).toEqual(["AS", "KH"]); // Own cards
-      expect(result.seats[1]!.cards).toEqual(["FD", "FD"]); // Still hidden
+      expect(result.seats[1]!.cards).toEqual(["QS", "JH"]); // Revealed (betting complete)
+    });
+
+    it("reveals cards when all players but one are all-in and betCount === 0 in DEAL_FLOP state", () => {
+      const activeSeat = createMockSeat({
+        id: "seat-1",
+        playerId: "player-1",
+        cards: ["AS", "KH"],
+        seatStatus: "active",
+      });
+      const allInSeat = createMockSeat({
+        id: "seat-2",
+        playerId: "player-2",
+        seatNumber: 1,
+        cards: ["QS", "JH"],
+        seatStatus: "all-in",
+      });
+      const snapshot = createMockSnapshot(
+        [activeSeat, allInSeat],
+        "DEAL_FLOP",
+        { betCount: 0 },
+      );
+
+      const result = redactSnapshotForUser(snapshot, "player-1");
+
+      expect(result.seats[0]!.cards).toEqual(["AS", "KH"]);
+      expect(result.seats[1]!.cards).toEqual(["QS", "JH"]); // Revealed
+    });
+
+    it("reveals cards when all players but one are all-in and betCount === 0 with multiple all-in players", () => {
+      const activeSeat = createMockSeat({
+        id: "seat-1",
+        playerId: "player-1",
+        cards: ["AS", "KH"],
+        seatStatus: "active",
+      });
+      const allInSeat1 = createMockSeat({
+        id: "seat-2",
+        playerId: "player-2",
+        seatNumber: 1,
+        cards: ["QS", "JH"],
+        seatStatus: "all-in",
+      });
+      const allInSeat2 = createMockSeat({
+        id: "seat-3",
+        playerId: "player-3",
+        seatNumber: 2,
+        cards: ["TC", "9D"],
+        seatStatus: "all-in",
+      });
+      const snapshot = createMockSnapshot(
+        [activeSeat, allInSeat1, allInSeat2],
+        "DEAL_TURN",
+        { betCount: 0 },
+      );
+
+      const result = redactSnapshotForUser(snapshot, "player-1");
+
+      expect(result.seats[0]!.cards).toEqual(["AS", "KH"]);
+      expect(result.seats[1]!.cards).toEqual(["QS", "JH"]); // Revealed
+      expect(result.seats[2]!.cards).toEqual(["TC", "9D"]); // Revealed
+    });
+
+    it("does NOT reveal cards when all players but one are all-in but betCount > 0 (all-in in current round)", () => {
+      const activeSeat = createMockSeat({
+        id: "seat-1",
+        playerId: "player-1",
+        cards: ["AS", "KH"],
+        seatStatus: "active",
+      });
+      const allInSeat = createMockSeat({
+        id: "seat-2",
+        playerId: "player-2",
+        seatNumber: 1,
+        cards: ["QS", "JH"],
+        seatStatus: "all-in",
+      });
+      const snapshot = createMockSnapshot(
+        [activeSeat, allInSeat],
+        "DEAL_RIVER",
+        { betCount: 1 }, // All-in happened in current round
+      );
+
+      const result = redactSnapshotForUser(snapshot, "player-1");
+
+      expect(result.seats[0]!.cards).toEqual(["AS", "KH"]);
+      expect(result.seats[1]!.cards).toEqual(["FD", "FD"]); // Hidden (active player needs to act)
     });
 
     it("does NOT reveal cards with only one all-in player", () => {
@@ -329,6 +481,9 @@ describe("redactSnapshotForUser", () => {
         playerId: "player-1",
         cards: ["AS", "KH"],
         seatStatus: "all-in",
+        handType: "Flush",
+        handDescription: "Flush, Ace high",
+        winningCards: ["AS", "KH", "AH", "9H", "7H"],
       });
       const foldedSeat = createMockSeat({
         id: "seat-2",
@@ -343,6 +498,9 @@ describe("redactSnapshotForUser", () => {
       const result = redactSnapshotForUser(snapshot, "player-2");
 
       expect(result.seats[0]!.cards).toEqual(["FD", "FD"]); // Not revealed (only 1 all-in)
+      expect(result.seats[0]!.handType).toBeNull(); // Hand type hidden
+      expect(result.seats[0]!.handDescription).toBeNull(); // Hand description hidden
+      expect(result.seats[0]!.winningCards).toEqual([]); // Winning cards hidden
       expect(result.seats[1]!.cards).toEqual(["QS", "JH"]); // Own cards
     });
 
@@ -368,7 +526,7 @@ describe("redactSnapshotForUser", () => {
           cards: ["QS", "JH"],
           seatStatus: "all-in",
         });
-        const snapshot = createMockSnapshot([seat1, seat2], state);
+        const snapshot = createMockSnapshot([seat1, seat2], state as any);
 
         const result = redactSnapshotForUser(snapshot, "player-1");
 

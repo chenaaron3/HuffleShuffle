@@ -179,6 +179,7 @@ Huffle Shuffle is a real-time poker table management system that enables:
 - `effectiveBigBlind`: Integer (computed at game start)
 - `turnStartTime`: Timestamp (when current player's turn started)
 - `isCompleted`: Boolean
+- `wasReset`: Boolean (true if game was reset via RESET_TABLE action; prevents button advancement on next game)
 
 #### `piDevices` (huffle-shuffle_pi_device)
 
@@ -288,7 +289,7 @@ The game progresses through these states:
     - `RAISE`: Raise bet amount
     - `CHECK`: Check (no bet increase)
     - `FOLD`: Fold hand
-    - `RESET_TABLE` (dealer-only): Reset table for next hand
+    - `RESET_TABLE` (dealer-only): Reset table for next hand (marks game with `wasReset` flag; prevents button advancement on next game start)
 
 ### REST API Routes
 
@@ -507,8 +508,8 @@ Mobile-specific components organized in a dedicated folder for landscape mobile 
 **Core game logic shared between tRPC and ingest worker:**
 
 - `dealCard(tx, tableId, game, cardCode)`: Deals card to seat or community
-- `createNewGame(tx, table, seats, previousGame)`: Initializes new hand
-- `resetGame(tx, game, seats, resetBalance)`: Resets table for next hand
+- `createNewGame(tx, table, seats, previousGame)`: Initializes new hand (checks `wasReset` flag to determine button position)
+- `resetGame(tx, game, seats, resetBalance, wasReset)`: Resets table for next hand (sets `wasReset` flag if manually reset)
 - `ensureHoleCardsProgression()`: Advances to betting after all hole cards dealt
 - `ensurePostflopProgression()`: Starts betting round after flop/turn/river
 - `startBettingRound()`: Transitions to BETTING state
@@ -517,12 +518,30 @@ Mobile-specific components organized in a dedicated folder for landscape mobile 
 
 #### `src/server/api/hand-solver.ts`
 
-**Poker hand evaluation:**
+**Poker hand evaluation and showdown logic:**
 
-- `solvePokerHand(cards)`: Evaluates single hand
-- `findPokerWinners(hands)`: Determines winners among multiple hands
-- `evaluateBettingTransition()`: Checks if betting round should complete
-- Uses `pokersolver` library for hand ranking
+**Exported functions:**
+
+- `solvePokerHand(cards)`: Evaluates single hand using pokersolver library
+- `findPokerWinners(hands)`: Determines winners among multiple PokerHandResult objects
+- `evaluateBettingTransition()`: Checks if betting round should complete, triggers showdown if needed
+
+**Showdown process (internal functions):**
+
+- `evaluateContenderHands()`: Evaluates poker hands for all contenders (active + all-in players)
+- `initializeHandTracking()`: Initializes tracking structures for winnings and hand info
+- `distributeSidePots()`: Distributes side pots to winners based on hand rankings
+- `updateSeatsWithWinnings()`: Updates database with hand evaluation results and winnings
+- `updateEliminationStatus()`: Marks players with 0 chips as eliminated
+- `validateMoneyConservation()`: Validates that sum of startingBalance equals sum of final buyIn (ensures no money creation/destruction)
+- `completeShowdown()`: Orchestrates the complete showdown process
+
+**Key features:**
+
+- Only evaluates contenders (active + all-in players) - folded and eliminated players are excluded
+- Handles ties correctly when multiple players have the same winning hand
+- Validates money conservation to ensure no money is created or destroyed during pot distribution
+- Throws error if side pot has no eligible contenders (prevents money loss)
 
 #### `src/server/api/game-helpers.ts`
 

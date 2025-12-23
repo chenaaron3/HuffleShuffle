@@ -227,6 +227,7 @@ export async function resetGame(
   game: GameRow | null,
   orderedSeats: Array<SeatRow>,
   resetBalance: boolean = false,
+  wasReset: boolean = false,
 ): Promise<void> {
   // Reset all seats, but preserve eliminated status
   for (const s of orderedSeats) {
@@ -279,6 +280,7 @@ export async function resetGame(
         potTotal: 0,
         sidePots: sql`'[]'::jsonb`,
         state: "DEAL_HOLE_CARDS",
+        wasReset,
       })
       .where(eq(games.id, game.id));
     // End game with no winners
@@ -322,9 +324,15 @@ export async function createNewGame(
   // Create a new game object
   let dealerButtonSeatId = orderedSeats[0]!.id;
   if (previousGame) {
-    // If there was a previous game, progress the dealer button
-    const prevButton = previousGame.dealerButtonSeatId!;
-    dealerButtonSeatId = getNextActiveSeatId(orderedSeats, prevButton);
+    // If there was a previous game and it was NOT reset, progress the dealer button
+    // If it WAS reset (via RESET_TABLE action), reuse the same button position
+    if (previousGame.wasReset) {
+      dealerButtonSeatId = previousGame.dealerButtonSeatId!;
+    } else {
+      // Normal game progression - advance the button
+      const prevButton = previousGame.dealerButtonSeatId!;
+      dealerButtonSeatId = getNextActiveSeatId(orderedSeats, prevButton);
+    }
   }
   const createdRows = await (tx as DB)
     .insert(games)
