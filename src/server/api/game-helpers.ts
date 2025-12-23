@@ -1,12 +1,18 @@
-import crypto from 'crypto';
-import { and, eq, sql } from 'drizzle-orm';
-import { db } from '~/server/db';
-import { games, piDevices, pokerTables, seats, users } from '~/server/db/schema';
-import { rsaEncryptB64 } from '~/utils/crypto';
+import crypto from "crypto";
+import { and, eq, sql } from "drizzle-orm";
+import { db } from "~/server/db";
+import {
+  games,
+  piDevices,
+  pokerTables,
+  seats,
+  users,
+} from "~/server/db/schema";
+import { rsaEncryptB64 } from "~/utils/crypto";
 
-import { logCall, logCheck, logFold, logRaise } from './game-event-logger';
-import { getNextActiveSeatId } from './game-utils';
-import { evaluateBettingTransition } from './hand-solver';
+import { logCall, logCheck, logFold, logRaise } from "./game-event-logger";
+import { fetchAllSeatsInOrder, getNextActiveSeatId } from "./game-utils";
+import { evaluateBettingTransition } from "./hand-solver";
 
 type Tx = {
   insert: typeof db.insert;
@@ -90,16 +96,30 @@ export async function createSeatTransaction(
 export async function executeBettingAction(
   tx: Tx,
   params: {
-    tableId: string;
-    game: GameRow;
-    actorSeat: SeatRow;
-    orderedSeats: SeatRow[];
+    actorSeatId: string;
+    gameId: string;
     action: "RAISE" | "CHECK" | "FOLD";
     raiseAmount?: number;
   },
 ): Promise<{ updatedSeat: SeatRow; nextSeatId: string | null }> {
-  const { tableId, game, actorSeat, orderedSeats, action, raiseAmount } =
-    params;
+  const { actorSeatId, gameId, action, raiseAmount } = params;
+
+  // Query game to get tableId
+  const game = await tx.query.games.findFirst({
+    where: eq(games.id, gameId),
+  });
+  if (!game) {
+    throw new Error("Game not found");
+  }
+
+  // Query ordered seats for the table
+  const orderedSeats = await fetchAllSeatsInOrder(tx, game.tableId);
+
+  // Find actor seat from ordered seats
+  const currentSeat = orderedSeats.find((s) => s.id === actorSeatId);
+  if (!currentSeat) {
+    throw new Error("Actor seat not found");
+  }
 
   // Calculate max bet from all non-folded, non-eliminated players
   const maxPlayerBet = Math.max(
@@ -109,153 +129,100 @@ export async function executeBettingAction(
     0,
   );
 
-  let updatedSeat = { ...actorSeat };
+  // Variables for all actions
+  const currentBet = currentSeat.currentBet;
+  const availableFunds = currentSeat.buyIn;
 
+  // Variables to be set in action branches
+  let fundsRequested = 0;
+  let effectiveAction: "RAISE" | "CALL" | "CHECK" | "FOLD" = action;
+  let effectiveStatus: "active" | "all-in" | "folded" | "eliminated" = "active";
+
+  // Validate and compute action-specific values
   if (action === "RAISE") {
     const amount = raiseAmount ?? 0;
-    if (amount <= 0 || amount < maxPlayerBet) {
+    // Validation: ensure raise > maxbet
+    if (amount <= maxPlayerBet) {
       throw new Error(
-        `Invalid raise amount, must be at least the max bet of ${maxPlayerBet}`,
+        `Invalid raise amount, must be greater than the max bet of ${maxPlayerBet}`,
       );
     }
 
-    // Re-fetch seat within transaction to ensure we have latest values
-    const currentSeat = await tx.query.seats.findFirst({
-      where: eq(seats.id, actorSeat.id),
-    });
-    if (!currentSeat) {
-      throw new Error("Seat not found");
-    }
-
-    // Calculate using fresh database values (not stale actorSeat)
-    const requestedTotal = amount - currentSeat.currentBet;
-
-    // Ensure requestedTotal is positive (can't raise to less than current bet)
-    if (requestedTotal <= 0) {
-      // Already at or above the raise amount, just check
-      await tx
-        .update(seats)
-        .set({ lastAction: "CHECK" })
-        .where(eq(seats.id, actorSeat.id));
-      return {
-        updatedSeat,
-        nextSeatId: getNextActiveSeatId(orderedSeats, actorSeat.id),
-      };
-    }
-
-    // If not enough chips for requested raise, go all-in with remaining chips
-    const actualTotal = Math.min(requestedTotal, currentSeat.buyIn);
-
-    // Safety check: ensure we don't go negative
-    if (actualTotal <= 0) {
-      // No chips to raise with, just check
-      await tx
-        .update(seats)
-        .set({ lastAction: "CHECK" })
-        .where(eq(seats.id, actorSeat.id));
-      return {
-        updatedSeat,
-        nextSeatId: getNextActiveSeatId(orderedSeats, actorSeat.id),
-      };
-    }
-
-    const newBuyIn = currentSeat.buyIn - actualTotal;
-    const newStatus = newBuyIn === 0 ? "all-in" : "active";
-
-    // Use explicit values, not SQL expressions, to ensure consistency
-    await tx
-      .update(seats)
-      .set({
-        buyIn: newBuyIn,
-        currentBet: currentSeat.currentBet + actualTotal,
-        lastAction: "RAISE",
-        seatStatus: newStatus,
-      })
-      .where(eq(seats.id, actorSeat.id));
-
-    updatedSeat.buyIn = newBuyIn;
-    updatedSeat.currentBet = currentSeat.currentBet + actualTotal;
-    updatedSeat.seatStatus = newStatus;
-
-    await logRaise(tx as any, tableId, game.id, {
-      seatId: actorSeat.id,
-      total: currentSeat.currentBet + actualTotal, // Log actual final bet amount
-    });
+    fundsRequested = amount - currentBet;
+    effectiveAction = "RAISE";
   } else if (action === "CHECK") {
-    // Re-fetch seat within transaction to ensure we have latest values
-    const currentSeat = await tx.query.seats.findFirst({
-      where: eq(seats.id, actorSeat.id),
-    });
-    if (!currentSeat) {
-      throw new Error("Seat not found");
-    }
-
-    // Calculate using fresh database values
-    const need = maxPlayerBet - currentSeat.currentBet;
-
-    if (need > 0) {
-      // Player is calling (matching the bet)
-      // Calculate actual bet - can't bet more than available
-      const actualBet = Math.min(need, currentSeat.buyIn);
-
-      // Safety check: ensure we don't go negative
-      if (actualBet <= 0) {
-        // No chips to call with, just check (already all-in or no chips)
-        await tx
-          .update(seats)
-          .set({ lastAction: "CHECK" })
-          .where(eq(seats.id, actorSeat.id));
-      } else {
-        const newBuyIn = currentSeat.buyIn - actualBet;
-        const newStatus = newBuyIn === 0 ? "all-in" : "active";
-
-        // Use explicit values, not SQL expressions, to ensure consistency
-        await tx
-          .update(seats)
-          .set({
-            buyIn: newBuyIn,
-            currentBet: currentSeat.currentBet + actualBet,
-            lastAction: "CALL",
-            seatStatus: newStatus,
-          })
-          .where(eq(seats.id, actorSeat.id));
-
-        updatedSeat.buyIn = newBuyIn;
-        updatedSeat.currentBet = currentSeat.currentBet + actualBet;
-        updatedSeat.seatStatus = newStatus;
-      }
-
-      await logCall(tx as any, tableId, game.id, {
-        seatId: actorSeat.id,
-        total: updatedSeat.currentBet,
-      });
+    // Validation: ensure max == currentBet (if not, it becomes a call)
+    if (maxPlayerBet > currentBet) {
+      // This becomes a call - validate that maxbet > currentbet (which we know is true)
+      fundsRequested = maxPlayerBet - currentBet;
+      effectiveAction = "CALL";
+    } else if (maxPlayerBet < currentBet) {
+      throw new Error("Invalid check: current bet exceeds max bet");
     } else {
-      // Player is checking (no bet to match)
-      await tx
-        .update(seats)
-        .set({ lastAction: "CHECK" })
-        .where(eq(seats.id, actorSeat.id));
-
-      await logCheck(tx as any, tableId, game.id, {
-        seatId: actorSeat.id,
-        total: maxPlayerBet,
-      });
+      // maxPlayerBet == currentBet, so it's a check
+      fundsRequested = 0;
+      effectiveAction = "CHECK";
     }
   } else if (action === "FOLD") {
-    await tx
-      .update(seats)
-      .set({ seatStatus: "folded", lastAction: "FOLD" })
-      .where(eq(seats.id, actorSeat.id));
+    // No validation needed for fold
+    fundsRequested = 0;
+    effectiveAction = "FOLD";
+    effectiveStatus = "folded";
+  }
 
-    updatedSeat.seatStatus = "folded";
+  // Adjust fundsRequested if player doesn't have enough funds (allow going all-in)
+  if (fundsRequested > availableFunds) {
+    fundsRequested = availableFunds;
+  }
 
-    await logFold(tx as any, tableId, game.id, {
-      seatId: actorSeat.id,
+  // Update seat: deduct from buyIn and add to currentBet (if needed)
+  const newBuyIn = availableFunds - fundsRequested;
+  const newCurrentBet = currentBet + fundsRequested;
+
+  // Update effectiveStatus if not already set (e.g., for FOLD)
+  if (effectiveStatus !== "folded") {
+    effectiveStatus = newBuyIn === 0 ? "all-in" : "active";
+  }
+
+  const [updatedSeat] = await tx
+    .update(seats)
+    .set({
+      buyIn: newBuyIn,
+      currentBet: newCurrentBet,
+      lastAction: effectiveAction,
+      seatStatus: effectiveStatus,
+    })
+    .where(eq(seats.id, actorSeatId))
+    .returning();
+
+  if (!updatedSeat) {
+    throw new Error("Failed to update seat");
+  }
+
+  // Log the action
+  if (effectiveAction === "RAISE") {
+    await logRaise(tx as any, game.tableId, game.id, {
+      seatId: actorSeatId,
+      total: newCurrentBet,
+    });
+  } else if (effectiveAction === "CALL") {
+    await logCall(tx as any, game.tableId, game.id, {
+      seatId: actorSeatId,
+      total: newCurrentBet,
+    });
+  } else if (effectiveAction === "CHECK") {
+    await logCheck(tx as any, game.tableId, game.id, {
+      seatId: actorSeatId,
+      total: maxPlayerBet,
+    });
+  } else if (effectiveAction === "FOLD") {
+    await logFold(tx as any, game.tableId, game.id, {
+      seatId: actorSeatId,
     });
   }
 
   // Get next active seat
-  const nextSeatId = getNextActiveSeatId(orderedSeats, actorSeat.id);
+  const nextSeatId = getNextActiveSeatId(orderedSeats, actorSeatId);
 
   // Increment betCount and rotate to next player
   await tx
@@ -272,7 +239,7 @@ export async function executeBettingAction(
     .where(eq(games.id, game.id));
 
   // Evaluate if betting round is complete
-  await evaluateBettingTransition(tx, tableId, {
+  await evaluateBettingTransition(tx, game.tableId, {
     ...game,
     betCount: game.betCount + 1,
     assignedSeatId: nextSeatId,

@@ -1,28 +1,49 @@
-import { and, eq, gt, isNull, or, sql } from 'drizzle-orm';
-import { AccessToken } from 'livekit-server-sdk';
-import process from 'process';
-import ts from 'typescript';
-import { z } from 'zod';
-import { createTRPCRouter, protectedProcedure, publicProcedure } from '~/server/api/trpc';
-import { db } from '~/server/db';
+import { and, eq, gt, isNull, or, sql } from "drizzle-orm";
+import { AccessToken } from "livekit-server-sdk";
+import process from "process";
+import ts from "typescript";
+import { z } from "zod";
 import {
-    games, MAX_SEATS_PER_TABLE, piDevices, pokerTables, seats, users
-} from '~/server/db/schema';
-import { getRoomServiceClient } from '~/server/livekit';
-import { endHandStream, startHandStream } from '~/server/signal';
-import { rsaEncryptB64 } from '~/utils/crypto';
+  createTRPCRouter,
+  protectedProcedure,
+  publicProcedure,
+} from "~/server/api/trpc";
+import { db } from "~/server/db";
+import {
+  games,
+  MAX_SEATS_PER_TABLE,
+  piDevices,
+  pokerTables,
+  seats,
+  users,
+} from "~/server/db/schema";
+import { getRoomServiceClient } from "~/server/livekit";
+import { endHandStream, startHandStream } from "~/server/signal";
+import { rsaEncryptB64 } from "~/utils/crypto";
 
-import { SendMessageCommand, SQSClient } from '@aws-sdk/client-sqs';
-import { TrackSource, TrackType } from '@livekit/protocol';
+import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
+import { TrackSource, TrackType } from "@livekit/protocol";
 
-import { computeBlindState } from '../blind-timer';
-import { generateBotPublicKey, getBotIdForSeat, getBotName, isBot } from '../bot-constants';
+import { computeBlindState } from "../blind-timer";
 import {
-    createSeatTransaction, executeBettingAction, removePlayerSeatTransaction
-} from '../game-helpers';
+  generateBotPublicKey,
+  getBotIdForSeat,
+  getBotName,
+  isBot,
+} from "../bot-constants";
 import {
-    createNewGame, dealCard, notifyTableUpdate, parseRankSuitToBarcode, resetGame, triggerBotActions
-} from '../game-logic';
+  createSeatTransaction,
+  executeBettingAction,
+  removePlayerSeatTransaction,
+} from "../game-helpers";
+import {
+  createNewGame,
+  dealCard,
+  notifyTableUpdate,
+  parseRankSuitToBarcode,
+  resetGame,
+  triggerBotActions,
+} from "../game-logic";
 
 import type { BlindState } from "../blind-timer";
 import type { VideoGrant } from "livekit-server-sdk";
@@ -963,10 +984,8 @@ export const tableRouter = createTRPCRouter({
         // Execute betting action using shared helper
         // This handles the action, betCount increment, turn rotation, and betting transition
         await executeBettingAction(tx, {
-          tableId: input.tableId,
-          game,
-          actorSeat,
-          orderedSeats,
+          actorSeatId: actorSeat.id,
+          gameId: game.id,
           action: input.action,
           raiseAmount: input.params?.amount,
         });
@@ -1065,10 +1084,8 @@ export const tableRouter = createTRPCRouter({
         // Fold the player due to timeout using shared helper
         // This handles the fold, betCount increment, turn rotation, and betting transition
         await executeBettingAction(tx, {
-          tableId: input.tableId,
-          game,
-          actorSeat: seat,
-          orderedSeats: snapshot.seats,
+          actorSeatId: input.seatId,
+          gameId: game.id,
           action: "FOLD",
         });
 
