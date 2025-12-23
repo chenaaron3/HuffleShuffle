@@ -297,17 +297,6 @@ export async function createNewGame(
   // Reset all seats and mark current game as completed (if exists)
   await resetGame(tx, previousGame, orderedSeats);
 
-  // Mark players with 0 chips as eliminated
-  for (const seat of orderedSeats) {
-    if (seat.buyIn === 0 && seat.seatStatus !== "eliminated") {
-      await tx
-        .update(seats)
-        .set({ seatStatus: "eliminated" })
-        .where(eq(seats.id, seat.id));
-      seat.seatStatus = "eliminated";
-    }
-  }
-
   // Check that we have at least 2 non-eliminated players
   const nonEliminatedCount = nonEliminatedCountOf(orderedSeats);
   if (nonEliminatedCount < 2) {

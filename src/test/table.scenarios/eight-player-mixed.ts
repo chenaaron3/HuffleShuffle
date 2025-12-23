@@ -122,7 +122,7 @@ const scenarios: Scenario[] = [
       { type: "action", action: "CHECK", by: "player1" },
       { type: "validate", game: { state: "SHOWDOWN" } },
       // Validate pot distribution: player3 has Broadway straight (AKQJT) and wins
-      { type: "validate", game: { potTotal: 290 } },
+      { type: "validate", game: { potTotal: 290, isCompleted: true } },
       {
         type: "validate",
         seats: {

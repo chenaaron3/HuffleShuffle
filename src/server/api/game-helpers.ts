@@ -225,25 +225,22 @@ export async function executeBettingAction(
   const nextSeatId = getNextActiveSeatId(orderedSeats, actorSeatId);
 
   // Increment betCount and rotate to next player
-  await tx
-    .update(games)
-    .set({ betCount: sql`${games.betCount} + 1` })
-    .where(eq(games.id, game.id));
-
-  await tx
+  const [updatedGame] = await tx
     .update(games)
     .set({
+      betCount: sql`${games.betCount} + 1`,
       assignedSeatId: nextSeatId,
       turnStartTime: nextSeatId ? new Date() : null,
     })
-    .where(eq(games.id, game.id));
+    .where(eq(games.id, game.id))
+    .returning();
+
+  if (!updatedGame) {
+    throw new Error("Failed to update game");
+  }
 
   // Evaluate if betting round is complete
-  await evaluateBettingTransition(tx, game.tableId, {
-    ...game,
-    betCount: game.betCount + 1,
-    assignedSeatId: nextSeatId,
-  });
+  await evaluateBettingTransition(tx, game.tableId, updatedGame);
 
   return { updatedSeat, nextSeatId };
 }
