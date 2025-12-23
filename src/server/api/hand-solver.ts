@@ -1,6 +1,6 @@
 import { eq, sql } from "drizzle-orm";
 import { logEndGame } from "~/server/api/game-event-logger";
-import { games, seats } from "~/server/db/schema";
+import { gameEvents, games, seats } from "~/server/db/schema";
 
 import {
   activeCountOf,
@@ -263,6 +263,18 @@ async function updateSeatsWithWinnings(
   for (const handData of hands) {
     const winAmount = seatWinnings[handData.seatId] || 0;
     const handInfo = seatHandInfo[handData.seatId]!;
+
+    // Fetch current buyIn before update for logging
+    const currentSeat = await tx.query.seats.findFirst({
+      where: eq(seats.id, handData.seatId),
+    });
+    const buyInBefore = currentSeat?.buyIn || 0;
+    const buyInAfter = buyInBefore + winAmount;
+
+    console.log(
+      `Updating seat ${handData.seatId}: buyIn ${buyInBefore} + winAmount ${winAmount} = ${buyInAfter}`,
+    );
+
     await tx
       .update(seats)
       .set({
@@ -309,6 +321,53 @@ async function validateMoneyConservation(
 
   const totalFinalBuyIn = finalSeats.reduce((sum, seat) => sum + seat.buyIn, 0);
 
+  // Detailed logging for debugging
+  console.log("\n=== Money Conservation Validation ===");
+  console.log("Seat details:");
+  finalSeats.forEach((seat) => {
+    const diff = seat.buyIn - seat.startingBalance;
+    const expectedDiff =
+      (seat.winAmount || 0) - (seat.startingBalance - seat.buyIn);
+    console.log(
+      `  Seat ${seat.id}: startingBalance=${seat.startingBalance}, finalBuyIn=${seat.buyIn}, diff=${diff}, status=${seat.seatStatus}, winAmount=${seat.winAmount || 0}`,
+    );
+    if (diff !== expectedDiff) {
+      console.log(
+        `    ⚠️  WARNING: Expected diff ${expectedDiff} but got ${diff}`,
+      );
+    }
+  });
+  console.log(`\nSummary:`);
+  console.log(`  Total starting balance: ${totalStartingBalance}`);
+  console.log(`  Total final buyIn: ${totalFinalBuyIn}`);
+  console.log(`  Difference: ${totalFinalBuyIn - totalStartingBalance}`);
+
+  // Calculate money flow for validation
+  const totalWinnings = finalSeats.reduce(
+    (sum, seat) => sum + (seat.winAmount || 0),
+    0,
+  );
+  // Calculate what the buyIn was before winnings were added
+  // buyIn_before = finalBuyIn - winAmount
+  const totalBuyInBeforeWinnings = finalSeats.reduce(
+    (sum, seat) => sum + (seat.buyIn - (seat.winAmount || 0)),
+    0,
+  );
+  const totalBets = totalStartingBalance - totalBuyInBeforeWinnings;
+  console.log(`  Total winnings distributed: ${totalWinnings}`);
+  console.log(`  Total bets (startingBalance - buyIn_before): ${totalBets}`);
+  console.log(
+    `  Money flow check: startingBalance (${totalStartingBalance}) = buyIn_before (${totalBuyInBeforeWinnings}) + bets (${totalBets})`,
+  );
+  console.log(
+    `  Money flow check: buyIn_before (${totalBuyInBeforeWinnings}) + winnings (${totalWinnings}) = finalBuyIn (${totalFinalBuyIn})`,
+  );
+  if (totalBets !== totalWinnings) {
+    console.log(
+      `  ⚠️  WARNING: Total bets (${totalBets}) != Total winnings (${totalWinnings}). Difference: ${totalWinnings - totalBets}`,
+    );
+  }
+
   // Validate that money is conserved
   if (totalStartingBalance !== totalFinalBuyIn) {
     const difference = totalFinalBuyIn - totalStartingBalance;
@@ -331,6 +390,46 @@ async function completeShowdown(
   contenders: SeatRow[],
   freshSeats: SeatRow[],
 ): Promise<void> {
+  console.log("=== Starting Showdown ===");
+  console.log(`Game ID: ${gameId}`);
+  console.log(`Game potTotal: ${updatedGame.potTotal}`);
+  console.log(`Side pots:`, updatedGame.sidePots);
+  const totalSidePotAmount = (
+    (updatedGame.sidePots as Array<{ amount: number }>) || []
+  ).reduce((sum, pot) => sum + pot.amount, 0);
+  console.log(`Total side pot amount: ${totalSidePotAmount}`);
+
+  // Query and log all game events for this game
+  const allGameEvents = await tx.query.gameEvents.findMany({
+    where: eq(gameEvents.gameId, gameId),
+    orderBy: (events, { asc }) => [asc(events.createdAt)],
+  });
+  console.log(`\n=== Game Events (${allGameEvents.length} total) ===`);
+  allGameEvents.forEach((event, idx) => {
+    console.log(
+      `[${idx + 1}] ${event.type} at ${event.createdAt.toISOString()}:`,
+      JSON.stringify(event.details, null, 2),
+    );
+  });
+
+  // Log buyIn values before winnings
+  console.log("\n=== BuyIn values BEFORE winnings distribution ===");
+  freshSeats.forEach((seat) => {
+    console.log(
+      `  Seat ${seat.id}: buyIn=${seat.buyIn}, startingBalance=${seat.startingBalance}, status=${seat.seatStatus}, currentBet=${seat.currentBet}`,
+    );
+  });
+  const totalBuyInBefore = freshSeats.reduce((sum, s) => sum + s.buyIn, 0);
+  const totalStartingBalance = freshSeats.reduce(
+    (sum, s) => sum + s.startingBalance,
+    0,
+  );
+  console.log(`Total buyIn before: ${totalBuyInBefore}`);
+  console.log(`Total startingBalance: ${totalStartingBalance}`);
+  console.log(
+    `Expected pot (startingBalance - buyIn before): ${totalStartingBalance - totalBuyInBefore}`,
+  );
+
   // Evaluate hands for all contenders
   const hands = evaluateContenderHands(
     contenders,
@@ -348,6 +447,17 @@ async function completeShowdown(
       eligibleSeatIds: string[];
     }>) || [];
   distributeSidePots(sidePots, hands, seatWinnings);
+
+  // Log winnings before updating
+  console.log("Winnings to be distributed:");
+  Object.entries(seatWinnings).forEach(([seatId, amount]) => {
+    console.log(`  Seat ${seatId}: ${amount}`);
+  });
+  const totalWinnings = Object.values(seatWinnings).reduce(
+    (sum, amount) => sum + amount,
+    0,
+  );
+  console.log(`Total winnings: ${totalWinnings}`);
 
   // Update seats with winnings
   await updateSeatsWithWinnings(tx, hands, seatWinnings, seatHandInfo);
