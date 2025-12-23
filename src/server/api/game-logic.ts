@@ -278,7 +278,6 @@ export async function resetGame(
         assignedSeatId: null,
         isCompleted: true,
         potTotal: 0,
-        sidePots: sql`'[]'::jsonb`,
         state: "DEAL_HOLE_CARDS",
         wasReset,
       })
@@ -348,7 +347,6 @@ export async function createNewGame(
       dealerButtonSeatId,
       communityCards: [],
       potTotal: 0,
-      sidePots: [],
       betCount: 0,
       requiredBetCount: 0,
       effectiveSmallBlind,

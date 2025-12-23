@@ -234,11 +234,29 @@ export const games = createTable(
       .notNull()
       .default(sql`ARRAY[]::text[]`),
     potTotal: d.integer().notNull().default(0),
-    sidePots: d
+    sidePotDetails: d
       .jsonb()
-      .$type<Array<{ amount: number; eligibleSeatIds: string[] }>>()
+      .$type<
+        Array<{
+          potNumber: number; // 0 = Main Pot, 1+ = Side Pot 1, 2, etc.
+          amount: number; // Total chips in this pot
+          betLevelRange: {
+            min: number; // Cumulative bet level this pot starts from
+            max: number; // Cumulative bet level this pot ends at
+          };
+          contributors: Array<{
+            seatId: string;
+            contribution: number; // How much this player contributed to this pot
+          }>;
+          eligibleSeatIds: string[]; // Players who can win this pot
+          winners: Array<{
+            seatId: string;
+            amount: number; // How much this winner received (for split pots)
+          }>;
+        }>
+      >()
       .notNull()
-      .default(sql`'[]'::jsonb`), // Array of side pots with amount and eligible seat IDs
+      .default(sql`'[]'::jsonb`), // Side pot details calculated at showdown for UI display
     betCount: d.integer().notNull().default(0),
     requiredBetCount: d.integer().notNull().default(0),
     effectiveSmallBlind: d.integer().notNull().default(0), // Effective small blind at game start

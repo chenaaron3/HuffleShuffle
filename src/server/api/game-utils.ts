@@ -1,6 +1,6 @@
-import { eq, sql } from 'drizzle-orm';
-import { db } from '~/server/db';
-import { games, seats } from '~/server/db/schema';
+import { eq, sql } from "drizzle-orm";
+import { db } from "~/server/db";
+import { games, seats } from "~/server/db/schema";
 
 type SeatRow = typeof seats.$inferSelect;
 type GameRow = typeof games.$inferSelect;
@@ -103,7 +103,7 @@ export async function mergeBetsIntoPotGeneric(
   // Calculate total bets
   const total = orderedSeats.reduce((sum, s) => sum + s.currentBet, 0);
 
-  // If no bets or all bets are zero, skip side pot creation
+  // If no bets or all bets are zero, skip
   if (total === 0) {
     await tx
       .update(games)
@@ -119,69 +119,16 @@ export async function mergeBetsIntoPotGeneric(
     };
   }
 
-  // Create side pots based on all-in players
-  // Algorithm:
-  // 1. Sort ALL players with bets by currentBet (ascending) to determine pot levels
-  // 2. For each betting level, create a pot with contributions from all players
-  // 3. Only non-folded players are eligible to WIN the pot (eligibleSeatIds)
+  // NOTE: Side pots are recalculated from scratch at showdown using cumulative bets
+  // (startingBalance - buyIn), so we don't need to track them incrementally here.
+  // We just clear them and let the showdown logic recalculate them accurately.
 
-  const seatsWithBets = orderedSeats.filter((s) => s.currentBet > 0);
-  const nonFoldedSeats = seatsWithBets.filter(
-    (s) => s.seatStatus !== "folded" && s.seatStatus !== "eliminated",
-  );
-
-  // Sort ALL seats with bets (including folded) to determine pot levels
-  // This ensures folded players' bets are included in side pots
-  const sortedByBet = [...seatsWithBets].sort(
-    (a, b) => a.currentBet - b.currentBet,
-  );
-
-  const newSidePots: Array<{ amount: number; eligibleSeatIds: string[] }> = [];
-  let previousBetLevel = 0;
-
-  for (let i = 0; i < sortedByBet.length; i++) {
-    const currentSeat = sortedByBet[i]!;
-    const currentBetLevel = currentSeat.currentBet;
-
-    if (currentBetLevel === previousBetLevel) {
-      continue; // Skip if same bet level
-    }
-
-    const betIncrement = currentBetLevel - previousBetLevel;
-
-    // Eligible seats can WIN the pot - only non-folded players who bet at least this amount
-    const eligibleSeats = nonFoldedSeats.filter(
-      (s) => s.currentBet >= currentBetLevel,
-    );
-
-    // Calculate pot amount: betIncrement * number of ALL players who bet at least currentBetLevel
-    // This includes folded players who contributed chips but can't win
-    const contributingSeats = seatsWithBets.filter(
-      (s) => s.currentBet >= currentBetLevel,
-    );
-    const potAmount = betIncrement * contributingSeats.length;
-
-    // Only create side pot if there's actual betting happening
-    if (potAmount > 0 && eligibleSeats.length > 0) {
-      newSidePots.push({
-        amount: potAmount,
-        eligibleSeatIds: eligibleSeats.map((s) => s.id),
-      });
-    }
-
-    previousBetLevel = currentBetLevel;
-  }
-
-  // Merge new side pots with existing ones
-  const existingSidePots = (gameObj.sidePots as any) || [];
-  const allSidePots = [...existingSidePots, ...newSidePots];
-
-  // Update game with new pot total and side pots
+  // Update game with new pot total
+  // Note: Side pots are recalculated from scratch at showdown, not stored in DB
   await tx
     .update(games)
     .set({
       potTotal: sql`${games.potTotal} + ${total}`,
-      sidePots: allSidePots as any,
       betCount: 0,
       requiredBetCount: 0,
     })
@@ -196,7 +143,6 @@ export async function mergeBetsIntoPotGeneric(
   return {
     ...gameObj,
     potTotal: gameObj.potTotal + total,
-    sidePots: allSidePots as any,
     betCount: 0,
     requiredBetCount: 0,
   };

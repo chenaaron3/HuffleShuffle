@@ -188,9 +188,108 @@ function initializeHandTracking(hands: EvaluatedHand[]): {
   return { seatWinnings, seatHandInfo };
 }
 
-// Distribute side pots to winners
+// Detailed side pot information for UI display
+type SidePotDetail = {
+  potNumber: number;
+  amount: number;
+  betLevelRange: { min: number; max: number };
+  contributors: Array<{ seatId: string; contribution: number }>;
+  eligibleSeatIds: string[];
+  winners: Array<{ seatId: string; amount: number }>;
+};
+
+// Calculate side pots from cumulative bets (startingBalance - buyIn)
+// This ensures accuracy at showdown by recalculating from scratch
+// Returns detailed information for UI display
+function calculateSidePotsFromCumulativeBets(
+  allSeats: SeatRow[],
+  contenders: SeatRow[],
+): SidePotDetail[] {
+  // Calculate cumulative bet for each seat (what they bet total across all rounds)
+  const seatCumulativeBets = new Map<string, number>();
+  for (const seat of allSeats) {
+    const cumulativeBet = seat.startingBalance - seat.buyIn;
+    if (cumulativeBet > 0) {
+      seatCumulativeBets.set(seat.id, cumulativeBet);
+    }
+  }
+
+  // Get all seats that have bets (including folded)
+  const seatsWithBets = Array.from(seatCumulativeBets.entries())
+    .map(([seatId, bet]) => {
+      const seat = allSeats.find((s) => s.id === seatId);
+      if (!seat) return null;
+      return { ...seat, cumulativeBet: bet };
+    })
+    .filter((s): s is SeatRow & { cumulativeBet: number } => s !== null);
+
+  // Get non-folded seats (eligible to win)
+  const nonFoldedSeats = seatsWithBets.filter(
+    (s) => s.seatStatus !== "folded" && s.seatStatus !== "eliminated",
+  );
+
+  // Sort by cumulative bet to determine pot levels
+  const sortedByBet = [...seatsWithBets].sort(
+    (a, b) => a.cumulativeBet - b.cumulativeBet,
+  );
+
+  const sidePots: SidePotDetail[] = [];
+  let previousBetLevel = 0;
+  let potNumber = 0;
+
+  for (let i = 0; i < sortedByBet.length; i++) {
+    const currentSeat = sortedByBet[i]!;
+    const currentBetLevel = currentSeat.cumulativeBet;
+
+    if (currentBetLevel === previousBetLevel) {
+      continue; // Skip if same bet level
+    }
+
+    const betIncrement = currentBetLevel - previousBetLevel;
+
+    // Eligible seats can WIN the pot - only non-folded players who bet at least this amount
+    const eligibleSeats = nonFoldedSeats.filter(
+      (s) => s.cumulativeBet >= currentBetLevel,
+    );
+
+    // Calculate pot amount: betIncrement * number of ALL players who bet at least currentBetLevel
+    // This includes folded players who contributed chips but can't win
+    const contributingSeats = seatsWithBets.filter(
+      (s) => s.cumulativeBet >= currentBetLevel,
+    );
+    const potAmount = betIncrement * contributingSeats.length;
+
+    // Only create side pot if there's actual betting happening
+    if (potAmount > 0 && eligibleSeats.length > 0) {
+      // Calculate each contributor's share (betIncrement per contributor)
+      const contributors = contributingSeats.map((seat) => ({
+        seatId: seat.id,
+        contribution: betIncrement,
+      }));
+
+      sidePots.push({
+        potNumber,
+        amount: potAmount,
+        betLevelRange: {
+          min: previousBetLevel,
+          max: currentBetLevel,
+        },
+        contributors,
+        eligibleSeatIds: eligibleSeats.map((s) => s.id),
+        winners: [], // Will be populated after hand evaluation
+      });
+      potNumber++;
+    }
+
+    previousBetLevel = currentBetLevel;
+  }
+
+  return sidePots;
+}
+
+// Distribute side pots to winners and populate winner information
 function distributeSidePots(
-  sidePots: Array<{ amount: number; eligibleSeatIds: string[] }>,
+  sidePots: SidePotDetail[],
   hands: EvaluatedHand[],
   seatWinnings: Record<string, number>,
 ): void {
@@ -242,8 +341,14 @@ function distributeSidePots(
       seatWinnings[winnerId] = (seatWinnings[winnerId] || 0) + potShare;
     }
 
+    // Populate winners in side pot detail for UI
+    pot.winners = potWinnerSeatIds.map((seatId) => ({
+      seatId,
+      amount: potShare,
+    }));
+
     console.log(
-      `Pot of ${pot.amount} won by:`,
+      `Pot ${pot.potNumber} (${pot.amount}): won by`,
       potWinnerSeatIds,
       `(${potShare} each)`,
     );
@@ -393,11 +498,6 @@ async function completeShowdown(
   console.log("=== Starting Showdown ===");
   console.log(`Game ID: ${gameId}`);
   console.log(`Game potTotal: ${updatedGame.potTotal}`);
-  console.log(`Side pots:`, updatedGame.sidePots);
-  const totalSidePotAmount = (
-    (updatedGame.sidePots as Array<{ amount: number }>) || []
-  ).reduce((sum, pot) => sum + pot.amount, 0);
-  console.log(`Total side pot amount: ${totalSidePotAmount}`);
 
   // Query and log all game events for this game
   const allGameEvents = await tx.query.gameEvents.findMany({
@@ -440,13 +540,33 @@ async function completeShowdown(
   // Initialize tracking structures
   const { seatWinnings, seatHandInfo } = initializeHandTracking(hands);
 
-  // Distribute side pots
-  const sidePots =
-    (updatedGame.sidePots as Array<{
-      amount: number;
-      eligibleSeatIds: string[];
-    }>) || [];
+  // Recalculate side pots from scratch at showdown using cumulative bets
+  // This ensures accuracy and avoids bugs from incremental merging across rounds
+  const sidePots = calculateSidePotsFromCumulativeBets(freshSeats, contenders);
+
+  console.log("Recalculated side pots from cumulative bets:", sidePots);
+  const sidePotTotal = sidePots.reduce((sum, pot) => sum + pot.amount, 0);
+  const expectedPot = totalStartingBalance - totalBuyInBefore;
+  console.log(
+    `Side pot validation: Side pots=${sidePotTotal}, Expected pot=${expectedPot}, Difference=${sidePotTotal - expectedPot}`,
+  );
+
+  if (sidePotTotal !== expectedPot && expectedPot > 0) {
+    console.error(
+      `⚠️  WARNING: Recalculated side pots (${sidePotTotal}) != Expected pot (${expectedPot}). This should never happen!`,
+    );
+  }
+
+  // Distribute side pots (this also populates the winners field)
   distributeSidePots(sidePots, hands, seatWinnings);
+
+  // Store side pot details in database for UI display
+  await tx
+    .update(games)
+    .set({
+      sidePotDetails: sidePots as any,
+    })
+    .where(eq(games.id, gameId));
 
   // Log winnings before updating
   console.log("Winnings to be distributed:");
@@ -489,8 +609,8 @@ async function completeShowdown(
       state: "SHOWDOWN",
       isCompleted: true,
       turnStartTime: null, // Clear turn start time when game is completed
-      // Note: potTotal and sidePots are not cleared here - they remain for validation
-      // They will be cleared when the next game starts
+      // Note: potTotal is not cleared here - it remains for validation
+      // It will be cleared when the next game starts
     })
     .where(eq(games.id, gameId));
 }
