@@ -1,5 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import * as React from 'react';
+import { Chart } from 'react-google-charts';
 import { useGameState, useOriginalSeats, useSidePotDetails } from '~/hooks/use-table-selectors';
 import { cn } from '~/lib/utils';
 
@@ -27,10 +28,82 @@ export function SidePotDetails({ className }: SidePotDetailsProps) {
 
     const totalPotAmount = sidePots.reduce((sum, pot) => sum + pot.amount, 0);
 
+    // Build Sankey data for Google Charts
+    // Format: [['From', 'To', 'Weight'], ...]
+    // Structure: Side Pots (left) -> Players (right)
+    const sankeyData: Array<[string, string, number] | [string, string, string]> = [
+        ['From', 'To', 'Weight'],
+    ];
+
+    // Get all unique players (winners only for right side)
+    const winnerPlayerIds = new Set<string>();
+    sidePots.forEach((pot) => {
+        pot.winners.forEach((w) => winnerPlayerIds.add(w.seatId));
+    });
+
+    // Add flows: Side Pots -> Players (winnings only)
+    // This avoids cycles by having pots on left and players on right
+    sidePots.forEach((pot) => {
+        const potName = pot.potNumber === 0 ? 'Main Pot' : `Side Pot ${pot.potNumber}`;
+        pot.winners.forEach((winner) => {
+            const playerName = getSeatName(winner.seatId, seats);
+            // Ensure we don't create duplicate flows (aggregate if same pot->player exists)
+            sankeyData.push([potName, playerName, winner.amount]);
+        });
+    });
+
+    // Calculate chart height based on number of pots and players
+    const chartHeight = Math.max(
+        400,
+        Math.min(800, Math.max(sidePots.length, winnerPlayerIds.size) * 60 + 100)
+    );
+
+    // Chart options
+    const chartOptions = {
+        sankey: {
+            node: {
+                colors: ['#3b82f6', '#22c55e', '#71717a'], // Blue, Green, Gray
+                label: {
+                    fontName: 'Inter, system-ui, sans-serif',
+                    fontSize: 12,
+                    color: '#f4f4f5',
+                    bold: true,
+                },
+                nodePadding: 20,
+                width: 15,
+            },
+            link: {
+                colorMode: 'gradient',
+                colors: ['#22c55e'], // Green for winnings
+                color: {
+                    fill: '#22c55e',
+                    fillOpacity: 0.7,
+                },
+            },
+            tooltip: {
+                textStyle: {
+                    fontName: 'Inter, system-ui, sans-serif',
+                    fontSize: 11,
+                },
+            },
+        },
+        backgroundColor: 'transparent',
+        chartArea: {
+            left: 20,
+            top: 20,
+            right: 20,
+            bottom: 20,
+            width: '90%',
+            height: '90%',
+        },
+        height: chartHeight,
+        width: 800,
+    };
+
     return (
         <motion.div
             className={cn(
-                "relative bg-zinc-900/95 backdrop-blur-sm rounded-xl shadow-2xl border border-zinc-500/50 overflow-hidden transition-all duration-300 max-w-sm",
+                "relative bg-zinc-900/95 backdrop-blur-sm rounded-xl shadow-2xl border border-zinc-500/50 overflow-hidden transition-all duration-300",
                 className
             )}
             initial={{ opacity: 0, y: 20 }}
@@ -44,7 +117,7 @@ export function SidePotDetails({ className }: SidePotDetailsProps) {
             >
                 <div className="flex items-center gap-3">
                     <div className="text-sm font-semibold text-zinc-100">
-                        Side Pot Details
+                        Side Pot Flow
                     </div>
                     <div className="text-xs text-zinc-400">
                         {sidePots.length} pot{sidePots.length !== 1 ? 's' : ''} • ${totalPotAmount} total
@@ -69,101 +142,24 @@ export function SidePotDetails({ className }: SidePotDetailsProps) {
                         transition={{ duration: 0.3 }}
                         className="overflow-hidden"
                     >
-                        <div className="px-4 pb-4 space-y-3 border-t border-zinc-700/50">
-                            {sidePots.map((pot, index) => {
-                                const potName = pot.potNumber === 0 ? 'Main Pot' : `Side Pot ${pot.potNumber}`;
-                                const hasWinners = pot.winners.length > 0;
+                        <div className="px-4 pb-4 border-t border-zinc-700/50 pt-4">
+                            <div className="relative bg-zinc-800/30 rounded-lg p-4">
+                                <Chart
+                                    chartType="Sankey"
+                                    data={sankeyData}
+                                    options={chartOptions}
+                                    width="100%"
+                                    height={chartHeight}
+                                />
 
-                                return (
-                                    <motion.div
-                                        key={pot.potNumber}
-                                        initial={{ opacity: 0, x: -10 }}
-                                        animate={{ opacity: 1, x: 0 }}
-                                        transition={{ delay: index * 0.1 }}
-                                        className="bg-zinc-800/50 rounded-lg p-3 border border-zinc-700/30"
-                                    >
-                                        {/* Pot Header */}
-                                        <div className="flex items-center justify-between mb-2 pb-2 border-b border-zinc-700/30">
-                                            <div className="flex items-center gap-2">
-                                                <span className="font-semibold text-zinc-100">{potName}</span>
-                                                <span className="text-sm font-bold text-emerald-400">${pot.amount}</span>
-                                            </div>
-                                            {hasWinners && (
-                                                <div className="text-xs text-emerald-400 font-medium">
-                                                    {pot.winners.length} winner{pot.winners.length !== 1 ? 's' : ''}
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        {/* Bet Level Range */}
-                                        <div className="text-xs text-zinc-400 mb-2">
-                                            Bet Level: ${pot.betLevelRange.min} - ${pot.betLevelRange.max}
-                                        </div>
-
-                                        {/* Contributors */}
-                                        <div className="mb-2">
-                                            <div className="text-xs font-medium text-zinc-500 mb-1">Contributors:</div>
-                                            <div className="flex flex-wrap gap-1.5">
-                                                {pot.contributors.map((contributor) => {
-                                                    const name = getSeatName(contributor.seatId, seats);
-                                                    return (
-                                                        <span
-                                                            key={contributor.seatId}
-                                                            className="text-xs px-2 py-0.5 bg-zinc-700/50 rounded text-zinc-300"
-                                                        >
-                                                            {name} (${contributor.contribution})
-                                                        </span>
-                                                    );
-                                                })}
-                                            </div>
-                                        </div>
-
-                                        {/* Eligible Players */}
-                                        <div className="mb-2">
-                                            <div className="text-xs font-medium text-zinc-500 mb-1">Eligible to Win:</div>
-                                            <div className="flex flex-wrap gap-1.5">
-                                                {pot.eligibleSeatIds.map((seatId) => {
-                                                    const name = getSeatName(seatId, seats);
-                                                    const isWinner = pot.winners.some((w) => w.seatId === seatId);
-                                                    return (
-                                                        <span
-                                                            key={seatId}
-                                                            className={cn(
-                                                                "text-xs px-2 py-0.5 rounded",
-                                                                isWinner
-                                                                    ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
-                                                                    : "bg-zinc-700/30 text-zinc-400"
-                                                            )}
-                                                        >
-                                                            {name}
-                                                        </span>
-                                                    );
-                                                })}
-                                            </div>
-                                        </div>
-
-                                        {/* Winners */}
-                                        {hasWinners && (
-                                            <div>
-                                                <div className="text-xs font-medium text-emerald-400 mb-1">Winners:</div>
-                                                <div className="flex flex-wrap gap-1.5">
-                                                    {pot.winners.map((winner) => {
-                                                        const name = getSeatName(winner.seatId, seats);
-                                                        return (
-                                                            <span
-                                                                key={winner.seatId}
-                                                                className="text-xs px-2 py-0.5 bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded font-medium"
-                                                            >
-                                                                {name} +${winner.amount}
-                                                            </span>
-                                                        );
-                                                    })}
-                                                </div>
-                                            </div>
-                                        )}
-                                    </motion.div>
-                                );
-                            })}
+                                {/* Legend */}
+                                <div className="mt-4 flex items-center justify-center gap-6 text-xs">
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-4 h-3 rounded bg-emerald-500/70" />
+                                        <span className="text-zinc-400">Pot Distribution</span>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </motion.div>
                 )}
@@ -171,4 +167,3 @@ export function SidePotDetails({ className }: SidePotDetailsProps) {
         </motion.div>
     );
 }
-
