@@ -49,7 +49,7 @@ export function ActionButtons({ }: ActionButtonsProps) {
             if (!isLoading) {
                 performAction('DEAL_RANDOM');
             }
-        }, 1000);
+        }, 2000);
 
         return () => clearInterval(interval);
     }, [autoDeal, isDealerTurn]);
