@@ -145,15 +145,6 @@ function evaluateContenderHands(
       const playerCards = [...(s.cards as string[]), ...communityCards];
       const handResult = solvePokerHand(playerCards);
 
-      // Log hand evaluation for debugging
-      console.log(`Player ${s.id} hand:`, {
-        cards: playerCards,
-        handType: handResult.name,
-        description: handResult.descr,
-        winningCards: handResult.cards,
-        score: handResult.score,
-      });
-
       return {
         seatId: s.id,
         hand: handResult,
@@ -293,8 +284,6 @@ function distributeSidePots(
   hands: EvaluatedHand[],
   seatWinnings: Record<string, number>,
 ): void {
-  console.log("Distributing side pots:", sidePots);
-
   // Create a set of contender seat IDs for fast lookup (for error messages)
   const contenderSeatIds = new Set(hands.map((h) => h.seatId));
 
@@ -346,12 +335,6 @@ function distributeSidePots(
       seatId,
       amount: potShare,
     }));
-
-    console.log(
-      `Pot ${pot.potNumber} (${pot.amount}): won by`,
-      potWinnerSeatIds,
-      `(${potShare} each)`,
-    );
   }
 }
 
@@ -368,17 +351,6 @@ async function updateSeatsWithWinnings(
   for (const handData of hands) {
     const winAmount = seatWinnings[handData.seatId] || 0;
     const handInfo = seatHandInfo[handData.seatId]!;
-
-    // Fetch current buyIn before update for logging
-    const currentSeat = await tx.query.seats.findFirst({
-      where: eq(seats.id, handData.seatId),
-    });
-    const buyInBefore = currentSeat?.buyIn || 0;
-    const buyInAfter = buyInBefore + winAmount;
-
-    console.log(
-      `Updating seat ${handData.seatId}: buyIn ${buyInBefore} + winAmount ${winAmount} = ${buyInAfter}`,
-    );
 
     await tx
       .update(seats)
@@ -403,32 +375,112 @@ async function updateEliminationStatus(tx: Tx, tableId: string): Promise<void> {
         .update(seats)
         .set({ seatStatus: "eliminated" })
         .where(eq(seats.id, seat.id));
-      console.log(`Player ${seat.id} eliminated (0 chips remaining)`);
     }
     // Note: "all-in" players who win chips will be reset to "active" by resetGame()
     // when the next game starts, so no need to change status here
   }
 }
 
-// Validate that money is conserved: sum of startingBalance should equal sum of buyIn
-async function validateMoneyConservation(
+// Comprehensive diagnostic logging function - only called when conservation error detected
+async function logConservationErrorDiagnostics(
   tx: Tx,
   tableId: string,
+  gameId: string,
+  gameObj: GameRow,
+  freshSeats: SeatRow[],
+  contenders: SeatRow[],
+  hands: EvaluatedHand[],
+  sidePots: SidePotDetail[],
+  seatWinnings: Record<string, number>,
 ): Promise<void> {
-  // Fetch all seats after winnings are distributed to get final buyIn values
   const finalSeats = await fetchAllSeatsInOrder(tx, tableId);
+  const allGameEvents = await tx.query.gameEvents.findMany({
+    where: eq(gameEvents.gameId, gameId),
+    orderBy: (events, { asc }) => [asc(events.createdAt)],
+  });
 
-  // Calculate sum of starting balances (startingBalance is set at game start and doesn't change during the game)
   const totalStartingBalance = finalSeats.reduce(
     (sum, seat) => sum + seat.startingBalance,
     0,
   );
-
   const totalFinalBuyIn = finalSeats.reduce((sum, seat) => sum + seat.buyIn, 0);
+  const totalWinnings = finalSeats.reduce(
+    (sum, seat) => sum + (seat.winAmount || 0),
+    0,
+  );
+  const totalBuyInBeforeWinnings = finalSeats.reduce(
+    (sum, seat) => sum + (seat.buyIn - (seat.winAmount || 0)),
+    0,
+  );
+  const totalBets = totalStartingBalance - totalBuyInBeforeWinnings;
+  const sidePotTotal = sidePots.reduce((sum, pot) => sum + pot.amount, 0);
+  const expectedPot = totalStartingBalance - totalBuyInBeforeWinnings;
 
-  // Detailed logging for debugging
-  console.log("\n=== Money Conservation Validation ===");
-  console.log("Seat details:");
+  console.log("\n" + "=".repeat(80));
+  console.log("🚨 MONEY CONSERVATION ERROR DETECTED - FULL DIAGNOSTIC REPORT");
+  console.log("=".repeat(80));
+
+  console.log("\n=== Game Information ===");
+  console.log(`Game ID: ${gameId}`);
+  console.log(`Game potTotal: ${gameObj.potTotal}`);
+  console.log(`Game state: ${gameObj.state}`);
+
+  console.log("\n=== Game Events (Chronological) ===");
+  console.log(`Total events: ${allGameEvents.length}`);
+  allGameEvents.forEach((event, idx) => {
+    console.log(
+      `[${idx + 1}] ${event.type} at ${event.createdAt.toISOString()}:`,
+      JSON.stringify(event.details, null, 2),
+    );
+  });
+
+  console.log("\n=== Seat States BEFORE Winnings Distribution ===");
+  freshSeats.forEach((seat) => {
+    console.log(
+      `  Seat ${seat.id}: buyIn=${seat.buyIn}, startingBalance=${seat.startingBalance}, status=${seat.seatStatus}, currentBet=${seat.currentBet}`,
+    );
+  });
+
+  console.log("\n=== Hand Evaluations ===");
+  hands.forEach((hand) => {
+    console.log(`Player ${hand.seatId} hand:`, {
+      cards: hand.playerCards,
+      handType: hand.hand.name,
+      description: hand.hand.descr,
+      winningCards: hand.hand.cards,
+      score: hand.hand.score,
+    });
+  });
+
+  console.log("\n=== Side Pot Calculation ===");
+  console.log("Recalculated side pots from cumulative bets:", sidePots);
+  console.log(`Side pot total: ${sidePotTotal}`);
+  console.log(`Expected pot (startingBalance - buyIn before): ${expectedPot}`);
+  console.log(`Difference: ${sidePotTotal - expectedPot}`);
+  if (sidePotTotal !== expectedPot && expectedPot > 0) {
+    console.error(
+      `⚠️  WARNING: Recalculated side pots (${sidePotTotal}) != Expected pot (${expectedPot})`,
+    );
+  }
+
+  console.log("\n=== Side Pot Distribution ===");
+  sidePots.forEach((pot) => {
+    console.log(`Pot ${pot.potNumber} (${pot.amount}):`, {
+      betLevelRange: pot.betLevelRange,
+      contributors: pot.contributors,
+      eligibleSeatIds: pot.eligibleSeatIds,
+      winners: pot.winners,
+    });
+  });
+
+  console.log("\n=== Winnings Distribution ===");
+  console.log("Winnings to be distributed:");
+  Object.entries(seatWinnings).forEach(([seatId, amount]) => {
+    console.log(`  Seat ${seatId}: ${amount}`);
+  });
+  console.log(`Total winnings: ${totalWinnings}`);
+
+  console.log("\n=== Seat States AFTER Winnings Distribution ===");
   finalSeats.forEach((seat) => {
     const diff = seat.buyIn - seat.startingBalance;
     const expectedDiff =
@@ -442,23 +494,11 @@ async function validateMoneyConservation(
       );
     }
   });
-  console.log(`\nSummary:`);
+
+  console.log("\n=== Money Conservation Summary ===");
   console.log(`  Total starting balance: ${totalStartingBalance}`);
   console.log(`  Total final buyIn: ${totalFinalBuyIn}`);
   console.log(`  Difference: ${totalFinalBuyIn - totalStartingBalance}`);
-
-  // Calculate money flow for validation
-  const totalWinnings = finalSeats.reduce(
-    (sum, seat) => sum + (seat.winAmount || 0),
-    0,
-  );
-  // Calculate what the buyIn was before winnings were added
-  // buyIn_before = finalBuyIn - winAmount
-  const totalBuyInBeforeWinnings = finalSeats.reduce(
-    (sum, seat) => sum + (seat.buyIn - (seat.winAmount || 0)),
-    0,
-  );
-  const totalBets = totalStartingBalance - totalBuyInBeforeWinnings;
   console.log(`  Total winnings distributed: ${totalWinnings}`);
   console.log(`  Total bets (startingBalance - buyIn_before): ${totalBets}`);
   console.log(
@@ -473,17 +513,52 @@ async function validateMoneyConservation(
     );
   }
 
+  console.log("\n" + "=".repeat(80));
+}
+
+// Validate that money is conserved: sum of startingBalance should equal sum of buyIn
+async function validateMoneyConservation(
+  tx: Tx,
+  tableId: string,
+  gameId: string,
+  gameObj: GameRow,
+  freshSeats: SeatRow[],
+  contenders: SeatRow[],
+  hands: EvaluatedHand[],
+  sidePots: SidePotDetail[],
+  seatWinnings: Record<string, number>,
+): Promise<void> {
+  // Fetch all seats after winnings are distributed to get final buyIn values
+  const finalSeats = await fetchAllSeatsInOrder(tx, tableId);
+
+  // Calculate sum of starting balances (startingBalance is set at game start and doesn't change during the game)
+  const totalStartingBalance = finalSeats.reduce(
+    (sum, seat) => sum + seat.startingBalance,
+    0,
+  );
+
+  const totalFinalBuyIn = finalSeats.reduce((sum, seat) => sum + seat.buyIn, 0);
+
   // Validate that money is conserved
   if (totalStartingBalance !== totalFinalBuyIn) {
+    // Log comprehensive diagnostics before throwing error
+    await logConservationErrorDiagnostics(
+      tx,
+      tableId,
+      gameId,
+      gameObj,
+      freshSeats,
+      contenders,
+      hands,
+      sidePots,
+      seatWinnings,
+    );
+
     const difference = totalFinalBuyIn - totalStartingBalance;
     throw new Error(
       `Money conservation validation failed: Starting balance sum (${totalStartingBalance}) does not equal final buyIn sum (${totalFinalBuyIn}). Difference: ${difference}. This indicates money was created or destroyed during the game.`,
     );
   }
-
-  console.log(
-    `Money conservation validated: ${totalStartingBalance} = ${totalFinalBuyIn}`,
-  );
 }
 
 // Complete the showdown: evaluate hands, distribute pots, update status
@@ -495,41 +570,6 @@ async function completeShowdown(
   contenders: SeatRow[],
   freshSeats: SeatRow[],
 ): Promise<void> {
-  console.log("=== Starting Showdown ===");
-  console.log(`Game ID: ${gameId}`);
-  console.log(`Game potTotal: ${updatedGame.potTotal}`);
-
-  // Query and log all game events for this game
-  const allGameEvents = await tx.query.gameEvents.findMany({
-    where: eq(gameEvents.gameId, gameId),
-    orderBy: (events, { asc }) => [asc(events.createdAt)],
-  });
-  console.log(`\n=== Game Events (${allGameEvents.length} total) ===`);
-  allGameEvents.forEach((event, idx) => {
-    console.log(
-      `[${idx + 1}] ${event.type} at ${event.createdAt.toISOString()}:`,
-      JSON.stringify(event.details, null, 2),
-    );
-  });
-
-  // Log buyIn values before winnings
-  console.log("\n=== BuyIn values BEFORE winnings distribution ===");
-  freshSeats.forEach((seat) => {
-    console.log(
-      `  Seat ${seat.id}: buyIn=${seat.buyIn}, startingBalance=${seat.startingBalance}, status=${seat.seatStatus}, currentBet=${seat.currentBet}`,
-    );
-  });
-  const totalBuyInBefore = freshSeats.reduce((sum, s) => sum + s.buyIn, 0);
-  const totalStartingBalance = freshSeats.reduce(
-    (sum, s) => sum + s.startingBalance,
-    0,
-  );
-  console.log(`Total buyIn before: ${totalBuyInBefore}`);
-  console.log(`Total startingBalance: ${totalStartingBalance}`);
-  console.log(
-    `Expected pot (startingBalance - buyIn before): ${totalStartingBalance - totalBuyInBefore}`,
-  );
-
   // Evaluate hands for all contenders
   const hands = evaluateContenderHands(
     contenders,
@@ -544,19 +584,6 @@ async function completeShowdown(
   // This ensures accuracy and avoids bugs from incremental merging across rounds
   const sidePots = calculateSidePotsFromCumulativeBets(freshSeats, contenders);
 
-  console.log("Recalculated side pots from cumulative bets:", sidePots);
-  const sidePotTotal = sidePots.reduce((sum, pot) => sum + pot.amount, 0);
-  const expectedPot = totalStartingBalance - totalBuyInBefore;
-  console.log(
-    `Side pot validation: Side pots=${sidePotTotal}, Expected pot=${expectedPot}, Difference=${sidePotTotal - expectedPot}`,
-  );
-
-  if (sidePotTotal !== expectedPot && expectedPot > 0) {
-    console.error(
-      `⚠️  WARNING: Recalculated side pots (${sidePotTotal}) != Expected pot (${expectedPot}). This should never happen!`,
-    );
-  }
-
   // Distribute side pots (this also populates the winners field)
   distributeSidePots(sidePots, hands, seatWinnings);
 
@@ -568,17 +595,6 @@ async function completeShowdown(
     })
     .where(eq(games.id, gameId));
 
-  // Log winnings before updating
-  console.log("Winnings to be distributed:");
-  Object.entries(seatWinnings).forEach(([seatId, amount]) => {
-    console.log(`  Seat ${seatId}: ${amount}`);
-  });
-  const totalWinnings = Object.values(seatWinnings).reduce(
-    (sum, amount) => sum + amount,
-    0,
-  );
-  console.log(`Total winnings: ${totalWinnings}`);
-
   // Update seats with winnings
   await updateSeatsWithWinnings(tx, hands, seatWinnings, seatHandInfo);
 
@@ -586,7 +602,17 @@ async function completeShowdown(
   await updateEliminationStatus(tx, tableId);
 
   // Validate that money is conserved (no money creation/destruction)
-  await validateMoneyConservation(tx, tableId);
+  await validateMoneyConservation(
+    tx,
+    tableId,
+    gameId,
+    updatedGame,
+    freshSeats,
+    contenders,
+    hands,
+    sidePots,
+    seatWinnings,
+  );
 
   // Emit End Game event with all winners
   const allWinners = Object.entries(seatWinnings)
