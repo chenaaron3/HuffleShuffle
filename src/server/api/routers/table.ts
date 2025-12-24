@@ -39,6 +39,7 @@ import {
 import {
   createNewGame,
   dealCard,
+  dealRandomCard,
   notifyTableUpdate,
   parseRankSuitToBarcode,
   resetGame,
@@ -881,6 +882,7 @@ export const tableRouter = createTRPCRouter({
         action: z.enum([
           "START_GAME",
           "DEAL_CARD",
+          "DEAL_RANDOM",
           "RESET_TABLE",
           "RAISE",
           "FOLD",
@@ -967,6 +969,13 @@ export const tableRouter = createTRPCRouter({
             }),
           );
           console.log(`published ${barcode} to SQS`);
+          return { ok: true } as const;
+        }
+
+        if (input.action === "DEAL_RANDOM") {
+          if (!isDealerCaller) throw new Error("Only dealer can DEAL_RANDOM");
+          // Use shared game logic to pick and deal a random card
+          await dealRandomCard(tx, input.tableId, game ?? null);
           return { ok: true } as const;
         }
 

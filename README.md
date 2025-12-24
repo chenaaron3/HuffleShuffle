@@ -286,6 +286,7 @@ The game progresses through these states:
   - Actions:
     - `START_GAME` (dealer-only): Initialize new hand
     - `DEAL_CARD` (dealer-only): Deal card to current assigned seat or community
+    - `DEAL_RANDOM` (dealer-only): Deal a random card that hasn't been dealt yet (has access to all player hands and community cards for true randomness)
     - `RAISE`: Raise bet amount
     - `CHECK`: Check (no bet increase)
     - `FOLD`: Fold hand
@@ -508,6 +509,7 @@ Mobile-specific components organized in a dedicated folder for landscape mobile 
 **Core game logic shared between tRPC and ingest worker:**
 
 - `dealCard(tx, tableId, game, cardCode)`: Deals card to seat or community
+- `dealRandomCard(tx, tableId, game)`: Picks and deals a random undealt card (has access to all player hands and community cards)
 - `createNewGame(tx, table, seats, previousGame)`: Initializes new hand (checks `wasReset` flag to determine button position)
 - `resetGame(tx, game, seats, resetBalance, wasReset)`: Resets table for next hand (sets `wasReset` flag if manually reset)
 - `ensureHoleCardsProgression()`: Advances to betting after all hole cards dealt

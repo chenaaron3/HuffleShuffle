@@ -2,41 +2,14 @@ import { motion } from 'framer-motion';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from '~/components/ui/button';
 import { useActions } from '~/hooks/use-actions';
-import {
-    useCommunityCards, useGameState, useIsJoinable, useOriginalSeats
-} from '~/hooks/use-table-selectors';
-
-interface Seat {
-    cards?: string[] | null;
-}
+import { useGameState, useIsJoinable } from '~/hooks/use-table-selectors';
 
 interface ActionButtonsProps {
     // No props needed - all data comes from selectors
 }
 
-const RANKS = ['2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K', 'A'];
-const SUITS = ['s', 'h', 'd', 'c'];
-
-function getDealtSet(communityCards: string[], seats: Seat[]): Set<string> {
-    const dealt = new Set<string>();
-    if (communityCards.length > 0) {
-        communityCards.forEach((c) => dealt.add(c));
-    }
-    seats.forEach((s) => {
-        (s.cards ?? []).forEach((c: string) => dealt.add(c));
-    });
-    return dealt;
-}
-
-function pickRandomUndealt(communityCards: string[], seats: Seat[]): string | null {
-    const dealt = getDealtSet(communityCards, seats);
-    const deck: string[] = [];
-    for (const r of RANKS) for (const s of SUITS) deck.push(`${r}${s}`);
-    const remaining = deck.filter((c) => !dealt.has(c));
-    if (remaining.length === 0) return null;
-    const idx = Math.floor(Math.random() * remaining.length);
-    return remaining[idx] as string;
-}
+// Note: Random card selection is now handled server-side via DEAL_RANDOM action
+// to ensure the dealer has access to all player hands and community cards
 
 export function ActionButtons({ }: ActionButtonsProps) {
     const [autoDeal, setAutoDeal] = useState<boolean>(false);
@@ -47,27 +20,23 @@ export function ActionButtons({ }: ActionButtonsProps) {
     // Get data from Zustand store using selectors
     const isJoinable = useIsJoinable() ?? false;
     const gameStatus = useGameState();
-    const communityCards = useCommunityCards();
-    const seats = useOriginalSeats();
 
     const isDealerTurn = gameStatus
         ? ['DEAL_HOLE_CARDS', 'DEAL_FLOP', 'DEAL_TURN', 'DEAL_RIVER', 'SHOWDOWN'].includes(gameStatus)
         : false;
 
-    // Callback that picks and deals a random card (for manual button click)
+    // Callback that deals a random card via server (for manual button click)
     const dealRandomCard = useCallback(() => {
-        const code = pickRandomUndealt(communityCards, seats);
-        if (!code) return;
-        performAction('DEAL_CARD', { rank: code[0], suit: code[1] });
-    }, [communityCards, seats, performAction]);
+        performAction('DEAL_RANDOM');
+    }, [performAction]);
 
     // Use a callback ref pattern to avoid restarting interval when values change
-    const latestValuesRef = useRef({ communityCards, seats, performAction, isLoading });
+    const latestValuesRef = useRef({ performAction, isLoading });
 
     // Update the ref whenever dependencies change
     useEffect(() => {
-        latestValuesRef.current = { communityCards, seats, performAction, isLoading };
-    }, [communityCards, seats, performAction, isLoading]);
+        latestValuesRef.current = { performAction, isLoading };
+    }, [performAction, isLoading]);
 
     // Auto-deal: run dealRandomCard every second when enabled and it's dealer's turn
     useEffect(() => {
@@ -76,11 +45,9 @@ export function ActionButtons({ }: ActionButtonsProps) {
         }
 
         const interval = setInterval(() => {
-            const { communityCards, seats, performAction, isLoading } = latestValuesRef.current;
+            const { performAction, isLoading } = latestValuesRef.current;
             if (!isLoading) {
-                const code = pickRandomUndealt(communityCards, seats);
-                if (!code) return;
-                performAction('DEAL_CARD', { rank: code[0], suit: code[1] });
+                performAction('DEAL_RANDOM');
             }
         }, 1000);
 

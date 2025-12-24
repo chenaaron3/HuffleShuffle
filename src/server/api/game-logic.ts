@@ -222,6 +222,63 @@ export async function dealCard(
   }
 }
 
+// Deal a random card that hasn't been dealt yet
+// Has access to all player hands and community cards to ensure randomness
+export async function dealRandomCard(
+  tx: Tx,
+  tableId: string,
+  game: GameRow | null,
+): Promise<void> {
+  // Step 1: Deterministically enumerate all undealt cards
+  // Get all seats to collect dealt cards (seats exist even if no game)
+  const orderedSeats = await fetchAllSeatsInOrder(tx, tableId);
+
+  // Collect all dealt cards from seats and community cards (if game exists)
+  const dealt = new Set<string>();
+  orderedSeats.forEach((s) => s.cards.forEach((c) => dealt.add(c)));
+  if (game && game.communityCards) {
+    game.communityCards.forEach((c) => dealt.add(c));
+  }
+
+  // Generate full deck deterministically
+  const RANKS = [
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "T",
+    "J",
+    "Q",
+    "K",
+    "A",
+  ];
+  const SUITS = ["s", "h", "d", "c"];
+  const deck: string[] = [];
+  for (const r of RANKS) {
+    for (const s of SUITS) {
+      deck.push(`${r}${s}`);
+    }
+  }
+
+  // Deterministically filter to undealt cards
+  const undealtCards = deck.filter((c) => !dealt.has(c));
+  if (undealtCards.length === 0) {
+    throw new Error("No cards remaining to deal");
+  }
+
+  // Step 2: Randomly select one from the undealt cards
+  const randomIndex = Math.floor(Math.random() * undealtCards.length);
+  const randomCard = undealtCards[randomIndex]!;
+
+  // Step 3: Deal the selected card using existing dealCard logic
+  // dealCard will handle game creation if needed
+  await dealCard(tx, tableId, game, randomCard);
+}
+
 export async function resetGame(
   tx: Tx,
   game: GameRow | null,

@@ -1,6 +1,6 @@
-import { useTableQuery } from '~/hooks/use-table-query';
-import { useTableId } from '~/hooks/use-table-selectors';
-import { api } from '~/utils/api';
+import { useTableQuery } from "~/hooks/use-table-query";
+import { useTableId } from "~/hooks/use-table-selectors";
+import { api } from "~/utils/api";
 
 type TableAction =
   | "START_GAME"
@@ -8,7 +8,8 @@ type TableAction =
   | "RESET_TABLE"
   | "RAISE"
   | "FOLD"
-  | "CHECK";
+  | "CHECK"
+  | "DEAL_RANDOM";
 
 /**
  * Hook that provides a mutation function for table actions.
