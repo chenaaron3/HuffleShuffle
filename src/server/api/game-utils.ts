@@ -103,22 +103,6 @@ export async function mergeBetsIntoPotGeneric(
   // Calculate total bets
   const total = orderedSeats.reduce((sum, s) => sum + s.currentBet, 0);
 
-  // If no bets or all bets are zero, skip
-  if (total === 0) {
-    await tx
-      .update(games)
-      .set({
-        betCount: 0,
-        requiredBetCount: 0,
-      })
-      .where(eq(games.id, gameObj.id));
-    return {
-      ...gameObj,
-      betCount: 0,
-      requiredBetCount: 0,
-    };
-  }
-
   // NOTE: Side pots are recalculated from scratch at showdown using cumulative bets
   // (startingBalance - buyIn), so we don't need to track them incrementally here.
   // We just clear them and let the showdown logic recalculate them accurately.
