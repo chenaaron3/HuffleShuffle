@@ -40,6 +40,7 @@ Huffle Shuffle is a real-time poker table management system that enables:
 - **Zustand** for client-side state management
 - **Tailwind CSS** for styling
 - **Framer Motion** for animations
+- **Recharts** for chart visualizations (side pot stacked charts)
 - **LiveKit React Components** for video streaming
 - **Pusher JS** for real-time events
 
@@ -441,6 +442,24 @@ The card scanning system uses **AWS SQS FIFO** for reliable, ordered message pro
 #### `src/components/ui/event-feed.tsx`
 
 - Game event log (card deals, bets, folds, etc.)
+
+#### `src/components/ui/side-pot-details.tsx`
+
+- Expandable component showing side pot breakdown during SHOWDOWN
+- Displays stacked bar chart visualization of all side pots
+- Shows each player's contribution to each pot level with color coding (yellow for winners, gray for non-winners)
+- Left Y-axis shows bet level boundaries, right Y-axis shows pot amounts
+- Uses `SidePotChart` component for visualization
+
+#### `src/components/ui/side-pot-chart.tsx`
+
+- Stacked horizontal bar chart component for visualizing side pots
+- Built with recharts library
+- X-axis: Players who contributed to pots
+- Left Y-axis: Cumulative bet level boundaries (with reference lines)
+- Right Y-axis: Pot amounts displayed in middle of each pot section
+- Color coding: Yellow segments for winners, gray segments for non-winners
+- Only displayed during SHOWDOWN state
 
 ### Mobile Components (`src/components/ui/mobile/`)
 

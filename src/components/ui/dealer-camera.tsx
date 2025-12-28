@@ -91,9 +91,9 @@ export function DealerCamera({
             )}
 
             {/* Pot Total & Blinds Overlay - Center Top */}
-            <div id="pot-display" className="absolute top-4 right-4 transform z-40 flex flex-col gap-2 items-end">
-                <PotAndBlindsDisplay />
-                <SidePotDetails />
+            <div id="pot-display" className="absolute inset-0 p-4 w-full transform z-40 flex flex-col gap-2 items-end pointer-events-none">
+                <PotAndBlindsDisplay className="shrink-0" />
+                <SidePotDetails className="pointer-events-auto" />
             </div>
 
             {/* Turn Indicator - Bottom Left */}
