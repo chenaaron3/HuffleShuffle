@@ -183,109 +183,112 @@ export function VerticalRaiseControls({ }: VerticalRaiseControlsProps) {
             className="relative rounded-xl shadow-2xl w-80 bg-zinc-900/95 border border-white/10 p-3 backdrop-blur flex flex-col gap-3"
         >
             <GlowingEffect disabled={false} spread={25} proximity={40} inactiveZone={0.3} borderWidth={2} variant="golden" className="rounded-xl" />
-            {/* All In Button */}
-            <Button
-                onClick={handleAllIn}
-                disabled={isAllInDisabled}
-                variant="default"
-                size="sm"
-                className="w-full bg-amber-500 hover:bg-amber-600 text-white"
-            >
-                <Coins className="w-3.5 h-3.5" />
-                All In
-            </Button>
-
-            {/* Horizontal Slider with Official Tooltip */}
-            <div className="w-full space-y-3">
-                {/* Slider with Always Visible Tooltip */}
-                <Tooltip open={true}>
-                    <TooltipTrigger asChild>
-                        <div className="w-full">
-                            <Slider
-                                value={[validatedAmount]}
-                                onValueChange={(value) => handleAmountChange(value[0] ?? 0)}
-                                max={maxBetAmount}
-                                min={minRaise}
-                                step={bigBlind || 1}
-                                orientation="horizontal"
-                                disabled={maxBetAmount <= minRaise}
-                                className="w-full [&_[data-slot=slider-track]]:bg-zinc-800/70 [&_[data-slot=slider-range]]:bg-orange-500/90 [&_[data-slot=slider-thumb]]:bg-orange-400 [&_[data-slot=slider-thumb]]:border-orange-300 [&_[data-slot=slider-thumb]]:ring-2 [&_[data-slot=slider-thumb]]:ring-orange-300 [&_[data-slot=slider-thumb]]:drop-shadow-[0_0_12px_rgba(249,115,22,0.85)] [&_[data-slot=slider-thumb]]:transition-shadow"
-                            />
-                        </div>
-                    </TooltipTrigger>
-                    <TooltipContent
-                        side="bottom"
-                        className={cn(
-                            "text-white/80 bg-zinc-800/95 border text-xs p-0 shadow-lg transition-all cursor-text [&_svg]:hidden",
-                            isEditing
-                                ? "border-orange-400/80 shadow-orange-500/20"
-                                : "border-orange-500/40 hover:border-orange-400/60"
-                        )}
+            {!isForcedAllIn && (
+                <>
+                    {/* All In Button */}
+                    <Button
+                        onClick={handleAllIn}
+                        disabled={isAllInDisabled}
+                        variant="default"
+                        size="sm"
+                        className="w-full bg-amber-500 hover:bg-amber-600 text-white"
                     >
-                        <input
-                            type="text"
-                            value={inputValue}
-                            onChange={handleInputChange}
-                            onBlur={handleInputBlur}
-                            onFocus={handleInputFocus}
-                            onKeyDown={handleInputKeyDown}
-                            className="w-14 bg-transparent border-none outline-none text-white text-xs py-1.5 px-3 text-center focus:text-white focus:ring-2 focus:ring-orange-400/50 focus:bg-zinc-700/50 rounded cursor-text transition-all"
-                            placeholder={validatedAmount.toString()}
-                            inputMode="numeric"
-                            pattern="[0-9]*"
-                        />
-                    </TooltipContent>
-                </Tooltip>
+                        <Coins className="w-3.5 h-3.5" />
+                        All In
+                    </Button>
 
-                {/* Min/Max Labels */}
-                <div className="flex justify-between w-full text-xs text-white/60">
-                    <span>${minRaise}</span>
-                    <span>${maxBetAmount}</span>
-                </div>
-            </div>
+                    {/* Horizontal Slider with Official Tooltip */}
+                    <div className="w-full space-y-3">
+                        {/* Slider with Always Visible Tooltip */}
+                        <Tooltip open={true}>
+                            <TooltipTrigger asChild>
+                                <div className="w-full">
+                                    <Slider
+                                        value={[validatedAmount]}
+                                        onValueChange={(value) => handleAmountChange(value[0] ?? 0)}
+                                        max={maxBetAmount}
+                                        min={minRaise}
+                                        step={bigBlind || 1}
+                                        orientation="horizontal"
+                                        disabled={playerBalance <= 0}
+                                        className="w-full [&_[data-slot=slider-track]]:bg-zinc-800/70 [&_[data-slot=slider-range]]:bg-orange-500/90 [&_[data-slot=slider-thumb]]:bg-orange-400 [&_[data-slot=slider-thumb]]:border-orange-300 [&_[data-slot=slider-thumb]]:ring-2 [&_[data-slot=slider-thumb]]:ring-orange-300 [&_[data-slot=slider-thumb]]:drop-shadow-[0_0_12px_rgba(249,115,22,0.85)] [&_[data-slot=slider-thumb]]:transition-shadow"
+                                    />
+                                </div>
+                            </TooltipTrigger>
+                            <TooltipContent
+                                side="bottom"
+                                className={cn(
+                                    "text-white/80 bg-zinc-800/95 border text-xs p-0 shadow-lg transition-all cursor-text [&_svg]:hidden",
+                                    isEditing
+                                        ? "border-orange-400/80 shadow-orange-500/20"
+                                        : "border-orange-500/40 hover:border-orange-400/60"
+                                )}
+                            >
+                                <input
+                                    type="text"
+                                    value={inputValue}
+                                    onChange={handleInputChange}
+                                    onBlur={handleInputBlur}
+                                    onFocus={handleInputFocus}
+                                    onKeyDown={handleInputKeyDown}
+                                    className="w-14 bg-transparent border-none outline-none text-white text-xs py-1.5 px-3 text-center focus:text-white focus:ring-2 focus:ring-orange-400/50 focus:bg-zinc-700/50 rounded cursor-text transition-all"
+                                    placeholder={validatedAmount.toString()}
+                                    inputMode="numeric"
+                                    pattern="[0-9]*"
+                                />
+                            </TooltipContent>
+                        </Tooltip>
 
-            {/* Quick Action Buttons - Pot Buttons */}
-            <div className="flex gap-1.5 w-full">
-                <Button
-                    onClick={handleQuarterPot}
-                    disabled={isQuarterPotDisabled}
-                    variant="outline"
-                    size="sm"
-                    className="flex-1 text-xs bg-yellow-500/20 hover:bg-yellow-500/30 border-yellow-500/50 text-white"
-                >
-                    <span className="text-base">¼</span><span>Pot</span>
-                </Button>
-                <Button
-                    onClick={handleHalfPot}
-                    disabled={isHalfPotDisabled}
-                    variant="outline"
-                    size="sm"
-                    className="flex-1 text-xs bg-orange-500/20 hover:bg-orange-500/30 border-orange-500/50 text-white"
-                >
-                    <span className="text-base">½</span><span>Pot</span>
-                </Button>
-                <Button
-                    onClick={handleThreeQuarterPot}
-                    disabled={isThreeQuarterPotDisabled}
-                    variant="outline"
-                    size="sm"
-                    className="flex-1 text-xs bg-orange-600/20 hover:bg-orange-600/30 border-orange-600/50 text-white"
-                >
-                    <span className="text-base">¾</span><span>Pot</span>
-                </Button>
-                <Button
-                    onClick={handleFullPot}
-                    disabled={isFullPotDisabled}
-                    variant="outline"
-                    size="sm"
-                    className="flex-1 text-xs bg-red-500/20 hover:bg-red-500/30 border-red-500/50 text-white"
-                >
-                    Pot
-                </Button>
-            </div>
+                        {/* Min/Max Labels */}
+                        <div className="flex justify-between w-full text-xs text-white/60">
+                            <span>${minRaise}</span>
+                            <span>${maxBetAmount}</span>
+                        </div>
+                    </div>
 
-            {/* Divider */}
-            <div className="w-full h-px bg-white/10" />
+                    {/* Quick Action Buttons - Pot Buttons */}
+                    <div className="flex gap-1.5 w-full">
+                        <Button
+                            onClick={handleQuarterPot}
+                            disabled={isQuarterPotDisabled}
+                            variant="outline"
+                            size="sm"
+                            className="flex-1 text-xs bg-yellow-500/20 hover:bg-yellow-500/30 border-yellow-500/50 text-white"
+                        >
+                            <span className="text-base">¼</span><span>Pot</span>
+                        </Button>
+                        <Button
+                            onClick={handleHalfPot}
+                            disabled={isHalfPotDisabled}
+                            variant="outline"
+                            size="sm"
+                            className="flex-1 text-xs bg-orange-500/20 hover:bg-orange-500/30 border-orange-500/50 text-white"
+                        >
+                            <span className="text-base">½</span><span>Pot</span>
+                        </Button>
+                        <Button
+                            onClick={handleThreeQuarterPot}
+                            disabled={isThreeQuarterPotDisabled}
+                            variant="outline"
+                            size="sm"
+                            className="flex-1 text-xs bg-orange-600/20 hover:bg-orange-600/30 border-orange-600/50 text-white"
+                        >
+                            <span className="text-base">¾</span><span>Pot</span>
+                        </Button>
+                        <Button
+                            onClick={handleFullPot}
+                            disabled={isFullPotDisabled}
+                            variant="outline"
+                            size="sm"
+                            className="flex-1 text-xs bg-red-500/20 hover:bg-red-500/30 border-red-500/50 text-white"
+                        >
+                            Pot
+                        </Button>
+                    </div>
+                    {/* Divider */}
+                    <div className="w-full h-px bg-white/10" />
+                </>
+            )}
 
             {/* Main Action Buttons - Fold, Check/Call, Raise */}
             <div className="flex gap-2 w-full">
@@ -315,10 +318,18 @@ export function VerticalRaiseControls({ }: VerticalRaiseControlsProps) {
                     onClick={handleRaise}
                     variant="default"
                     size="sm"
-                    disabled={isForcedAllIn}
+                    disabled={playerBalance <= 0}
                     className="flex-1 bg-orange-500 hover:bg-orange-600 text-white"
                 >
-                    Raise <RollingNumber value={validatedAmount} prefix="$" className="font-semibold" />
+                    {isForcedAllIn ? (
+                        <>
+                            All In <RollingNumber value={validatedAmount} prefix="$" className="font-semibold" />
+                        </>
+                    ) : (
+                        <>
+                            Raise <RollingNumber value={validatedAmount} prefix="$" className="font-semibold" />
+                        </>
+                    )}
                 </Button>
             </div>
         </motion.div>
