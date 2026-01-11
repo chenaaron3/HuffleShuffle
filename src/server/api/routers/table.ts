@@ -39,7 +39,7 @@ import {
 import {
   createNewGame,
   dealCard,
-  dealRandomCard,
+  generateRandomCard,
   notifyTableUpdate,
   parseRankSuitToBarcode,
   resetGame,
@@ -933,25 +933,32 @@ export const tableRouter = createTRPCRouter({
           return { ok: true } as const;
         }
 
-        if (input.action === "DEAL_CARD") {
+        if (input.action === "DEAL_CARD" || input.action === "DEAL_RANDOM") {
           if (!isDealerCaller) throw new Error("Only dealer can DEAL_CARD");
-          if (!input.params?.rank || !input.params?.suit)
-            throw new Error("Rank and suit are required");
-          const barcode = parseRankSuitToBarcode(
-            input.params.rank,
-            input.params.suit,
-          );
-
-          // Use shared game logic instead of duplicating code
-          if (process.env.NODE_ENV === "test") {
-            await dealCard(
-              tx,
-              input.tableId,
-              game ?? null,
-              `${input.params.rank}${input.params.suit}`,
+          let barcode = "";
+          // If dealing a specific card, read from input
+          if (input.action === "DEAL_CARD") {
+            if (!input.params?.rank || !input.params?.suit)
+              throw new Error("Rank and suit are required");
+            barcode = parseRankSuitToBarcode(
+              input.params.rank,
+              input.params.suit,
             );
-            return { ok: true } as const;
+            // Use shared game logic instead of duplicating code
+            if (process.env.NODE_ENV === "test") {
+              await dealCard(
+                tx,
+                input.tableId,
+                game ?? null,
+                `${input.params.rank}${input.params.suit}`,
+              );
+              return { ok: true } as const;
+            }
+          } else {
+            // Generate a random card
+            barcode = await generateRandomCard(tx, input.tableId, game ?? null);
           }
+
           const region = process.env.AWS_REGION || "us-east-1";
           const queueUrl = process.env.SQS_QUEUE_URL;
           const sqs = new SQSClient({ region });
@@ -969,13 +976,6 @@ export const tableRouter = createTRPCRouter({
             }),
           );
           console.log(`published ${barcode} to SQS`);
-          return { ok: true } as const;
-        }
-
-        if (input.action === "DEAL_RANDOM") {
-          if (!isDealerCaller) throw new Error("Only dealer can DEAL_RANDOM");
-          // Use shared game logic to pick and deal a random card
-          await dealRandomCard(tx, input.tableId, game ?? null);
           return { ok: true } as const;
         }
 

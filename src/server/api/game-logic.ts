@@ -222,13 +222,13 @@ export async function dealCard(
   }
 }
 
-// Deal a random card that hasn't been dealt yet
+// Generate a random card that hasn't been dealt yet
 // Has access to all player hands and community cards to ensure randomness
-export async function dealRandomCard(
+export async function generateRandomCard(
   tx: Tx,
   tableId: string,
   game: GameRow | null,
-): Promise<void> {
+): Promise<string> {
   // Step 1: Deterministically enumerate all undealt cards
   // Get all seats to collect dealt cards (seats exist even if no game)
   const orderedSeats = await fetchAllSeatsInOrder(tx, tableId);
@@ -274,9 +274,10 @@ export async function dealRandomCard(
   const randomIndex = Math.floor(Math.random() * undealtCards.length);
   const randomCard = undealtCards[randomIndex]!;
 
-  // Step 3: Deal the selected card using existing dealCard logic
-  // dealCard will handle game creation if needed
-  await dealCard(tx, tableId, game, randomCard);
+  // Convert from internal format (e.g., "As") to barcode format (e.g., "1010")
+  const rank = randomCard.slice(0, -1);
+  const suit = randomCard.slice(-1);
+  return parseRankSuitToBarcode(rank, suit);
 }
 
 export async function resetGame(
