@@ -17,6 +17,7 @@ export function SetVideoPublishingQuality({ quality }: SetVideoPublishingQuality
     const room = useRoomContext();
 
     useEffect(() => {
+        console.log(room);
         if (!room) {
             return;
         }
@@ -40,6 +41,7 @@ export function SetVideoPublishingQuality({ quality }: SetVideoPublishingQuality
         });
 
         const handleLocalTrackPublished = (publication: LocalTrackPublication) => {
+            console.log('local track published', publication);
             void setQualityOnPublication(publication);
         };
 
