@@ -1,8 +1,10 @@
+import { VideoQuality } from 'livekit-client';
 import { useSession } from 'next-auth/react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import * as React from 'react';
 import { AutoBackgroundBlur } from '~/components/livekit/AutoBackgroundBlur';
+import { SetVideoPublishingQuality } from '~/components/livekit/SetVideoPublishingQuality';
 import { TableAnimation } from '~/components/TableAnimation';
 import { TableSetupModal } from '~/components/TableSetupModal';
 import { DealerCamera } from '~/components/ui/dealer-camera';
@@ -191,6 +193,7 @@ export default function TableView() {
                     >
                         <RoomAudioRenderer />
                         <AutoBackgroundBlur enabled={!isDealerRole && backgroundBlurEnabled} />
+                        <SetVideoPublishingQuality quality={VideoQuality.LOW} />
                         <div className="absolute z-10 right-0 flex max-w-7xl items-center gap-3 px-4">
                             <StartAudio label="Enable Audio" />
                             {isDealerRole && (
