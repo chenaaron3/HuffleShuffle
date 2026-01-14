@@ -99,7 +99,6 @@ export function SetVideoPublishingQuality({ quality, skipForDealer = false }: Se
                     track.setPublishingQuality(quality);
                     console.log('[LiveKit] Set publishing quality to:', VideoQuality[quality]);
                 } else {
-                    track.setPublishingQuality(VideoQuality.MEDIUM);
                     console.log('[LiveKit] Skipping quality limit for dealer');
                 }
 
