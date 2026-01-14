@@ -264,6 +264,7 @@ The game progresses through these states:
 
 - **`dealerJoin`**: Assign dealer to existing table (dealer-only)
   - Input: `{ tableId: string }`
+  - Side effects: Overwrites existing dealer if table already has one; allows dealer to switch from another table
 
 - **`dealerLeave`**: Remove dealer from table (dealer-only)
   - Input: `{ tableId: string }`

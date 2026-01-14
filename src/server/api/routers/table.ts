@@ -362,14 +362,7 @@ export const tableRouter = createTRPCRouter({
       ensureDealerRole(ctx.session.user.role);
 
       await db.transaction(async (tx) => {
-        // Verify the dealer doesn't already have a table
-        const existingTable = await tx.query.pokerTables.findFirst({
-          where: eq(pokerTables.dealerId, userId),
-        });
-        if (existingTable)
-          throw new Error("Dealer is already assigned to a table");
-
-        // Get the table and verify it's joinable and has no dealer
+        // Get the table and verify it's joinable
         const snapshot = await tx.query.pokerTables.findFirst({
           where: eq(pokerTables.id, input.tableId),
           with: {
@@ -377,24 +370,14 @@ export const tableRouter = createTRPCRouter({
           },
         });
         if (!snapshot) throw new Error("Table not found");
-
-        if (snapshot.dealerId !== null) {
-          throw new Error("Table already has a dealer");
-        }
-
-        const latestGame = snapshot.games[0] ?? null;
-        const isJoinable = !latestGame || latestGame.isCompleted;
-
-        if (!isJoinable) {
-          throw new Error("Cannot join table: game is in progress");
-        }
-
-        // Assign dealer to table
+        // Assign dealer to table (overwrites existing dealer if present)
         await tx
           .update(pokerTables)
           .set({ dealerId: userId })
           .where(eq(pokerTables.id, input.tableId));
       });
+
+      await notifyTableUpdate(input.tableId);
 
       return { tableId: input.tableId };
     }),
