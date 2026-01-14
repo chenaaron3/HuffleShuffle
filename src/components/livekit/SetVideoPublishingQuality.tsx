@@ -7,13 +7,14 @@ import type { LocalTrackPublication, LocalVideoTrack } from 'livekit-client';
 
 type SetVideoPublishingQualityProps = {
     quality: VideoQuality;
+    skipForDealer?: boolean;
 };
 
 /**
  * Sets the publishing quality for the local participant's camera stream.
  * This controls the quality at which the user's video is published to other participants.
  */
-export function SetVideoPublishingQuality({ quality }: SetVideoPublishingQualityProps) {
+export function SetVideoPublishingQuality({ quality, skipForDealer = false }: SetVideoPublishingQualityProps) {
     const room = useRoomContext();
 
     useEffect(() => {
@@ -93,8 +94,13 @@ export function SetVideoPublishingQuality({ quality }: SetVideoPublishingQuality
             if (!track) return;
 
             try {
-                track.setPublishingQuality(quality);
-                console.log('[LiveKit] Set publishing quality to:', VideoQuality[quality]);
+                // Only set quality limit if not skipping for dealer
+                if (!skipForDealer) {
+                    track.setPublishingQuality(quality);
+                    console.log('[LiveKit] Set publishing quality to:', VideoQuality[quality]);
+                } else {
+                    console.log('[LiveKit] Skipping quality limit for dealer');
+                }
 
                 // Store track for periodic logging
                 tracksToMonitor.set(publication.trackSid, { track, publication });

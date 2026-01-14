@@ -193,7 +193,7 @@ export default function TableView() {
                     >
                         <RoomAudioRenderer />
                         <AutoBackgroundBlur enabled={!isDealerRole && backgroundBlurEnabled} />
-                        <SetVideoPublishingQuality quality={VideoQuality.LOW} />
+                        <SetVideoPublishingQuality quality={VideoQuality.LOW} skipForDealer={isDealerRole} />
                         <div className="absolute z-10 right-0 flex max-w-7xl items-center gap-3 px-4">
                             <StartAudio label="Enable Audio" />
                             {isDealerRole && (
