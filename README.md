@@ -2,8 +2,17 @@
 
 A Next.js T3-based poker table management and streaming control system that integrates LiveKit for video streaming, Pusher for device signaling, Raspberry Pi camera pipelines for dealer/hand views, and a tRPC backend managing table state, seats, and betting logic.
 
+## Project Status
+
+### Recent Changes
+- Added LiveKit bandwidth tuning in `src/pages/table/[id].tsx` (`dynacast`, `adaptiveStream`, `videoEncoding.maxBitrate`, `videoSimulcastLayers`).
+
+### Known Issues
+- Dealer browser stream can lag on custom LiveKit Cloud WSS while public demo remains smooth; UDP path confirmed (`local=srflx`, `remote=host`) from publisher stats.
+
 ## Table of Contents
 
+- [Project Status](#project-status)
 - [Overview](#overview)
 - [Technology Stack](#technology-stack)
 - [Architecture](#architecture)
