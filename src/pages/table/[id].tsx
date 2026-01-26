@@ -1,4 +1,4 @@
-import { VideoQuality } from 'livekit-client';
+import { VideoPresets, VideoQuality } from 'livekit-client';
 import { useSession } from 'next-auth/react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
@@ -32,6 +32,7 @@ import { SIGNALS } from '~/utils/signal-constants';
 
 import { LiveKitRoom, RoomAudioRenderer, StartAudio } from '@livekit/components-react';
 
+import type { VideoCodec } from 'livekit-client';
 export default function TableView() {
     const router = useRouter();
     const { id } = router.query as { id?: string };
@@ -188,6 +189,18 @@ export default function TableView() {
                         token={livekit.data!.token}
                         serverUrl={livekit.data!.serverUrl}
                         connectOptions={{ autoSubscribe: true }}
+                        options={{
+                            // Match LiveKit Meet demo configuration (from livekit-examples/meet)
+                            adaptiveStream: { pixelDensity: 'screen' },
+                            dynacast: true,
+                            videoCaptureDefaults: {
+                                resolution: VideoPresets.h720.resolution,
+                            },
+                            publishDefaults: {
+                                videoSimulcastLayers: [VideoPresets.h540, VideoPresets.h216],
+                                videoCodec: 'vp9' as VideoCodec,
+                            },
+                        }}
                         video={true}
                         audio={true}
                     >
