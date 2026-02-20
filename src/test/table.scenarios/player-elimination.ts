@@ -537,7 +537,7 @@ const scenarios: Scenario[] = [
         type: "action",
         action: "RAISE",
         by: "player2",
-        params: { amount: 300 },
+        params: { amount: 320 },
       },
       { type: "action", action: "FOLD", by: "player3" },
       {

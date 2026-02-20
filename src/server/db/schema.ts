@@ -261,6 +261,7 @@ export const games = createTable(
     requiredBetCount: d.integer().notNull().default(0),
     effectiveSmallBlind: d.integer().notNull().default(0), // Effective small blind at game start
     effectiveBigBlind: d.integer().notNull().default(0), // Effective big blind at game start
+    lastRaiseIncrement: d.integer().notNull().default(0), // Min raise increment for current betting round (TDA rule)
     wasReset: d.boolean().notNull().default(false), // True if this game was reset via RESET_TABLE action (button should not advance on next game)
     createdAt: d
       .timestamp({ withTimezone: true })

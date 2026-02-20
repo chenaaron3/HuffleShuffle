@@ -129,6 +129,10 @@ export async function executeBettingAction(
     0,
   );
 
+  const effectiveBigBlind = game.effectiveBigBlind ?? 0;
+  const lastRaiseIncrement =
+    (game.lastRaiseIncrement ?? 0) > 0 ? game.lastRaiseIncrement! : effectiveBigBlind;
+
   // Variables for all actions
   const currentBet = currentSeat.currentBet;
   const availableFunds = currentSeat.buyIn;
@@ -137,11 +141,21 @@ export async function executeBettingAction(
   let fundsRequested = 0;
   let effectiveAction: "RAISE" | "CALL" | "CHECK" | "FOLD" = action;
   let effectiveStatus: "active" | "all-in" | "folded" | "eliminated" = "active";
+  let newLastRaiseIncrement: number | null = null;
 
   // Validate and compute action-specific values
   if (action === "RAISE") {
     const amount = raiseAmount ?? 0;
-    // Validation: ensure raise > maxbet
+    const isAllIn = amount - currentBet >= availableFunds;
+    const minRaiseTotal = maxPlayerBet + lastRaiseIncrement;
+
+    // Validation: min raise = maxBet + lastRaiseIncrement (TDA rule)
+    // Exception: all-in for less than full raise is allowed
+    if (!isAllIn && amount < minRaiseTotal) {
+      throw new Error(
+        `Invalid raise: minimum is ${minRaiseTotal} (current max ${maxPlayerBet} + min increment ${lastRaiseIncrement})`,
+      );
+    }
     if (amount <= maxPlayerBet) {
       throw new Error(
         `Invalid raise amount, must be greater than the max bet of ${maxPlayerBet}`,
@@ -178,6 +192,12 @@ export async function executeBettingAction(
   // Update seat: deduct from buyIn and add to currentBet (if needed)
   const newBuyIn = availableFunds - fundsRequested;
   const newCurrentBet = currentBet + fundsRequested;
+
+  // For RAISE: update lastRaiseIncrement (min re-raise rule)
+  if (effectiveAction === "RAISE") {
+    const raiseIncrement = newCurrentBet - maxPlayerBet;
+    newLastRaiseIncrement = Math.max(lastRaiseIncrement, raiseIncrement);
+  }
 
   // Update effectiveStatus if not already set (e.g., for FOLD)
   if (effectiveStatus !== "folded") {
@@ -224,13 +244,16 @@ export async function executeBettingAction(
   // Get next active seat
   const nextSeatId = getNextActiveSeatId(orderedSeats, actorSeatId);
 
-  // Increment betCount and rotate to next player
+  // Increment betCount and rotate to next player; update lastRaiseIncrement on RAISE
   const [updatedGame] = await tx
     .update(games)
     .set({
       betCount: sql`${games.betCount} + 1`,
       assignedSeatId: nextSeatId,
       turnStartTime: nextSeatId ? new Date() : null,
+      ...(newLastRaiseIncrement !== null && {
+        lastRaiseIncrement: newLastRaiseIncrement,
+      }),
     })
     .where(eq(games.id, game.id))
     .returning();

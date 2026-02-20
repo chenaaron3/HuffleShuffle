@@ -109,6 +109,7 @@ async function startBettingRound(
     })),
   );
 
+  const effectiveBigBlind = gameObj.effectiveBigBlind ?? 0;
   await tx
     .update(games)
     .set({
@@ -117,6 +118,7 @@ async function startBettingRound(
       turnStartTime: new Date(), // Set turn start time in game record
       betCount: 0,
       requiredBetCount: activeCount,
+      lastRaiseIncrement: effectiveBigBlind, // Min raise = previous raise increment; BB for first raise of round
     })
     .where(eq(games.id, gameObj.id));
   // Clear lastAction for all seats at the start of the next betting round

@@ -71,6 +71,36 @@ const scenarios: Scenario[] = [
       { type: "validate", game: { state: "DEAL_FLOP", potTotal: 350 } },
     ],
   },
+  {
+    name: "min re-raise validation (TDA rule)",
+    steps: [
+      {
+        type: "join",
+        players: [{ key: "player1" }, { key: "player2" }],
+      },
+      { type: "action", action: "START_GAME", by: "dealer" },
+      // Deal hole cards (6 cards total for 2 players)
+      { type: "action", action: "DEAL_CARD", by: "dealer", params: { rank: "A", suit: "s" } },
+      { type: "action", action: "DEAL_CARD", by: "dealer", params: { rank: "K", suit: "s" } },
+      { type: "action", action: "DEAL_CARD", by: "dealer", params: { rank: "Q", suit: "s" } },
+      { type: "action", action: "DEAL_CARD", by: "dealer", params: { rank: "J", suit: "s" } },
+      { type: "validate", game: { state: "BETTING" } },
+      // Heads-up: SB (player2) acts first. P2 raises to 50 (BB=10, increment 40; min re-raise = 90)
+      { type: "action", action: "RAISE", by: "player2", params: { amount: 50 } },
+      // P1 (BB) tries invalid re-raise to 70 (increment 20 < 40) - must fail
+      {
+        type: "action",
+        action: "RAISE",
+        by: "player1",
+        params: { amount: 70 },
+        isError: true,
+      },
+      // P1 makes valid min re-raise to 90
+      { type: "action", action: "RAISE", by: "player1", params: { amount: 90 } },
+      { type: "action", action: "CHECK", by: "player2" }, // P2 calls
+      { type: "validate", game: { state: "DEAL_FLOP" } },
+    ],
+  },
 ];
 
 export default scenarios;

@@ -5,6 +5,8 @@ A Next.js T3-based poker table management and streaming control system that inte
 ## Project Status
 
 ### Recent Changes
+- Simplified redact snapshot logic: removed redundant `betCount` check; now uses single `showCardsForRunout` with `activePlayerFacingDecision` (currentBet < maxBet) as the source of truth. Added 7 edge case tests. See `redactSnapshotForUser` in `src/server/api/routers/table.ts`.
+- Implemented minimum re-raise rule (TDA): each raise must add at least the previous raise increment; `games.lastRaiseIncrement` tracks this per betting round.
 - Added LiveKit bandwidth tuning in `src/pages/table/[id].tsx` (`dynacast`, `adaptiveStream`, `videoEncoding.maxBitrate`, `videoSimulcastLayers`).
 
 ### Known Issues
@@ -187,6 +189,7 @@ Huffle Shuffle is a real-time poker table management system that enables:
 - `requiredBetCount`: Integer (actions needed to complete round)
 - `effectiveSmallBlind`: Integer (computed at game start)
 - `effectiveBigBlind`: Integer (computed at game start)
+- `lastRaiseIncrement`: Integer (min raise increment for current betting round; TDA rule)
 - `turnStartTime`: Timestamp (when current player's turn started)
 - `isCompleted`: Boolean
 - `wasReset`: Boolean (true if game was reset via RESET_TABLE action; prevents button advancement on next game)
@@ -237,6 +240,12 @@ The game progresses through these states:
 - **BETTING → SHOWDOWN**: When betting round completes
 - **SHOWDOWN → RESET_TABLE**: After winners determined and chips distributed
 - **RESET_TABLE → DEAL_HOLE_CARDS**: When dealer starts new hand
+
+### Betting Rules (TDA)
+
+- **Minimum re-raise**: Each raise must add at least the size of the previous raise. Min total = `maxBet + lastRaiseIncrement`.
+- **First raise of round**: Min increment = big blind.
+- **All-in**: A player may go all-in for less than a full raise; this does not reopen action for players who have already acted.
 
 ### Key Logic Files
 
@@ -298,7 +307,7 @@ The game progresses through these states:
     - `START_GAME` (dealer-only): Initialize new hand
     - `DEAL_CARD` (dealer-only): Deal card to current assigned seat or community
     - `DEAL_RANDOM` (dealer-only): Deal a random card that hasn't been dealt yet (has access to all player hands and community cards for true randomness)
-    - `RAISE`: Raise bet amount
+    - `RAISE`: Raise to total amount (validated: must meet min re-raise rule)
     - `CHECK`: Check (no bet increase)
     - `FOLD`: Fold hand
     - `RESET_TABLE` (dealer-only): Reset table for next hand (marks game with `wasReset` flag; prevents button advancement on next game start)

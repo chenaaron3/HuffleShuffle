@@ -127,16 +127,24 @@ export function redactSnapshotForUser(
     (s) => s.seatStatus === "all-in",
   ).length;
 
-  // When all remaining players are all-in (no active players left),
-  // no more betting is possible - show cards for the "runout"
-  const allPlayersAllIn = activeCount === 0 && allInCount >= 2;
-
-  // Check if all players but one are all-in and we're in a new betting round
-  // If a player goes all-in in the current betting round, betCount will be > 0,
-  // so we won't show cards (active player still needs to act).
-  // In subsequent betting rounds, betCount resets to 0, so we can show cards.
-  const oneActiveAllOthersAllIn =
-    activeCount === 1 && allInCount >= 1 && snapshot.game?.betCount === 0;
+  // Show cards when there's a runout (all all-in or one active + others all-in)
+  // and no active player has a pending call/fold decision.
+  const nonFoldedSeats = snapshot.seats.filter(
+    (s) => s.seatStatus !== "folded" && s.seatStatus !== "eliminated",
+  );
+  const maxBet = Math.max(
+    ...nonFoldedSeats.map((s) => s.currentBet ?? 0),
+    0,
+  );
+  const activePlayerFacingDecision = snapshot.seats.some(
+    (s) =>
+      s.seatStatus === "active" && (s.currentBet ?? 0) < maxBet,
+  );
+  const showCardsForRunout =
+    (activeCount === 0 && allInCount >= 2) ||
+    (activeCount === 1 && allInCount >= 1)
+      ? !activePlayerFacingDecision
+      : false;
 
   // Check if only one non-folded player remains (everyone else folded)
   const singleActive =
@@ -164,13 +172,8 @@ export function redactSnapshotForUser(
     if (s.seatStatus === "folded") {
       return hiddenCards;
     }
-    // Show cards when all remaining players are all-in
-    if (allPlayersAllIn) {
-      return s;
-    }
-    // Show cards when all players but one are all-in and we're in a new betting round
-    // (betCount === 0 means no all-in actions in current round, so safe to show)
-    if (oneActiveAllOthersAllIn) {
+    // Show cards when runout (all all-in or one active + others all-in, no pending decision)
+    if (showCardsForRunout) {
       return s;
     }
     if (isShowdown) {

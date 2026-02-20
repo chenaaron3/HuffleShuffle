@@ -9,7 +9,7 @@ import { Slider } from '~/components/ui/slider';
 import { Tooltip, TooltipContent, TooltipTrigger } from '~/components/ui/tooltip';
 import { useActions } from '~/hooks/use-actions';
 import {
-    useCurrentSeat, useEffectiveBigBlind, useMaxBet, useTotalPot
+    useCurrentSeat, useEffectiveBigBlind, useMaxBet, useMinRaiseIncrement, useTotalPot
 } from '~/hooks/use-table-selectors';
 import { cn } from '~/lib/utils';
 
@@ -27,6 +27,7 @@ export function VerticalRaiseControls({ }: VerticalRaiseControlsProps) {
     const playerBalance = currentSeat?.buyIn ?? 1000;
     const currentBet = currentSeat?.currentBet ?? 0;
     const bigBlind = useEffectiveBigBlind() ?? 20;
+    const minRaiseIncrement = useMinRaiseIncrement();
     const maxBet = useMaxBet() ?? 0;
 
     // Use actions hook for mutations
@@ -35,12 +36,12 @@ export function VerticalRaiseControls({ }: VerticalRaiseControlsProps) {
     // State for raise amount
     const [raiseAmount, setRaiseAmount] = useState<number>(bigBlind);
 
-    // Update raise amount when big blind or max bet changes
+    // Update raise amount when min raise increment or max bet changes
     useEffect(() => {
-        if (bigBlind && maxBet !== undefined) {
-            setRaiseAmount(maxBet + bigBlind);
+        if (minRaiseIncrement && maxBet !== undefined) {
+            setRaiseAmount(maxBet + minRaiseIncrement);
         }
-    }, [bigBlind, maxBet]);
+    }, [minRaiseIncrement, maxBet]);
 
     // Handle raise action
     const handleRaise = () => {
@@ -58,10 +59,10 @@ export function VerticalRaiseControls({ }: VerticalRaiseControlsProps) {
     };
     const maxBetAmount = Math.max(0, currentBet + playerBalance);
     const availableAfterCall = Math.max(0, maxBetAmount - maxBet);
-    // If player can't afford full big blind raise, all-in becomes the minimum
+    // Min raise = maxBet + lastRaiseIncrement (TDA rule); all-in if can't afford full raise
     const minRaise = Math.min(
         maxBetAmount, // Can't exceed all-in
-        maxBet + Math.min(bigBlind || 0, availableAfterCall)
+        maxBet + Math.min(minRaiseIncrement || 0, availableAfterCall)
     );
 
     // Clamp value to valid range

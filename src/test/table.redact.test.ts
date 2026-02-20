@@ -331,12 +331,14 @@ describe("redactSnapshotForUser", () => {
       expect(result.seats[2]!.cards).toEqual(["FD", "FD"]); // Folded hidden
     });
 
-    it("does NOT reveal cards if one player is still active and betCount > 0 (player went all-in in current round)", () => {
+    it("does NOT reveal cards when one player went all-in (e.g. BB) and active player has not yet called (betCount 0)", () => {
+      // BB went all-in posting blinds; SB must still call/fold. betCount stays 0.
       const activeSeat = createMockSeat({
         id: "seat-1",
         playerId: "player-1",
         cards: ["AS", "KH"],
         seatStatus: "active",
+        currentBet: 5, // SB amount - hasn't matched BB's all-in
       });
       const allInSeat = createMockSeat({
         id: "seat-2",
@@ -344,15 +346,40 @@ describe("redactSnapshotForUser", () => {
         seatNumber: 1,
         cards: ["QS", "JH"],
         seatStatus: "all-in",
-        handType: "One Pair",
-        handDescription: "Pair of Queens",
-        winningCards: ["QS", "QC"],
+        currentBet: 100, // BB all-in amount
       });
       const snapshot = createMockSnapshot(
         [activeSeat, allInSeat],
         "BETTING",
-        { betCount: 1 }, // Player went all-in in current round
+        { betCount: 0 },
       );
+
+      const result = redactSnapshotForUser(snapshot, "player-1");
+
+      expect(result.seats[0]!.cards).toEqual(["AS", "KH"]); // Own cards
+      expect(result.seats[1]!.cards).toEqual(["FD", "FD"]); // All-in hidden (active player needs to act)
+    });
+
+    it("does NOT reveal cards if one player is still active (player went all-in in current round, active hasn't matched)", () => {
+      const activeSeat = createMockSeat({
+        id: "seat-1",
+        playerId: "player-1",
+        cards: ["AS", "KH"],
+        seatStatus: "active",
+        currentBet: 0, // Hasn't called the all-in yet
+      });
+      const allInSeat = createMockSeat({
+        id: "seat-2",
+        playerId: "player-2",
+        seatNumber: 1,
+        cards: ["QS", "JH"],
+        seatStatus: "all-in",
+        currentBet: 100,
+        handType: "One Pair",
+        handDescription: "Pair of Queens",
+        winningCards: ["QS", "QC"],
+      });
+      const snapshot = createMockSnapshot([activeSeat, allInSeat], "BETTING");
 
       const result = redactSnapshotForUser(snapshot, "player-1");
 
@@ -449,12 +476,13 @@ describe("redactSnapshotForUser", () => {
       expect(result.seats[2]!.cards).toEqual(["TC", "9D"]); // Revealed
     });
 
-    it("does NOT reveal cards when all players but one are all-in but betCount > 0 (all-in in current round)", () => {
+    it("does NOT reveal cards when all players but one are all-in (all-in in current round, active hasn't matched)", () => {
       const activeSeat = createMockSeat({
         id: "seat-1",
         playerId: "player-1",
         cards: ["AS", "KH"],
         seatStatus: "active",
+        currentBet: 50, // Hasn't matched all-in
       });
       const allInSeat = createMockSeat({
         id: "seat-2",
@@ -462,12 +490,9 @@ describe("redactSnapshotForUser", () => {
         seatNumber: 1,
         cards: ["QS", "JH"],
         seatStatus: "all-in",
+        currentBet: 100,
       });
-      const snapshot = createMockSnapshot(
-        [activeSeat, allInSeat],
-        "DEAL_RIVER",
-        { betCount: 1 }, // All-in happened in current round
-      );
+      const snapshot = createMockSnapshot([activeSeat, allInSeat], "DEAL_RIVER");
 
       const result = redactSnapshotForUser(snapshot, "player-1");
 
@@ -532,6 +557,202 @@ describe("redactSnapshotForUser", () => {
 
         expect(result.seats[1]!.cards).toEqual(["QS", "JH"]);
       }
+    });
+  });
+
+  describe("edge cases — activePlayerFacingDecision", () => {
+    it("activePlayerFacingDecision boundary — currentBet === maxBet shows cards", () => {
+      const activeSeat = createMockSeat({
+        id: "seat-1",
+        playerId: "player-1",
+        cards: ["AS", "KH"],
+        seatStatus: "active",
+        currentBet: 100, // Called the all-in
+      });
+      const allInSeat = createMockSeat({
+        id: "seat-2",
+        playerId: "player-2",
+        seatNumber: 1,
+        cards: ["QS", "JH"],
+        seatStatus: "all-in",
+        currentBet: 100,
+      });
+      const snapshot = createMockSnapshot([activeSeat, allInSeat], "BETTING");
+
+      const result = redactSnapshotForUser(snapshot, "player-1");
+
+      expect(result.seats[0]!.cards).toEqual(["AS", "KH"]);
+      expect(result.seats[1]!.cards).toEqual(["QS", "JH"]); // Revealed (active matched)
+    });
+
+    it("activePlayerFacingDecision boundary — currentBet less than maxBet hides cards", () => {
+      const activeSeat = createMockSeat({
+        id: "seat-1",
+        playerId: "player-1",
+        cards: ["AS", "KH"],
+        seatStatus: "active",
+        currentBet: 50,
+      });
+      const allInSeat = createMockSeat({
+        id: "seat-2",
+        playerId: "player-2",
+        seatNumber: 1,
+        cards: ["QS", "JH"],
+        seatStatus: "all-in",
+        currentBet: 100,
+      });
+      const snapshot = createMockSnapshot([activeSeat, allInSeat], "BETTING");
+
+      const result = redactSnapshotForUser(snapshot, "player-1");
+
+      expect(result.seats[0]!.cards).toEqual(["AS", "KH"]);
+      expect(result.seats[1]!.cards).toEqual(["FD", "FD"]); // Hidden (active hasn't matched)
+    });
+
+    it("viewing as the all-in player when active hasn't acted", () => {
+      const activeSeat = createMockSeat({
+        id: "seat-1",
+        playerId: "player-1",
+        cards: ["AS", "KH"],
+        seatStatus: "active",
+        currentBet: 5, // SB, hasn't called BB all-in
+      });
+      const allInSeat = createMockSeat({
+        id: "seat-2",
+        playerId: "player-2",
+        seatNumber: 1,
+        cards: ["QS", "JH"],
+        seatStatus: "all-in",
+        currentBet: 100, // BB all-in
+      });
+      const snapshot = createMockSnapshot([activeSeat, allInSeat], "BETTING");
+
+      // Viewing as the all-in player
+      const result = redactSnapshotForUser(snapshot, "player-2");
+
+      expect(result.seats[0]!.cards).toEqual(["FD", "FD"]); // Active player's cards hidden
+      expect(result.seats[1]!.cards).toEqual(["QS", "JH"]); // Own cards
+    });
+
+    it("runout with explicit currentBet 0 for all", () => {
+      const activeSeat = createMockSeat({
+        id: "seat-1",
+        playerId: "player-1",
+        cards: ["AS", "KH"],
+        seatStatus: "active",
+        currentBet: 0, // Post-merge
+      });
+      const allInSeat = createMockSeat({
+        id: "seat-2",
+        playerId: "player-2",
+        seatNumber: 1,
+        cards: ["QS", "JH"],
+        seatStatus: "all-in",
+        currentBet: 0, // Post-merge
+      });
+      const snapshot = createMockSnapshot([activeSeat, allInSeat], "DEAL_FLOP");
+
+      const result = redactSnapshotForUser(snapshot, "player-1");
+
+      expect(result.seats[0]!.cards).toEqual(["AS", "KH"]);
+      expect(result.seats[1]!.cards).toEqual(["QS", "JH"]); // Revealed (runout)
+    });
+
+    it("null/undefined currentBet robustness", () => {
+      const activeSeat = createMockSeat({
+        id: "seat-1",
+        playerId: "player-1",
+        cards: ["AS", "KH"],
+        seatStatus: "active",
+        currentBet: null as unknown as number,
+      });
+      const allInSeat = createMockSeat({
+        id: "seat-2",
+        playerId: "player-2",
+        seatNumber: 1,
+        cards: ["QS", "JH"],
+        seatStatus: "all-in",
+        currentBet: 100,
+      });
+      const snapshot = createMockSnapshot([activeSeat, allInSeat], "BETTING");
+
+      const result = redactSnapshotForUser(snapshot, "player-1");
+
+      // null treated as 0, so active has 0 < 100 → facing decision → hide all-in cards
+      expect(result.seats[0]!.cards).toEqual(["AS", "KH"]);
+      expect(result.seats[1]!.cards).toEqual(["FD", "FD"]);
+    });
+
+    it("three players: 1 active + 2 all-in, active has not matched", () => {
+      const activeSeat = createMockSeat({
+        id: "seat-1",
+        playerId: "player-1",
+        cards: ["AS", "KH"],
+        seatStatus: "active",
+        currentBet: 50,
+      });
+      const allInSeat1 = createMockSeat({
+        id: "seat-2",
+        playerId: "player-2",
+        seatNumber: 1,
+        cards: ["QS", "JH"],
+        seatStatus: "all-in",
+        currentBet: 100,
+      });
+      const allInSeat2 = createMockSeat({
+        id: "seat-3",
+        playerId: "player-3",
+        seatNumber: 2,
+        cards: ["TC", "9D"],
+        seatStatus: "all-in",
+        currentBet: 100,
+      });
+      const snapshot = createMockSnapshot(
+        [activeSeat, allInSeat1, allInSeat2],
+        "DEAL_TURN",
+      );
+
+      const result = redactSnapshotForUser(snapshot, "player-1");
+
+      expect(result.seats[0]!.cards).toEqual(["AS", "KH"]);
+      expect(result.seats[1]!.cards).toEqual(["FD", "FD"]);
+      expect(result.seats[2]!.cards).toEqual(["FD", "FD"]);
+    });
+
+    it("three players: 1 active + 2 all-in, active has matched", () => {
+      const activeSeat = createMockSeat({
+        id: "seat-1",
+        playerId: "player-1",
+        cards: ["AS", "KH"],
+        seatStatus: "active",
+        currentBet: 100,
+      });
+      const allInSeat1 = createMockSeat({
+        id: "seat-2",
+        playerId: "player-2",
+        seatNumber: 1,
+        cards: ["QS", "JH"],
+        seatStatus: "all-in",
+        currentBet: 100,
+      });
+      const allInSeat2 = createMockSeat({
+        id: "seat-3",
+        playerId: "player-3",
+        seatNumber: 2,
+        cards: ["TC", "9D"],
+        seatStatus: "all-in",
+        currentBet: 100,
+      });
+      const snapshot = createMockSnapshot(
+        [activeSeat, allInSeat1, allInSeat2],
+        "DEAL_RIVER",
+      );
+
+      const result = redactSnapshotForUser(snapshot, "player-1");
+
+      expect(result.seats[0]!.cards).toEqual(["AS", "KH"]);
+      expect(result.seats[1]!.cards).toEqual(["QS", "JH"]);
+      expect(result.seats[2]!.cards).toEqual(["TC", "9D"]);
     });
   });
 

@@ -35,6 +35,7 @@ export type BotGameState = {
   maxBet: number;
   botCurrentBet: number;
   botStack: number;
+  lastRaiseIncrement: number; // Min raise increment (TDA rule)
 };
 
 /**
@@ -404,6 +405,7 @@ function shouldRaise(
 /**
  * Calculate raise amount
  * Uses pot-sized raise as default, adjusted by equity and stack size
+ * Min raise follows TDA rule: maxBet + lastRaiseIncrement
  */
 function calculateRaiseAmount(
   currentMaxBet: number,
@@ -411,9 +413,10 @@ function calculateRaiseAmount(
   potSize: number,
   effectiveEquity: number,
   bigBlind: number,
+  lastRaiseIncrement: number,
 ): number {
-  // Minimum raise is 2x the current max bet (or big blind if no bet)
-  const minRaise = Math.max(currentMaxBet * 2, bigBlind * 2);
+  // Minimum raise = maxBet + lastRaiseIncrement (TDA rule)
+  const minRaise = currentMaxBet + lastRaiseIncrement;
 
   // Pot-sized raise
   const potSizedRaise = currentMaxBet + potSize;
@@ -542,10 +545,14 @@ export function makeBotDecision(gameState: BotGameState): BotDecision {
       potTotal,
       finalEquity,
       effectiveBigBlind,
+      gameState.lastRaiseIncrement,
     );
 
-    // If we can't afford a meaningful raise, just call/check
-    if (raiseAmount <= maxBet || raiseAmount - maxBet < effectiveBigBlind) {
+    // If we can't afford a meaningful raise (min increment), just call/check
+    if (
+      raiseAmount <= maxBet ||
+      raiseAmount - maxBet < gameState.lastRaiseIncrement
+    ) {
       return { action: "CHECK" };
     }
 
@@ -573,17 +580,22 @@ export function createBotGameState(
     0,
   );
 
+  const effectiveBigBlind = game.effectiveBigBlind ?? 0;
+  const lastRaiseIncrement =
+    (game.lastRaiseIncrement ?? 0) > 0 ? game.lastRaiseIncrement! : effectiveBigBlind;
+
   return {
     botSeat,
     botHoleCards: botSeat.cards as string[],
     communityCards: (game.communityCards as string[]) ?? [],
     potTotal: game.potTotal ?? 0,
     effectiveSmallBlind: game.effectiveSmallBlind ?? 0,
-    effectiveBigBlind: game.effectiveBigBlind ?? 0,
+    effectiveBigBlind,
     orderedSeats,
     dealerButtonSeatId: game.dealerButtonSeatId,
     maxBet,
     botCurrentBet: botSeat.currentBet ?? 0,
     botStack: botSeat.buyIn ?? 0,
+    lastRaiseIncrement,
   };
 }

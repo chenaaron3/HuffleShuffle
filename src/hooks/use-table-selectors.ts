@@ -99,6 +99,17 @@ export function useEffectiveBigBlind() {
   );
 }
 
+/** Min raise increment for current betting round (TDA rule); falls back to big blind */
+export function useMinRaiseIncrement() {
+  const snapshot = useTableStore((state) => state.snapshot);
+  const effectiveBigBlind =
+    snapshot?.game?.effectiveBigBlind ??
+    snapshot?.blinds?.effectiveBigBlind ??
+    0;
+  const lastRaise = snapshot?.game?.lastRaiseIncrement ?? 0;
+  return lastRaise > 0 ? lastRaise : effectiveBigBlind;
+}
+
 export function useCommunityCards() {
   const snapshot = useTableStore((state) => state.snapshot);
   return snapshot?.game?.communityCards ?? [];
