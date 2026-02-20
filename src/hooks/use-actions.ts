@@ -9,7 +9,12 @@ type TableAction =
   | "RAISE"
   | "FOLD"
   | "CHECK"
-  | "DEAL_RANDOM";
+  | "DEAL_RANDOM"
+  | "VOLUNTEER_SHOW";
+
+interface MutateOptions {
+  onSuccess?: () => void;
+}
 
 /**
  * Hook that provides a mutation function for table actions.
@@ -34,8 +39,11 @@ export function useActions() {
   });
 
   return {
-    mutate: (action: TableAction, params?: any) => {
-      actionMutation.mutate({ tableId, action, params });
+    mutate: (action: TableAction, params?: any, options?: MutateOptions) => {
+      actionMutation.mutate(
+        { tableId, action, params },
+        { onSuccess: options?.onSuccess },
+      );
     },
     isPending: actionMutation.isPending,
   };

@@ -1,11 +1,12 @@
 import { useSession } from 'next-auth/react';
 import * as React from 'react';
 import {
-    useBettingActorSeatId, useCommunityCards, useCurrentSeat, useCurrentUserSeatId, useGameState,
+    useBettingActorSeatId, useCanVolunteerShow, useCommunityCards, useCurrentSeat, useCurrentUserSeatId, useGameState,
     useIsPlayerTurn, useTableId, useWinningCards
 } from '~/hooks/use-table-selectors';
 
 import { HandCamera } from '../hand-camera';
+import { ShowHandControl } from '../show-hand-control';
 import { QuickActions } from '../quick-actions';
 import { VerticalRaiseControls } from '../vertical-raise-controls';
 import { CommunityCardsDisplay } from './community-cards-display';
@@ -34,6 +35,7 @@ export function MobileBettingView({
     const bettingActorSeatId = useBettingActorSeatId();
     const tableId = useTableId(); // Guaranteed to be string
     const isPlayerTurn = useIsPlayerTurn(userId);
+    const canVolunteerShow = useCanVolunteerShow(userId);
 
     return (
         <div className="h-full w-full flex flex-col">
@@ -65,9 +67,11 @@ export function MobileBettingView({
                     </div>
 
                     {/* Betting Controls - Right */}
-                    {(isPlayerTurn || currentSeat) && (
+                    {(isPlayerTurn || currentSeat || canVolunteerShow) && (
                         <div className="flex-shrink-0 flex items-center justify-center h-full px-2">
-                            {isPlayerTurn && currentSeat ? (
+                            {gameState === 'SHOWDOWN' && canVolunteerShow ? (
+                                <ShowHandControl />
+                            ) : isPlayerTurn && currentSeat ? (
                                 <VerticalRaiseControls />
                             ) : (
                                 currentSeat && (

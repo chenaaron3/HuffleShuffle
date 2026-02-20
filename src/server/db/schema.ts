@@ -180,6 +180,7 @@ export const seats = createTable(
       .array()
       .default(sql`ARRAY[]::text[]`), // Cards that make up the winning hand
     lastAction: d.varchar({ length: 16 }), // 'RAISE' | 'CALL' | 'CHECK' | 'FOLD' during current betting round
+    voluntaryShow: d.boolean().notNull().default(false), // Player opted to reveal hand at showdown
     createdAt: d
       .timestamp({ withTimezone: true })
       .default(sql`CURRENT_TIMESTAMP`)

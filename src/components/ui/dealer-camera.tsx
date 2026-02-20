@@ -3,13 +3,14 @@ import { Track } from 'livekit-client';
 import { useSession } from 'next-auth/react';
 import { CardImage } from '~/components/ui/card-img';
 import {
-    useCommunityCards, useDealerId, useGameState, useIsDealerRole, useIsPlayerTurn, useWinningCards
+    useCanVolunteerShow, useCommunityCards, useDealerId, useGameState, useIsDealerRole, useIsPlayerTurn, useWinningCards
 } from '~/hooks/use-table-selectors';
 
 import { ParticipantTile, useTracks, VideoTrack } from '@livekit/components-react';
 
 import { ActionButtons } from './action-buttons';
 import { LeaveTableButton } from './leave-table-button';
+import { ShowHandControl } from './show-hand-control';
 import { PotAndBlindsDisplay } from './pot-blinds-display';
 import { SidePotDetails } from './side-pot-details';
 import { TurnIndicator } from './turn-indicator';
@@ -33,6 +34,7 @@ export function DealerCamera({
     const dealerUserId = useDealerId();
     const isDealer = useIsDealerRole();
     const isPlayerTurn = useIsPlayerTurn(userId);
+    const canVolunteerShow = useCanVolunteerShow(userId);
 
     const trackRefs = useTracks([Track.Source.Camera]);
     const dealerRef = dealerUserId
@@ -115,7 +117,7 @@ export function DealerCamera({
 
             {/* Horizontal Raise Controls - Bottom Right */}
             <AnimatePresence mode="wait">
-                {isPlayerTurn && (
+                {isPlayerTurn && !hidePlayerBettingControls && (
                     <motion.div
                         key="controls"
                         layoutId="raise-controls"
@@ -126,6 +128,23 @@ export function DealerCamera({
                         transition={{ duration: 0.2 }}
                     >
                         <VerticalRaiseControls />
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Show Hand Control - Bottom Right (during showdown) */}
+            <AnimatePresence mode="wait">
+                {gameStatus === 'SHOWDOWN' && canVolunteerShow && !hidePlayerBettingControls && (
+                    <motion.div
+                        key="show-hand"
+                        layoutId="show-hand-controls"
+                        className="absolute right-4 bottom-3"
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.9 }}
+                        transition={{ duration: 0.2 }}
+                    >
+                        <ShowHandControl />
                     </motion.div>
                 )}
             </AnimatePresence>

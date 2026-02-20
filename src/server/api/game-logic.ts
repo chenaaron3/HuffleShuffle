@@ -1,28 +1,21 @@
-import { and, eq, isNotNull, sql } from "drizzle-orm";
-import process from "process";
+import { and, eq, isNotNull, sql } from 'drizzle-orm';
+import process from 'process';
 import {
-  logEndGame,
-  logFlop,
-  logRiver,
-  logStartGame,
-  logTurn,
-} from "~/server/api/game-event-logger";
-import { db } from "~/server/db";
-import { games, pokerTables, seats } from "~/server/db/schema";
-import { updateTable } from "~/server/signal";
+    logEndGame, logFlop, logRiver, logStartGame, logTurn
+} from '~/server/api/game-event-logger';
+import { db } from '~/server/db';
+import { games, pokerTables, seats } from '~/server/db/schema';
+import { updateTable } from '~/server/signal';
 
-import { computeBlindState } from "./blind-timer";
-import { isBot } from "./bot-constants";
-import { createBotGameState, makeBotDecision } from "./bot-strategy";
-import { executeBettingAction } from "./game-helpers";
+import { computeBlindState } from './blind-timer';
+import { isBot } from './bot-constants';
+import { createBotGameState, makeBotDecision } from './bot-strategy';
+import { executeBettingAction } from './game-helpers';
 import {
-  activeCountOf,
-  fetchAllSeatsInOrder,
-  getNextActiveSeatId,
-  getNextDealableSeatId,
-  nonEliminatedCountOf,
-} from "./game-utils";
-import { evaluateBettingTransition } from "./hand-solver";
+    activeCountOf, fetchAllSeatsInOrder, getNextActiveSeatId, getNextDealableSeatId,
+    nonEliminatedCountOf
+} from './game-utils';
+import { evaluateBettingTransition } from './hand-solver';
 
 type DB = typeof db;
 type SeatRow = typeof seats.$inferSelect;
@@ -298,6 +291,7 @@ export async function resetGame(
       handDescription: null,
       winAmount: 0,
       winningCards: sql`ARRAY[]::text[]`,
+      voluntaryShow: false,
     };
 
     // Only reset seatStatus to active if the player is NOT eliminated
@@ -322,6 +316,7 @@ export async function resetGame(
     s.handDescription = null;
     s.winAmount = 0;
     s.winningCards = [];
+    s.voluntaryShow = false;
 
     // Only reset buyIn to startingBalance if explicitly requested
     if (resetBalance) {

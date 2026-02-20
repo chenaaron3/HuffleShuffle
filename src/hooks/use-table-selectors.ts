@@ -251,6 +251,21 @@ export function useIsDealerRole() {
   return session?.user?.role === "dealer";
 }
 
+/**
+ * True when the current user can volunteer to show their hand at showdown.
+ * Uses cardsVisibleToOthers from server-computed redaction.
+ */
+export function useCanVolunteerShow(userId: string | undefined) {
+  const gameState = useGameState();
+  const currentSeat = useCurrentSeat(userId);
+
+  return useMemo(() => {
+    if (!userId || gameState !== "SHOWDOWN" || !currentSeat) return false;
+    // Can volunteer if cards are not yet visible to others
+    return currentSeat.cardsVisibleToOthers === false;
+  }, [userId, gameState, currentSeat]);
+}
+
 export function useSidePotDetails() {
   const snapshot = useTableStore((state) => state.snapshot);
   return (

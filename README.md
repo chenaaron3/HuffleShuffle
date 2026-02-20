@@ -5,6 +5,7 @@ A Next.js T3-based poker table management and streaming control system that inte
 ## Project Status
 
 ### Recent Changes
+- **Volunteer to show hands**: Players can opt to reveal their hand at showdown when it would normally be hidden (single winner or folded). New `VOLUNTEER_SHOW` action; `seats.voluntaryShow`; `ShowHandControl` in same spot as raise controls. See `src/components/ui/show-hand-control.tsx`, `redactSnapshotForUser` in `src/server/api/routers/table.ts`.
 - Simplified redact snapshot logic: removed redundant `betCount` check; now uses single `showCardsForRunout` with `activePlayerFacingDecision` (currentBet < maxBet) as the source of truth. Added 7 edge case tests. See `redactSnapshotForUser` in `src/server/api/routers/table.ts`.
 - Implemented minimum re-raise rule (TDA): each raise must add at least the previous raise increment; `games.lastRaiseIncrement` tracks this per betting round.
 - Added LiveKit bandwidth tuning in `src/pages/table/[id].tsx` (`dynacast`, `adaptiveStream`, `videoEncoding.maxBitrate`, `videoSimulcastLayers`).
@@ -174,6 +175,7 @@ Huffle Shuffle is a real-time poker table management system that enables:
 - `handDescription`: Text (e.g., "Ace-High Straight Flush")
 - `winAmount`: Integer (winnings from last hand)
 - `winningCards`: Text array (cards that made the winning hand)
+- `voluntaryShow`: Boolean (player opted to reveal hand at showdown; default false)
 
 #### `games` (huffle-shuffle_game)
 
@@ -273,6 +275,7 @@ The game progresses through these states:
   - Input: `{ tableId: string }`
   - Output: `TableSnapshot` (see types below)
   - Redaction: Hides other players' cards unless in SHOWDOWN or all players are all-in
+  - Each seat includes `cardsVisibleToOthers` (computed): true if this seat's cards are visible to other players
 
 #### Mutations
 
@@ -310,6 +313,7 @@ The game progresses through these states:
     - `RAISE`: Raise to total amount (validated: must meet min re-raise rule)
     - `CHECK`: Check (no bet increase)
     - `FOLD`: Fold hand
+    - `VOLUNTEER_SHOW`: Reveal hand at showdown (when folded or single winner; only during SHOWDOWN)
     - `RESET_TABLE` (dealer-only): Reset table for next hand (marks game with `wasReset` flag; prevents button advancement on next game start)
 
 ### REST API Routes
@@ -458,6 +462,12 @@ The card scanning system uses **AWS SQS FIFO** for reliable, ordered message pro
 - Quick betting controls (fold, check, call, raise)
 - Disabled when not player's turn
 
+#### `src/components/ui/show-hand-control.tsx`
+
+- "Show Hand" button shown at showdown when eligible (folded or single winner)
+- Same position as raise controls (bottom right)
+- Calls `VOLUNTEER_SHOW` action to reveal hand to others
+
 #### `src/components/ui/event-feed.tsx`
 
 - Game event log (card deals, bets, folds, etc.)
@@ -506,7 +516,7 @@ Mobile-specific components organized in a dedicated folder for landscape mobile 
 - Bottom half: Horizontal scrollable layout with:
   - Community cards (left)
   - Hand camera (middle)
-  - Betting controls (right - `VerticalRaiseControls` or `QuickActions`)
+  - Betting controls (right - `VerticalRaiseControls`, `ShowHandControl` at showdown, or `QuickActions`)
 - Displays only when player is seated or it's their turn
 - **Uses selectors**: Derives all data from Zustand store via selector hooks (minimal props: `handRoomName`, `quickAction`, `onQuickActionChange`)
 

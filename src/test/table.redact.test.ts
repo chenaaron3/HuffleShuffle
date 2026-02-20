@@ -24,6 +24,7 @@ function createMockSeat(
     handDescription: "Pair of Aces",
     winAmount: 0,
     winningCards: [],
+    voluntaryShow: false,
     player: { id: "player-1", name: "Player 1" },
     ...overrides,
   } as SeatWithPlayer;
@@ -192,6 +193,64 @@ describe("redactSnapshotForUser", () => {
     });
   });
 
+  describe("heads-up fold scenarios", () => {
+    it("hides both players cards when one folds during betting (1v1 preflop)", () => {
+      const activeSeat = createMockSeat({
+        id: "seat-1",
+        playerId: "player-1",
+        cards: ["AS", "KH"],
+        seatStatus: "active",
+      });
+      const foldedSeat = createMockSeat({
+        id: "seat-2",
+        playerId: "player-2",
+        seatNumber: 1,
+        cards: ["QS", "JH"],
+        seatStatus: "folded",
+      });
+      // During BETTING state (before showdown transition)
+      const snapshot = createMockSnapshot([activeSeat, foldedSeat], "BETTING");
+
+      // Viewing as the winner
+      const resultAsWinner = redactSnapshotForUser(snapshot, "player-1");
+      expect(resultAsWinner.seats[0]!.cards).toEqual(["AS", "KH"]); // Own cards visible
+      expect(resultAsWinner.seats[1]!.cards).toEqual(["FD", "FD"]); // Folded player hidden
+
+      // Viewing as the folded player
+      const resultAsFolded = redactSnapshotForUser(snapshot, "player-2");
+      expect(resultAsFolded.seats[0]!.cards).toEqual(["FD", "FD"]); // Winner hidden during betting
+      expect(resultAsFolded.seats[1]!.cards).toEqual(["QS", "JH"]); // Own cards visible
+    });
+
+    it("hides both players cards when one folds and game is SHOWDOWN (1v1)", () => {
+      const activeSeat = createMockSeat({
+        id: "seat-1",
+        playerId: "player-1",
+        cards: ["AS", "KH"],
+        seatStatus: "active",
+      });
+      const foldedSeat = createMockSeat({
+        id: "seat-2",
+        playerId: "player-2",
+        seatNumber: 1,
+        cards: ["QS", "JH"],
+        seatStatus: "folded",
+      });
+      // After transition to SHOWDOWN
+      const snapshot = createMockSnapshot([activeSeat, foldedSeat], "SHOWDOWN");
+
+      // Viewing as the winner
+      const resultAsWinner = redactSnapshotForUser(snapshot, "player-1");
+      expect(resultAsWinner.seats[0]!.cards).toEqual(["AS", "KH"]); // Own cards visible
+      expect(resultAsWinner.seats[1]!.cards).toEqual(["FD", "FD"]); // Folded player hidden
+
+      // Viewing as the folded player
+      const resultAsFolded = redactSnapshotForUser(snapshot, "player-2");
+      expect(resultAsFolded.seats[0]!.cards).toEqual(["FD", "FD"]); // Winner hidden (single winner)
+      expect(resultAsFolded.seats[1]!.cards).toEqual(["QS", "JH"]); // Own cards visible
+    });
+  });
+
   describe("showdown visibility", () => {
     it("reveals all non-folded players cards in showdown", () => {
       const seat1 = createMockSeat({
@@ -242,6 +301,128 @@ describe("redactSnapshotForUser", () => {
       expect(result.seats[0]!.handDescription).toBeNull(); // Hand description hidden
       expect(result.seats[0]!.winningCards).toEqual([]); // Winning cards hidden
       expect(result.seats[1]!.cards).toEqual(["QS", "JH"]); // Own cards visible
+    });
+
+    it("reveals winner cards when single winner volunteered to show", () => {
+      const winnerSeat = createMockSeat({
+        id: "seat-1",
+        playerId: "player-1",
+        cards: ["AS", "KH"],
+        seatStatus: "active",
+        handType: "Two Pair",
+        handDescription: "Pair of Aces, Pair of Kings",
+        winningCards: ["AS", "KH", "AC", "KD", "2H"],
+        voluntaryShow: true,
+      });
+      const foldedSeat = createMockSeat({
+        id: "seat-2",
+        playerId: "player-2",
+        seatNumber: 1,
+        cards: ["QS", "JH"],
+        seatStatus: "folded",
+      });
+      const snapshot = createMockSnapshot([winnerSeat, foldedSeat], "SHOWDOWN");
+
+      const result = redactSnapshotForUser(snapshot, "player-2");
+
+      expect(result.seats[0]!.cards).toEqual(["AS", "KH"]); // Winner's cards visible when volunteered
+      expect(result.seats[0]!.handType).toEqual("Two Pair");
+      expect(result.seats[1]!.cards).toEqual(["QS", "JH"]); // Own cards visible
+    });
+
+    it("sets cardsVisibleToOthers correctly for each seat", () => {
+      const activeSeat = createMockSeat({
+        id: "seat-1",
+        playerId: "player-1",
+        cards: ["AS", "KH"],
+        seatStatus: "active",
+      });
+      const foldedSeat = createMockSeat({
+        id: "seat-2",
+        playerId: "player-2",
+        seatNumber: 1,
+        cards: ["QS", "JH"],
+        seatStatus: "folded",
+      });
+      const snapshot = createMockSnapshot([activeSeat, foldedSeat], "SHOWDOWN");
+
+      const result = redactSnapshotForUser(snapshot, "player-1");
+
+      // Single winner: cards not visible to others (folded player viewing)
+      expect(result.seats[0]!.cardsVisibleToOthers).toBe(false);
+      // Folded: cards not visible to others
+      expect(result.seats[1]!.cardsVisibleToOthers).toBe(false);
+    });
+
+    it("sets cardsVisibleToOthers to true when voluntaryShow is set", () => {
+      const winnerSeat = createMockSeat({
+        id: "seat-1",
+        playerId: "player-1",
+        cards: ["AS", "KH"],
+        seatStatus: "active",
+        voluntaryShow: true,
+      });
+      const foldedSeat = createMockSeat({
+        id: "seat-2",
+        playerId: "player-2",
+        seatNumber: 1,
+        cards: ["QS", "JH"],
+        seatStatus: "folded",
+        voluntaryShow: true,
+      });
+      const snapshot = createMockSnapshot([winnerSeat, foldedSeat], "SHOWDOWN");
+
+      const result = redactSnapshotForUser(snapshot, "player-1");
+
+      // Both volunteered to show, so both visible
+      expect(result.seats[0]!.cardsVisibleToOthers).toBe(true);
+      expect(result.seats[1]!.cardsVisibleToOthers).toBe(true);
+    });
+
+    it("sets cardsVisibleToOthers to true in multi-way showdown", () => {
+      const seat1 = createMockSeat({
+        id: "seat-1",
+        playerId: "player-1",
+        cards: ["AS", "KH"],
+        seatStatus: "active",
+      });
+      const seat2 = createMockSeat({
+        id: "seat-2",
+        playerId: "player-2",
+        seatNumber: 1,
+        cards: ["QS", "JH"],
+        seatStatus: "active",
+      });
+      const snapshot = createMockSnapshot([seat1, seat2], "SHOWDOWN");
+
+      const result = redactSnapshotForUser(snapshot, "player-1");
+
+      // Multi-way showdown: all non-folded cards visible
+      expect(result.seats[0]!.cardsVisibleToOthers).toBe(true);
+      expect(result.seats[1]!.cardsVisibleToOthers).toBe(true);
+    });
+
+    it("reveals folded player cards when they volunteered to show", () => {
+      const activeSeat = createMockSeat({
+        id: "seat-1",
+        playerId: "player-1",
+        cards: ["AS", "KH"],
+        seatStatus: "active",
+      });
+      const foldedSeat = createMockSeat({
+        id: "seat-2",
+        playerId: "player-2",
+        seatNumber: 1,
+        cards: ["QS", "JH"],
+        seatStatus: "folded",
+        voluntaryShow: true,
+      });
+      const snapshot = createMockSnapshot([activeSeat, foldedSeat], "SHOWDOWN");
+
+      const result = redactSnapshotForUser(snapshot, "player-1");
+
+      expect(result.seats[0]!.cards).toEqual(["AS", "KH"]); // Own cards visible
+      expect(result.seats[1]!.cards).toEqual(["QS", "JH"]); // Folded player's cards visible when volunteered
     });
   });
 

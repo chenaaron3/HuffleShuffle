@@ -60,6 +60,7 @@ type DB = typeof db;
 type SeatRow = typeof seats.$inferSelect;
 export type SeatWithPlayer = SeatRow & {
   player?: { id: string; name: string | null } | null;
+  cardsVisibleToOthers?: boolean;
 };
 type GameRow = typeof games.$inferSelect;
 type TableRow = typeof pokerTables.$inferSelect;
@@ -155,7 +156,29 @@ export function redactSnapshotForUser(
         (s.seatStatus === "eliminated" && s.cards.length > 0), // eliminated but played counts
     ).length === 1;
 
+  // Compute visibility for each seat (would other players see this seat's cards?)
+  const computeCardsVisibleToOthers = (s: SeatWithPlayer): boolean => {
+    // Folded: only visible if voluntaryShow
+    if (s.seatStatus === "folded") {
+      return !!s.voluntaryShow;
+    }
+    // Runout: all-in showdown, cards visible
+    if (showCardsForRunout) {
+      return true;
+    }
+    // Showdown: visible unless single winner who hasn't volunteered
+    if (isShowdown) {
+      if (singleActive) {
+        return !!s.voluntaryShow;
+      }
+      return true;
+    }
+    // Default: cards hidden during betting
+    return false;
+  };
+
   const redactedSeats: SeatWithPlayer[] = snapshot.seats.map((s) => {
+    const cardsVisibleToOthers = computeCardsVisibleToOthers(s);
     const hiddenCount = (s.cards ?? []).length;
     const hiddenCards = {
       ...s,
@@ -163,28 +186,18 @@ export function redactSnapshotForUser(
       handType: null,
       handDescription: null,
       winningCards: [],
+      cardsVisibleToOthers,
     } as SeatWithPlayer;
-    // Show cards face up for the current user
+
+    // Show cards face up for the current user (always see own cards)
     if (s.playerId === userId) {
-      return s;
+      return { ...s, cardsVisibleToOthers };
     }
-    // Players who fold will never reveal their cards
-    if (s.seatStatus === "folded") {
+    // For other players, apply redaction if cards not visible
+    if (!cardsVisibleToOthers) {
       return hiddenCards;
     }
-    // Show cards when runout (all all-in or one active + others all-in, no pending decision)
-    if (showCardsForRunout) {
-      return s;
-    }
-    if (isShowdown) {
-      // If there is only one active player (everyone else folded), then do not show
-      if (singleActive) {
-        return hiddenCards;
-      } else {
-        return s;
-      }
-    }
-    return hiddenCards;
+    return { ...s, cardsVisibleToOthers };
   });
   return { ...snapshot, seats: redactedSeats };
 }
@@ -873,6 +886,7 @@ export const tableRouter = createTRPCRouter({
           "RAISE",
           "FOLD",
           "CHECK",
+          "VOLUNTEER_SHOW",
         ]),
         params: z
           .object({
@@ -962,6 +976,21 @@ export const tableRouter = createTRPCRouter({
             }),
           );
           console.log(`published ${barcode} to SQS`);
+          return { ok: true } as const;
+        }
+
+        if (input.action === "VOLUNTEER_SHOW") {
+          if (!game) throw new Error("No game");
+          if (game.state !== "SHOWDOWN")
+            throw new Error("VOLUNTEER_SHOW only allowed during showdown");
+          const actorSeat = orderedSeats.find((s) => s.playerId === userId);
+          if (!actorSeat) throw new Error("You have no seat at this table");
+          if (actorSeat.seatStatus === "eliminated")
+            throw new Error("Cannot act - eliminated");
+          await tx
+            .update(seats)
+            .set({ voluntaryShow: true })
+            .where(eq(seats.id, actorSeat.id));
           return { ok: true } as const;
         }
 
