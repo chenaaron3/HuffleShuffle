@@ -1,11 +1,21 @@
-import { and, desc, eq, sql } from 'drizzle-orm';
-import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { createCaller } from '~/server/api/root';
-import { db } from '~/server/db';
-import { gameEvents, games, piDevices, pokerTables, seats, users } from '~/server/db/schema';
+import { and, desc, eq, sql } from "drizzle-orm";
+import { beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { createCaller } from "~/server/api/root";
+import { db } from "~/server/db";
 import {
-    handleActionStep, handleDealHoleStep, handleJoinStep, handleValidateStep
-} from '~/test/scenario-step-handlers';
+  gameEvents,
+  games,
+  piDevices,
+  pokerTables,
+  seats,
+  users,
+} from "~/server/db/schema";
+import {
+  handleActionStep,
+  handleDealHoleStep,
+  handleJoinStep,
+  handleValidateStep,
+} from "~/test/scenario-step-handlers";
 
 import type { Scenario, Step, PlayerKey } from "~/test/scenario.types";
 const publicKey = `-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAyVsuzIuAr7TYmbOtLrAp\nr6rmZBQrgMiXF0apTg7rvvSwa8JfUrZ0wXBHLx5VgpyHWNq0vFUwah7FgkpdGFQ0\nwWqRiwYWU6DG3S0sxWSYwfOiRTTLnnLPcUN3SzJjbJ5gnh7V7ukx5mpsm0dPHSiB\nREg4PNvbOo9suK4eIFKmRCgRdwNskA0pgaBi3PMfOLY+FbyTzlbs4xaQom2RMPt+\n1yD6mEACuOKzHQQP8Ve4ikkR4TdcYrnApUbfGa44xloA4fv500ez1hlBfRZ2ekow\npynGBufiP7koxSK4Nt8TRAVvuS8zZYrtGyboIZvObx6mm2YS6j7T9n0pEACpO2rT\nrwIDAQAB\n-----END PUBLIC KEY-----`;

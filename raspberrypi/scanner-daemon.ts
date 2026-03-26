@@ -71,6 +71,12 @@ async function startHidReader(
   let acc = "";
   let stream: ReturnType<typeof createReadStream> | null = null;
 
+  const clearAcc = () => {
+    if (acc.length > 0) {
+      acc = "";
+    }
+  };
+
   const openStream = () => {
     try {
       stream = createReadStream(devicePath, { flags: "r", highWaterMark: 8 });
@@ -103,6 +109,7 @@ async function startHidReader(
 
     s.on("error", (e) => {
       console.error("[scanner-daemon] HID read error:", e);
+      clearAcc();
       try {
         s.close();
       } catch {}
@@ -280,19 +287,41 @@ export async function runScannerDaemon(): Promise<void> {
   const sqs = new SQSClient({ region });
   let lastDealtAt = 0;
 
+  /** Same rules as `parseBarcodeToRankSuit` in game-logic (Pi stays standalone). */
+  const isValidCardBarcode = (digits: string): boolean => {
+    if (!/^[0-9]{4}$/.test(digits)) return false;
+    const suitCode = digits[0]!;
+    const rankCode = digits.slice(1);
+    if (!["1", "2", "3", "4"].includes(suitCode)) return false;
+    return [
+      "010",
+      "020",
+      "030",
+      "040",
+      "050",
+      "060",
+      "070",
+      "080",
+      "090",
+      "100",
+      "110",
+      "120",
+      "130",
+    ].includes(rankCode);
+  };
+
   const handleScan = async (rawCode: string) => {
     console.log(`[scanner-daemon] received scan: ${rawCode}`);
     const now = Date.now();
     if (now - lastDealtAt < 500) return; // throttle 500ms
 
-    // Basic sanitization; server will validate strictly
     const barcode = rawCode.trim();
-    if (!/^[0-9]{4}$/.test(barcode)) {
-      // Attempt to extract 4 consecutive digits if scanner includes prefix/suffix
-      const m = barcode.match(/([0-9]{4})/);
-      if (!m) return;
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      void 0;
+    // Strict: exactly one valid four-digit card code from the scanner line — no salvage/extraction.
+    if (!isValidCardBarcode(barcode)) {
+      console.warn(
+        `[scanner-daemon] drop scan (need exact valid 4-digit card code): raw=${rawCode.slice(0, 64)}`,
+      );
+      return;
     }
 
     const ts = Math.floor(Date.now() / 1000);

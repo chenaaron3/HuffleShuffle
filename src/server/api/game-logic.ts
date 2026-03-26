@@ -52,14 +52,13 @@ export async function ensureHoleCardsProgression(
       .set({ assignedSeatId: nextSeatId })
       .where(eq(games.id, gameObj.id));
   } else {
-    // Initialize betting round with non-contiguous active seats:
-    // small blind is next active after dealer, big blind next after small blind,
-    // first to act (UTG) is next active after big blind.
-    const smallBlindSeatId = getNextActiveSeatId(
+    // Initialize betting round: SB/BB are positional — use dealable (active + all-in)
+    // so all-in blind posters stay in the chain; UTG is next active after BB.
+    const smallBlindSeatId = getNextDealableSeatId(
       orderedSeats,
       gameObj.dealerButtonSeatId!,
     );
-    const bigBlindSeatId = getNextActiveSeatId(orderedSeats, smallBlindSeatId);
+    const bigBlindSeatId = getNextDealableSeatId(orderedSeats, smallBlindSeatId);
     const firstToActId = getNextActiveSeatId(orderedSeats, bigBlindSeatId);
     await startBettingRound(tx, tableId, gameObj, orderedSeats, firstToActId);
   }
@@ -434,11 +433,11 @@ export function getBigAndSmallBlindSeats(
   orderedSeats: Array<SeatRow>,
   game: GameRow,
 ): { smallBlindSeat: SeatRow; bigBlindSeat: SeatRow } {
-  const smallBlindSeat = getNextActiveSeatId(
+  const smallBlindSeat = getNextDealableSeatId(
     orderedSeats,
     game.dealerButtonSeatId!,
   );
-  const bigBlindSeat = getNextActiveSeatId(orderedSeats, smallBlindSeat);
+  const bigBlindSeat = getNextDealableSeatId(orderedSeats, smallBlindSeat);
   return {
     smallBlindSeat: orderedSeats.find((s) => s.id === smallBlindSeat)!,
     bigBlindSeat: orderedSeats.find((s) => s.id === bigBlindSeat)!,

@@ -19,7 +19,9 @@
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "test:db": "vitest run",
-    "test": "bash scripts/test-with-db.sh"
+    "test": "bash scripts/test-with-db.sh",
+    "lambda:deploy": "npm run deploy --prefix lambda/consumer",
+    "lambda:deploy:prod": "npm run deploy:prod --prefix lambda/consumer"
   },
   "dependencies": {
     "@auth/drizzle-adapter": "^1.7.2",

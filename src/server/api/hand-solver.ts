@@ -192,9 +192,9 @@ type SidePotDetail = {
 // Calculate side pots from cumulative bets (startingBalance - buyIn)
 // This ensures accuracy at showdown by recalculating from scratch
 // Returns detailed information for UI display
-function calculateSidePotsFromCumulativeBets(
+// Exported for unit tests (orphan-layer / chip conservation cases).
+export function calculateSidePotsFromCumulativeBets(
   allSeats: SeatRow[],
-  contenders: SeatRow[],
 ): SidePotDetail[] {
   // Calculate cumulative bet for each seat (what they bet total across all rounds)
   const seatCumulativeBets = new Map<string, number>();
@@ -227,6 +227,9 @@ function calculateSidePotsFromCumulativeBets(
   const sidePots: SidePotDetail[] = [];
   let previousBetLevel = 0;
   let potNumber = 0;
+  // Layers where every contributor is folded have no eligible winner; that money must not
+  // vanish — carry it into the next pot that has eligibles, or into the last such pot.
+  let deadCarry = 0;
 
   for (let i = 0; i < sortedByBet.length; i++) {
     const currentSeat = sortedByBet[i]!;
@@ -250,29 +253,42 @@ function calculateSidePotsFromCumulativeBets(
     );
     const potAmount = betIncrement * contributingSeats.length;
 
-    // Only create side pot if there's actual betting happening
-    if (potAmount > 0 && eligibleSeats.length > 0) {
-      // Calculate each contributor's share (betIncrement per contributor)
-      const contributors = contributingSeats.map((seat) => ({
-        seatId: seat.id,
-        contribution: betIncrement,
-      }));
+    if (potAmount > 0) {
+      if (eligibleSeats.length > 0) {
+        const contributors = contributingSeats.map((seat) => ({
+          seatId: seat.id,
+          contribution: betIncrement,
+        }));
 
-      sidePots.push({
-        potNumber,
-        amount: potAmount,
-        betLevelRange: {
-          min: previousBetLevel,
-          max: currentBetLevel,
-        },
-        contributors,
-        eligibleSeatIds: eligibleSeats.map((s) => s.id),
-        winners: [], // Will be populated after hand evaluation
-      });
-      potNumber++;
+        sidePots.push({
+          potNumber,
+          amount: potAmount + deadCarry,
+          betLevelRange: {
+            min: previousBetLevel,
+            max: currentBetLevel,
+          },
+          contributors,
+          eligibleSeatIds: eligibleSeats.map((s) => s.id),
+          winners: [], // Will be populated after hand evaluation
+        });
+        potNumber++;
+        deadCarry = 0;
+      } else {
+        deadCarry += potAmount;
+      }
     }
 
     previousBetLevel = currentBetLevel;
+  }
+
+  if (deadCarry > 0) {
+    if (sidePots.length === 0) {
+      throw new Error(
+        `Side pot construction: ${deadCarry} chips in layers with no eligible winner and no lower pot to absorb them.`,
+      );
+    }
+    const last = sidePots[sidePots.length - 1]!;
+    last.amount += deadCarry;
   }
 
   return sidePots;
@@ -483,8 +499,10 @@ async function logConservationErrorDiagnostics(
   console.log("\n=== Seat States AFTER Winnings Distribution ===");
   finalSeats.forEach((seat) => {
     const diff = seat.buyIn - seat.startingBalance;
+    const buyInBeforeWinnings = seat.buyIn - (seat.winAmount || 0);
     const expectedDiff =
-      (seat.winAmount || 0) - (seat.startingBalance - seat.buyIn);
+      (seat.winAmount || 0) -
+      (seat.startingBalance - buyInBeforeWinnings);
     console.log(
       `  Seat ${seat.id}: startingBalance=${seat.startingBalance}, finalBuyIn=${seat.buyIn}, diff=${diff}, status=${seat.seatStatus}, winAmount=${seat.winAmount || 0}`,
     );
@@ -582,7 +600,7 @@ async function completeShowdown(
 
   // Recalculate side pots from scratch at showdown using cumulative bets
   // This ensures accuracy and avoids bugs from incremental merging across rounds
-  const sidePots = calculateSidePotsFromCumulativeBets(freshSeats, contenders);
+  const sidePots = calculateSidePotsFromCumulativeBets(freshSeats);
 
   // Distribute side pots (this also populates the winners field)
   distributeSidePots(sidePots, hands, seatWinnings);

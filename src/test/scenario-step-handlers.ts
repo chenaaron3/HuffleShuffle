@@ -163,6 +163,18 @@ export async function handleValidateStep(
       }
       expect(actual).toStrictEqual(v);
     }
+    // Same invariant as validateMoneyConservation in hand-solver.ts after showdown payouts
+    if (step.game.state === "SHOWDOWN") {
+      const all = await db.query.seats.findMany({
+        where: eq(seats.tableId, tableId),
+      });
+      const sumStarting = all.reduce((acc, s) => acc + s.startingBalance, 0);
+      const sumBuyIn = all.reduce((acc, s) => acc + s.buyIn, 0);
+      expect(
+        sumBuyIn,
+        `chip conservation (SHOWDOWN validate): sum(buyIn)=${sumBuyIn} vs sum(startingBalance)=${sumStarting}`,
+      ).toBe(sumStarting);
+    }
   }
 
   // Validate dealer button position
@@ -184,6 +196,26 @@ export async function handleValidateStep(
     );
     expect(targetSeat).toBeTruthy();
     expect(game!.dealerButtonSeatId).toStrictEqual(targetSeat!.id);
+  }
+
+  if (step.firstToActFor) {
+    const snapshot = await db.query.pokerTables.findFirst({
+      where: eq(pokerTables.id, tableId),
+      with: {
+        games: { orderBy: (g, { desc }) => [desc(g.createdAt)], limit: 1 },
+        seats: { orderBy: (s, { asc }) => [asc(s.seatNumber)] },
+      },
+    });
+    expect(snapshot).toBeTruthy();
+    const game = snapshot!.games[0] ?? null;
+    expect(game).toBeTruthy();
+    const idMap = playerIds as Record<PlayerKey, string>;
+    const targetPlayerId = idMap[step.firstToActFor];
+    const targetSeat = snapshot!.seats.find(
+      (s) => s.playerId === targetPlayerId,
+    );
+    expect(targetSeat).toBeTruthy();
+    expect(game!.assignedSeatId).toStrictEqual(targetSeat!.id);
   }
 
   // Validate table state

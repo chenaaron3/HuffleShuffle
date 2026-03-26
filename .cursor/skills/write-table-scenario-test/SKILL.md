@@ -10,6 +10,7 @@ description: Create or debug table scenario tests for the poker table harness. U
 Scenarios are declarative test scripts in `src/test/table.scenarios/`. The harness in `table.scenario.harness.test.ts` loads all `*.ts` files from that directory and runs each scenario as an `it()` test. Each scenario defines a sequence of steps: join, action, deal_hole, validate.
 
 **Key files:**
+
 - `src/test/scenario.types.ts` — step and scenario type definitions
 - `src/test/scenario-step-handlers.ts` — step executors
 - `src/test/table.scenario.harness.test.ts` — harness that runs scenarios
@@ -30,14 +31,14 @@ Players sit at the table. Join order determines seat numbers (player1 → seat 0
 
 Performed by a player or the dealer. Use `by` for who acts, `params` for action-specific data.
 
-| Action       | by     | params                                  |
-|--------------|--------|-----------------------------------------|
-| START_GAME   | dealer | —                                        |
-| DEAL_CARD    | dealer | `{ rank: "A", suit: "s" }` (rank: 2–9, T, J, Q, K, A; suit: s, h, c, d) |
-| RAISE        | player | `{ amount: 50 }` (total bet)             |
-| CHECK        | player | —                                        |
-| FOLD         | player | —                                        |
-| RESET_TABLE  | dealer | —                                        |
+| Action      | by     | params                                                                  |
+| ----------- | ------ | ----------------------------------------------------------------------- |
+| START_GAME  | dealer | —                                                                       |
+| DEAL_CARD   | dealer | `{ rank: "A", suit: "s" }` (rank: 2–9, T, J, Q, K, A; suit: s, h, c, d) |
+| RAISE       | player | `{ amount: 50 }` (total bet)                                            |
+| CHECK       | player | —                                                                       |
+| FOLD        | player | —                                                                       |
+| RESET_TABLE | dealer | —                                                                       |
 
 **Error testing:** Set `isError: true` to assert the action throws:
 
@@ -61,17 +62,22 @@ Assert game, table, or seat state.
 { type: "validate", game: { state: "BETTING" } }
 { type: "validate", game: { state: "DEAL_FLOP", potTotal: 350 } }
 { type: "validate", dealerButtonFor: "player1" }
+{ type: "validate", firstToActFor: "player1" } // games.assignedSeatId
 ```
+
+**Chip conservation (integration):** If a validate step’s `game` subset includes `state: "SHOWDOWN"`, the harness also asserts `sum(seats.startingBalance) === sum(seats.buyIn)` (same as `validateMoneyConservation` in `src/server/api/hand-solver.ts`). No extra flag — use this after showdown, **before** `RESET_TABLE`. Pure edge cases (e.g. orphan bet layers) are additionally covered by `src/server/api/hand-solver.side-pots.test.ts`.
 
 ## Critical: Betting Order (Heads-Up vs Full Ring)
 
 **Heads-up (2 players):** Small blind acts first preflop.
+
 - Dealer (button) = BB. Other player = SB.
 - First to act = SB (player2 if dealer is player1).
 
 **Full ring (3+ players):** UTG (first player after BB) acts first preflop.
 
 If your scenario has the wrong first actor, you get `Not your turn`. When in doubt, check `src/server/api/game-logic.ts`:
+
 - Preflop: `firstToActId = getNextActiveSeatId(orderedSeats, bigBlindSeatId)`
 - Postflop: first to act = next active after dealer button
 
@@ -87,12 +93,27 @@ const scenarios: Scenario[] = [
       { type: "join", players: [{ key: "player1" }, { key: "player2" }] },
       { type: "action", action: "START_GAME", by: "dealer" },
       // Deal hole cards: 2 cards × N players (dealer deals in seat order)
-      { type: "action", action: "DEAL_CARD", by: "dealer", params: { rank: "A", suit: "s" } },
-      { type: "action", action: "DEAL_CARD", by: "dealer", params: { rank: "K", suit: "s" } },
+      {
+        type: "action",
+        action: "DEAL_CARD",
+        by: "dealer",
+        params: { rank: "A", suit: "s" },
+      },
+      {
+        type: "action",
+        action: "DEAL_CARD",
+        by: "dealer",
+        params: { rank: "K", suit: "s" },
+      },
       // ... more cards
       { type: "validate", game: { state: "BETTING" } },
       // Actions in turn order
-      { type: "action", action: "RAISE", by: "player2", params: { amount: 50 } },
+      {
+        type: "action",
+        action: "RAISE",
+        by: "player2",
+        params: { amount: 50 },
+      },
       { type: "action", action: "CHECK", by: "player1" },
       { type: "validate", game: { state: "DEAL_FLOP" } },
     ],
@@ -106,7 +127,7 @@ export default scenarios;
 
 1. Create `src/test/table.scenarios/your-scenario.ts` or add to an existing file.
 2. Export `Scenario[]` (array) or a single `Scenario` as `default`.
-3. Run with targeted execution (see *Debugging and Targeted Test Execution* below) for faster iteration.
+3. Run with targeted execution (see _Debugging and Targeted Test Execution_ below) for faster iteration.
 
 ## Debugging and Targeted Test Execution
 
@@ -152,11 +173,11 @@ npm test -- src/test/table.scenario.harness.test.ts --run -t "name"
 
 ### Quick reference: vitest flags
 
-| Flag | Purpose |
-|------|---------|
-| `-t "pattern"` | Run tests whose name matches the pattern (substring) |
-| `--run` | Single run, no watch (default for CI) |
-| `--reporter=verbose` | Show each test name as it runs |
+| Flag                 | Purpose                                              |
+| -------------------- | ---------------------------------------------------- |
+| `-t "pattern"`       | Run tests whose name matches the pattern (substring) |
+| `--run`              | Single run, no watch (default for CI)                |
+| `--reporter=verbose` | Show each test name as it runs                       |
 
 ## Harness Config (fixed)
 

@@ -4,22 +4,22 @@
 
 **ALWAYS read `README.md` first** before making any changes or answering questions about this project.
 
-- At the start of each new chat, load `README.md` and use it as persistent context
-- Prefer README.md over prior chat memory when they conflict
-- The README.md is the **single source of truth** for understanding:
-  - Project architecture and design decisions
-  - Database schema and relationships
-  - API endpoints and their usage
-  - Game state machine and transitions
-  - Component responsibilities
-  - Development workflows
-  - Environment variables and configuration
+- At the start of each new chat, load `README.md` and use it as persistent context; follow **Start here** links into `docs/*.md` only for the task at hand (progressive disclosure)
+- Prefer README.md + `docs/` over prior chat memory when they conflict
+- **Single source of truth**: `README.md` (entry, **Project Status**, navigation) plus **`docs/*.md`** for full reference:
+  - Project architecture and design decisions → `docs/architecture.md`, `docs/design-and-workflows.md`
+  - Database schema and relationships → `docs/database-schema.md`
+  - API endpoints and their usage → `docs/api-endpoints.md`
+  - Game state machine and transitions → `docs/game-state-machine.md`
+  - Component responsibilities → `docs/key-components.md`, `docs/mobile-support.md`
+  - Development workflows → `docs/development.md`
+  - Environment variables and configuration → `docs/development.md`
 
 ## README Maintenance Requirements
 
 ### When to Update README
 
-**MANDATORY**: You MUST update `README.md` after any meaningful assistant-driven change, in the same turn before finishing.
+**MANDATORY**: You MUST update `README.md` after any meaningful assistant-driven change, in the same turn before finishing. **Also update the relevant `docs/*.md`** file(s) when the long-form reference would be wrong or incomplete (e.g. new API procedure → `docs/api-endpoints.md`; schema change → `docs/database-schema.md` and **Project Status** schema notes).
 
 **Meaningful changes include**:
 
@@ -36,7 +36,7 @@
 
 ### README Structure
 
-- Keep `README.md` concise and skimmable using bullet points
+- Keep `README.md` concise and skimmable using bullet points; put exhaustive reference in `docs/` and link from the **Documentation map**
 - Maintain a top-of-file section named `## Project Status` with the following subsections:
   - **Recent Changes** (newest first, keep focused and limited)
   - **Open Tasks / Next Steps**
@@ -65,13 +65,14 @@
 Before completing any feature or change, verify:
 
 - [ ] README.md has been updated with the new feature/change
+- [ ] Relevant `docs/*.md` file(s) updated if long-form reference changed
 - [ ] `## Project Status` section updated if applicable
 - [ ] All relevant sections have been updated
 - [ ] Code examples are accurate and up-to-date
 - [ ] Environment variables are documented if new ones were added
 - [ ] API endpoints are documented if new ones were added
 - [ ] Database schema is documented if modified
-- [ ] Architecture diagrams/descriptions reflect the changes
+- [ ] Architecture diagrams/descriptions reflect the changes (in `docs/` where applicable)
 
 ## Code Style and Patterns
 
@@ -106,7 +107,7 @@ Before completing any feature or change, verify:
 1. Add to `tableRouter` in `src/server/api/routers/table.ts`
 2. Use `protectedProcedure` or `publicProcedure` as appropriate
 3. Add role checks if needed (`ensureDealerRole`, `ensurePlayerRole`)
-4. Update README.md "API Routes & Endpoints" section AND "Project Status" → "APIs & Routes"
+4. Update `docs/api-endpoints.md` AND "Project Status" → "APIs & Routes"
 5. Add input/output type documentation
 
 ### Adding a New Database Field
@@ -114,14 +115,14 @@ Before completing any feature or change, verify:
 1. Update schema in `src/server/db/schema.ts`
 2. Run `npm run db:generate` to create migration
 3. Review migration file in `drizzle/` directory
-4. Update README.md "Database Schema" section AND "Project Status" → "Database / Schema Notes"
+4. Update `docs/database-schema.md` AND "Project Status" → "Database / Schema Notes"
 5. Update any affected queries or mutations
 
 ### Adding a New Component
 
 1. Create component in appropriate directory (`src/components/ui/` or `src/components/`)
 2. Use existing component patterns (see `seat-section.tsx`, `dealer-camera.tsx` for examples)
-3. Update README.md "Key Components" section
+3. Update `docs/key-components.md` (and `docs/mobile-support.md` if mobile-only)
 4. Document component props and usage
 
 ### Modifying Game State Machine
@@ -129,7 +130,7 @@ Before completing any feature or change, verify:
 1. Update state enum in `src/server/db/schema.ts` if adding new states
 2. Update transition logic in `src/server/api/game-logic.ts`
 3. Update `src/server/api/hand-solver.ts` if affecting showdown logic
-4. Update README.md "Game State Machine" section with new states/transitions
+4. Update `docs/game-state-machine.md` with new states/transitions
 5. Update frontend components that depend on game state
 
 ## Testing Considerations
@@ -163,7 +164,7 @@ Before completing any feature or change, verify:
 
 ## When in Doubt
 
-1. **Read README.md** - it likely has the answer
+1. **Read README.md** (then the linked `docs/*.md` for depth) — it likely has the answer
 2. **Check existing patterns** - look at similar implementations
 3. **Follow the architecture** - don't introduce new patterns without updating docs
 4. **Update documentation** - if you had to figure something out, document it
@@ -173,8 +174,8 @@ Before completing any feature or change, verify:
 When making changes:
 
 - Explain what you're changing and why
-- Reference relevant sections of README.md
-- Note if README.md needs updating
+- Reference relevant sections of README.md and `docs/*.md`
+- Note if README.md / `docs/` need updating
 - Provide context about how the change fits into the overall architecture
 
-Remember: The README.md is not just documentation - it's the **primary context source** for understanding this codebase. Keep it accurate, comprehensive, and up-to-date.
+Remember: **README.md** is the **primary entry and status** surface; **`docs/`** holds the detailed reference. Keep both accurate and cross-linked.
