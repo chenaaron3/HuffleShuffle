@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { useTableStore } from '~/stores/table-store';
+import { selectSetSnapshot, useTableStore } from '~/stores/table-store';
 import { api } from '~/utils/api';
 
 import type { QuickActionType } from "~/components/ui/quick-actions";
@@ -25,7 +25,7 @@ export function useQuickActions({
   maxBet,
 }: UseQuickActionsParams) {
   const [quickAction, setQuickAction] = React.useState<QuickActionType>(null);
-  const { setSnapshot } = useTableStore();
+  const setSnapshot = useTableStore(selectSetSnapshot);
 
   const action = api.table.action.useMutation({
     onSuccess: (data) => {

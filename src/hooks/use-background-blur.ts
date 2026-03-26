@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import { useStreamingConfigStore } from '~/stores/streaming-config-store';
 
 import { supportsBackgroundProcessors } from '@livekit/track-processors';
@@ -13,12 +14,14 @@ export function useBackgroundBlur() {
     supported,
     setBackgroundBlurEnabled,
     setBackgroundBlurSupported,
-  } = useStreamingConfigStore((state) => ({
-    enabled: state.backgroundBlurEnabled,
-    supported: state.backgroundBlurSupported,
-    setBackgroundBlurEnabled: state.setBackgroundBlurEnabled,
-    setBackgroundBlurSupported: state.setBackgroundBlurSupported,
-  }));
+  } = useStreamingConfigStore(
+    useShallow((state) => ({
+      enabled: state.backgroundBlurEnabled,
+      supported: state.backgroundBlurSupported,
+      setBackgroundBlurEnabled: state.setBackgroundBlurEnabled,
+      setBackgroundBlurSupported: state.setBackgroundBlurSupported,
+    })),
+  );
 
   useEffect(() => {
     if (hasCheckedSupport.current) {

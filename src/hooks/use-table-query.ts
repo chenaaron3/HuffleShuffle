@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useTableStore } from "~/stores/table-store";
+import { selectSetSnapshot, useTableStore } from "~/stores/table-store";
 import { api } from "~/utils/api";
 
 /**
@@ -10,7 +10,7 @@ import { api } from "~/utils/api";
  * @returns The table query result with an updateSnapshot method for mutations
  */
 export function useTableQuery(tableId: string | undefined) {
-  const { setSnapshot } = useTableStore();
+  const setSnapshot = useTableStore(selectSetSnapshot);
 
   const tableQuery = api.table.get.useQuery(
     { tableId: tableId ?? "" },
@@ -19,9 +19,9 @@ export function useTableQuery(tableId: string | undefined) {
 
   // Update store when query data changes
   React.useEffect(() => {
-    if (tableQuery.data) {
-      setSnapshot(tableQuery.data);
-    }
+    if (!tableQuery.data) return;
+    if (useTableStore.getState().snapshot === tableQuery.data) return;
+    setSnapshot(tableQuery.data);
   }, [tableQuery.data, setSnapshot]);
 
   // Clear store when component unmounts or tableId changes

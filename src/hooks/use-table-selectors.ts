@@ -1,6 +1,6 @@
 import { useSession } from "next-auth/react";
 import { useMemo } from "react";
-import { useTableStore } from "~/stores/table-store";
+import { selectTableSnapshot, useTableStore } from "~/stores/table-store";
 
 import type { SeatWithPlayer } from "~/server/api/routers/table";
 
@@ -10,11 +10,11 @@ import type { SeatWithPlayer } from "~/server/api/routers/table";
  */
 
 export function useTableSnapshot() {
-  return useTableStore((state) => state.snapshot);
+  return useTableStore(selectTableSnapshot);
 }
 
 export function usePaddedSeats() {
-  const snapshot = useTableStore((state) => state.snapshot);
+  const snapshot = useTableStore(selectTableSnapshot);
   return useMemo(() => {
     if (!snapshot?.table?.maxSeats || !snapshot?.seats) return [];
     const maxSeats = snapshot.table.maxSeats;
@@ -26,18 +26,18 @@ export function usePaddedSeats() {
 }
 
 export function useOriginalSeats() {
-  const snapshot = useTableStore((state) => state.snapshot);
+  const snapshot = useTableStore(selectTableSnapshot);
   return snapshot?.seats ?? [];
 }
 
 export function useGameState() {
-  const snapshot = useTableStore((state) => state.snapshot);
+  const snapshot = useTableStore(selectTableSnapshot);
   return snapshot?.game?.state as string | undefined;
 }
 
 export function useDealSeatId() {
   const state = useGameState();
-  const snapshot = useTableStore((state) => state.snapshot);
+  const snapshot = useTableStore(selectTableSnapshot);
   return state === "DEAL_HOLE_CARDS"
     ? (snapshot?.game?.assignedSeatId ?? null)
     : null;
@@ -45,7 +45,7 @@ export function useDealSeatId() {
 
 export function useBettingActorSeatId() {
   const state = useGameState();
-  const snapshot = useTableStore((state) => state.snapshot);
+  const snapshot = useTableStore(selectTableSnapshot);
   return state === "BETTING" ? (snapshot?.game?.assignedSeatId ?? null) : null;
 }
 
@@ -86,12 +86,12 @@ export function useCurrentSeat(userId: string | undefined) {
 }
 
 export function useTotalPot() {
-  const snapshot = useTableStore((state) => state.snapshot);
+  const snapshot = useTableStore(selectTableSnapshot);
   return snapshot?.game?.potTotal ?? 0;
 }
 
 export function useEffectiveBigBlind() {
-  const snapshot = useTableStore((state) => state.snapshot);
+  const snapshot = useTableStore(selectTableSnapshot);
   return (
     snapshot?.game?.effectiveBigBlind ??
     snapshot?.blinds?.effectiveBigBlind ??
@@ -101,7 +101,7 @@ export function useEffectiveBigBlind() {
 
 /** Min raise increment for current betting round (TDA rule); falls back to big blind */
 export function useMinRaiseIncrement() {
-  const snapshot = useTableStore((state) => state.snapshot);
+  const snapshot = useTableStore(selectTableSnapshot);
   const effectiveBigBlind =
     snapshot?.game?.effectiveBigBlind ??
     snapshot?.blinds?.effectiveBigBlind ??
@@ -111,7 +111,7 @@ export function useMinRaiseIncrement() {
 }
 
 export function useCommunityCards() {
-  const snapshot = useTableStore((state) => state.snapshot);
+  const snapshot = useTableStore(selectTableSnapshot);
   return snapshot?.game?.communityCards ?? [];
 }
 
@@ -161,7 +161,7 @@ export function useMaxBet() {
 }
 
 export function useDealerSeatInfo() {
-  const snapshot = useTableStore((state) => state.snapshot);
+  const snapshot = useTableStore(selectTableSnapshot);
   const paddedSeats = usePaddedSeats();
   return useMemo(() => {
     const dealerSeatId = snapshot?.game?.dealerButtonSeatId ?? null;
@@ -174,7 +174,7 @@ export function useDealerSeatInfo() {
 }
 
 export function useBlindSeatNumbers() {
-  const snapshot = useTableStore((state) => state.snapshot);
+  const snapshot = useTableStore(selectTableSnapshot);
   const paddedSeats = usePaddedSeats();
 
   return useMemo(() => {
@@ -216,22 +216,22 @@ export function useBlindSeatNumbers() {
 }
 
 export function useDealerId() {
-  const snapshot = useTableStore((state) => state.snapshot);
+  const snapshot = useTableStore(selectTableSnapshot);
   return snapshot?.table?.dealerId ?? undefined;
 }
 
 export function useIsJoinable() {
-  const snapshot = useTableStore((state) => state.snapshot);
+  const snapshot = useTableStore(selectTableSnapshot);
   return snapshot?.isJoinable ?? false;
 }
 
 export function useBlinds() {
-  const snapshot = useTableStore((state) => state.snapshot);
+  const snapshot = useTableStore(selectTableSnapshot);
   return snapshot?.blinds;
 }
 
 export function useTableId(): string {
-  const snapshot = useTableStore((state) => state.snapshot);
+  const snapshot = useTableStore(selectTableSnapshot);
   const tableId = snapshot?.table?.id;
   if (!tableId) {
     throw new Error(
@@ -242,7 +242,7 @@ export function useTableId(): string {
 }
 
 export function useTurnStartTime() {
-  const snapshot = useTableStore((state) => state.snapshot);
+  const snapshot = useTableStore(selectTableSnapshot);
   return snapshot?.game?.turnStartTime ?? null;
 }
 
@@ -267,7 +267,7 @@ export function useCanVolunteerShow(userId: string | undefined) {
 }
 
 export function useSidePotDetails() {
-  const snapshot = useTableStore((state) => state.snapshot);
+  const snapshot = useTableStore(selectTableSnapshot);
   return (
     (snapshot?.game?.sidePotDetails as Array<{
       potNumber: number;
