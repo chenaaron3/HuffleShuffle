@@ -213,6 +213,12 @@ Mobile-specific components organized in a dedicated folder for landscape mobile 
   - `useTurnStartTime()`: When current player's turn started
   - And more...
 
+### `src/hooks/use-table-realtime-pusher.ts`
+
+- Subscribes to Pusher `TABLE_UPDATED` on the table channel; debounces `table.get` refetch and event-feed delta refresh
+- Uses a **module-level** timer per `tableId` so duplicate `channel.bind` / back-to-back events still coalesce to one refetch
+- Used by `src/pages/table/[id].tsx` (global Pusher disconnect on page unmount remains in the page)
+
 ### `src/hooks/use-actions.ts`
 
 - Wrapper hook around `api.table.action.useMutation`

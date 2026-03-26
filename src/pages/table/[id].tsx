@@ -21,18 +21,19 @@ import { useDealerTimer } from '~/hooks/use-dealer-timer';
 import { useQuickActions } from '~/hooks/use-quick-actions';
 import { useTableEvents } from '~/hooks/use-table-events';
 import { useTableQuery } from '~/hooks/use-table-query';
+import { useTableRealtimePusher } from '~/hooks/use-table-realtime-pusher';
 import {
     useBettingActorSeatId, useCurrentSeat, useCurrentUserSeatId, useGameState, useIsDealerRole,
     useMaxBet, useOriginalSeats, usePaddedSeats, useTableSnapshot
 } from '~/hooks/use-table-selectors';
 import { api } from '~/utils/api';
 import { rsaDecryptBase64 } from '~/utils/crypto';
-import { disconnectPusherClient, getPusherClient } from '~/utils/pusher-client';
-import { SIGNALS } from '~/utils/signal-constants';
+import { disconnectPusherClient } from '~/utils/pusher-client';
 
 import { LiveKitRoom, RoomAudioRenderer, StartAudio } from '@livekit/components-react';
 
 import type { VideoCodec } from 'livekit-client';
+
 export default function TableView() {
     const router = useRouter();
     const { id } = router.query as { id?: string };
@@ -58,6 +59,12 @@ export default function TableView() {
 
     // --- Event feed managed by hook ---
     const { events, refreshEvents: refreshEventFeed } = useTableEvents({ tableId: id });
+
+    useTableRealtimePusher({
+        tableId: id,
+        refetch: tableQuery.refetch,
+        refreshEventFeed,
+    });
 
     // Use selector hooks for computed values
     const maxBet = useMaxBet();
@@ -111,27 +118,6 @@ export default function TableView() {
             return () => clearTimeout(timer);
         }
     }, [state]);
-
-    // Pusher subscription for real-time table updates
-    React.useEffect(() => {
-        if (!id) return;
-
-        const pusher = getPusherClient();
-        if (!pusher) return;
-
-        const channel = pusher.subscribe(id);
-
-        channel.bind(SIGNALS.TABLE_UPDATED, async () => {
-            console.log('Table update received, refetching data...');
-            tableQuery.refetch();
-            refreshEventFeed();
-        });
-
-        return () => {
-            channel.unbind_all();
-            pusher.unsubscribe(id);
-        };
-    }, [id]); // Removed tableQuery dependency
 
     // Cleanup Pusher connection on unmount
     React.useEffect(() => {
