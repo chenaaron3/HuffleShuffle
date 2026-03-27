@@ -8,6 +8,7 @@ raspberrypi/node_modules
 
 # testing
 /coverage
+headless-bot-actions.log
 
 # database
 /prisma/db.sqlite

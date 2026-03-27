@@ -574,6 +574,17 @@ export async function notifyTableUpdate(tableId: string): Promise<void> {
   await updateTable(tableId);
 }
 
+export type BotActionLogEvent = {
+  seatNumber: number;
+  action: string;
+  /** Present when action is RAISE — total bet amount (chips). */
+  raiseTo?: number;
+};
+
+export type TriggerBotActionsHooks = {
+  onBotAction?: (e: BotActionLogEvent) => void;
+};
+
 /**
  * Trigger bot actions in a loop until a human player's turn
  * Takes a database instance (DB) to work in both main app and lambda consumer contexts
@@ -582,9 +593,21 @@ export async function notifyTableUpdate(tableId: string): Promise<void> {
 export async function triggerBotActions(
   database: DB,
   tableId: string,
+  hooks?: TriggerBotActionsHooks,
 ): Promise<void> {
   let iterations = 0;
-  const MAX_ITERATIONS = 20; // Safety limit
+  const defaultMax =
+    process.env.NODE_ENV === "test" && !process.env.BOT_ACTION_MAX_ITERATIONS
+      ? 200
+      : 20;
+  const MAX_ITERATIONS = Number(
+    process.env.BOT_ACTION_MAX_ITERATIONS ?? defaultMax,
+  );
+  const defaultDelayMs =
+    process.env.NODE_ENV === "test" && process.env.BOT_ACTION_DELAY_MS === undefined
+      ? 0
+      : 500;
+  const delayMs = Number(process.env.BOT_ACTION_DELAY_MS ?? defaultDelayMs);
 
   while (iterations < MAX_ITERATIONS) {
     iterations++;
@@ -646,16 +669,28 @@ export async function triggerBotActions(
         action: decision.action,
         raiseAmount: decision.action === "RAISE" ? decision.amount : undefined,
       });
+
+      hooks?.onBotAction?.({
+        seatNumber: botSeat.seatNumber,
+        action: decision.action,
+        raiseTo:
+          decision.action === "RAISE" ? decision.amount : undefined,
+      });
     });
 
     // Notify clients of table update after successful transaction
     await notifyTableUpdate(tableId);
 
-    // Wait before next iteration
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    // Wait before next iteration (0 in test by default for headless stress runs)
+    if (delayMs > 0) {
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
   }
 
   if (iterations >= MAX_ITERATIONS) {
-    console.error("Bot actions: Max iterations reached");
+    console.error("Bot actions: Max iterations reached", {
+      maxIterations: MAX_ITERATIONS,
+      tableId,
+    });
   }
 }

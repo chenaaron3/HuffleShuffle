@@ -17,8 +17,8 @@
 
 ## Documentation
 
-- When APIs, schema, env vars, or other behavior documented in `docs/*.md` changes, update the relevant doc(s).
 - Keep `README.md` a concise entry and **Documentation map**; do not maintain a changelog or “recent changes” list there.
+- Update `docs/*.md` only when the **user asks** or the **task explicitly includes** documentation—do not treat doc edits as a default follow-up on every change.
 
 ## Code Style and Patterns
 
@@ -112,16 +112,13 @@
 
 1. **Read README.md** (then the linked `docs/*.md` for depth) — it likely has the answer
 2. **Check existing patterns** - look at similar implementations
-3. **Follow the architecture** - don't introduce new patterns without updating docs
-4. **Update documentation** — if you had to figure something out, add or fix the relevant `docs/*.md` (and README navigation links if discoverability changes)
+3. **Follow the architecture** — align with existing patterns unless the task says otherwise
 
 ## Communication
 
 When making changes:
 
 - Explain what you're changing and why
-- Reference relevant sections of README.md and `docs/*.md`
-- Note if `docs/` (or README navigation) need updating
 - Provide context about how the change fits into the overall architecture
 
-Remember: **README.md** is the **primary entry**; **`docs/`** holds the detailed reference. Keep both accurate and cross-linked.
+Remember: **README.md** is the **primary entry**; **`docs/`** holds the detailed reference.

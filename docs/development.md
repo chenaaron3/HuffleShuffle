@@ -159,6 +159,21 @@ npm run format:check
 - Validate step supports `firstToActFor: PlayerKey` to assert `games.assignedSeatId` (see `src/test/scenario.types.ts`, `scenario-step-handlers.ts`).
 - Agent guidance: `.cursor/skills/write-table-scenario-test/SKILL.md` (step types, betting order, debugging).
 
+### Headless API + bot stress runner
+
+Runs many random hands using in-process tRPC (`createCaller`), `table.addBot`, and dealer `DEAL_CARD` (no browser, no SQS; requires `NODE_ENV=test` like other DB tests).
+
+- **Code**: [`src/test/headless-bot-game.ts`](src/test/headless-bot-game.ts) (setup, deck shuffle, `runManyBotHands`), [`src/test/headless-bot-game.runner.test.ts`](src/test/headless-bot-game.runner.test.ts) (Vitest entry).
+- **Run**: `npm test -- src/test/headless-bot-game.runner.test.ts --run` — or `npm run test:headless-bots` for a longer run (see `package.json`).
+- **Replenish**: `runManyBotHands` accepts optional `replenish: { numBots, buyIn }` (same values as `setupHeadlessBotTable`). When `START_GAME` would fail because fewer than two non-eliminated players have chips, the runner calls `removeBot` then `addBot` for each seat (no raw seat updates) and retries `START_GAME` once.
+- **Env**:
+  - `HEADLESS_BOT_HANDS` — number of consecutive hands (default `5`).
+  - `HEADLESS_ACTION_LOG` — action log file only: unset → `headless-bot-actions.log` under cwd (gitignored); `0` / `false` / `off` → no file; otherwise path (relative to cwd or absolute). The log file is `fsync` flushed after each hand (including when a hand throws).
+  - `HEADLESS_BOT_MAX_STEPS` — safety cap on deal/bot steps per hand (default `20000`).
+  - `BOT_ACTION_MAX_ITERATIONS` — max bot actions per `triggerBotActions` call (default `200` in test, `20` in production; override anytime).
+  - `BOT_ACTION_DELAY_MS` — delay between chained bot actions (default `0` in test, `500` in production).
+- **Interrupts**: `setupHeadlessBotTable` registers `registerHeadlessCleanupOnExit` so **SIGINT** (Ctrl+C) runs DB cleanup, then exits. Under **Vitest**, **SIGTERM is not hooked** (the runner uses it on normal worker shutdown); for a standalone Node script, **SIGTERM** is hooked unless `VITEST` is set. Set **`HEADLESS_CLEANUP_ON_SIGTERM=1`** to always register SIGTERM (e.g. force cleanup when a tool sends SIGTERM during Vitest). **`kill -9` cannot be intercepted** — tables may be left behind until the next test run’s cleanup or a manual delete.
+
 ## Deployment
 
 ### Next.js Application

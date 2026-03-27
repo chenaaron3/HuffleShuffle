@@ -65,7 +65,7 @@ A Next.js T3-based poker table management and streaming control system that inte
 | [`docs/video-streaming.md`](docs/video-streaming.md) | LiveKit rooms, encryption, Pi streaming, Pusher events |
 | [`docs/key-components.md`](docs/key-components.md) | Main UI, mobile, server modules, hooks |
 | [`docs/mobile-support.md`](docs/mobile-support.md) | Mobile landscape UX summary |
-| [`docs/development.md`](docs/development.md) | Setup, migrations, env templates, testing, deploy, repo tree |
+| [`docs/development.md`](docs/development.md) | Setup, migrations, env templates, testing (incl. headless API+bot runner), deploy, repo tree |
 | [`docs/design-and-workflows.md`](docs/design-and-workflows.md) | Design decisions, common tasks, contributing |
 
 ## Table of Contents (this file)

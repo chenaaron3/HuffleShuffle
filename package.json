@@ -19,6 +19,7 @@
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "test:db": "vitest run",
+    "test:headless-bots": "npm test -- src/test/headless-bot-game.runner.test.ts --run",
     "test": "bash scripts/test-with-db.sh",
     "lambda:deploy": "npm run deploy --prefix lambda/consumer",
     "lambda:deploy:prod": "npm run deploy:prod --prefix lambda/consumer"
