@@ -6,6 +6,7 @@ A Next.js T3-based poker table management and streaming control system that inte
 
 ### Recent Changes
 
+- **Bot min-raise**: `src/server/api/bot-strategy.ts` — raise sizing uses the same TDA minimum as `executeBettingAction` (`maxBet + lastRaiseIncrement`), caps total bet with `botCurrentBet + buyIn` (not `maxBet + stack`), and uses ceiling-to–big-blind steps so rounding cannot produce an illegal raise (short stacks still shove all-in for less).
 - **Money conservation diagnostics**: `src/server/api/money-conservation-diagnostics.ts` — `buildMoneyConservationDiagnosticReport` / `logMoneyConservationDiagnosticReport` (single `console.log` of the full report for CloudWatch). Called from `logConservationErrorDiagnostics` in `src/server/api/hand-solver.ts`. Filter logs by `[conservation_diagnostic] full_report`. Lambda uses the same file via `lambda/consumer/link/hand-solver.ts` → symlink.
 - **Cursor skill (AWS logs)**: `.cursor/skills/query-aws-logs/SKILL.md` — CloudWatch Logs via AWS CLI for the ingest Lambda (`us-east-1`, log group pattern `/aws/lambda/huffle-shuffle-ingest-{stage}-ingest`), including `$LATEST` stream name quoting.
 - **Table realtime Pusher**: `useTableRealtimePusher` in `src/hooks/use-table-realtime-pusher.ts` — subscribes to `TABLE_UPDATED`, debounces `table.get` + event-feed refresh with a module-level timer per table id (avoids duplicate refetches when multiple handlers bind). Used from `src/pages/table/[id].tsx`.

@@ -403,20 +403,32 @@ function shouldRaise(
 }
 
 /**
+ * Round up to the nearest big-blind multiple so we never undershoot the legal minimum
+ * after sizing (Math.round can round down across a min-raise boundary).
+ */
+function ceilToBigBlind(amount: number, bigBlind: number): number {
+  if (bigBlind <= 0) return amount;
+  return Math.ceil(amount / bigBlind) * bigBlind;
+}
+
+/**
  * Calculate raise amount
  * Uses pot-sized raise as default, adjusted by equity and stack size
- * Min raise follows TDA rule: maxBet + lastRaiseIncrement
+ * Min raise follows TDA rule: maxBet + lastRaiseIncrement (must match executeBettingAction)
  */
 function calculateRaiseAmount(
   currentMaxBet: number,
   botStack: number,
+  botCurrentBet: number,
   potSize: number,
   effectiveEquity: number,
   bigBlind: number,
   lastRaiseIncrement: number,
 ): number {
-  // Minimum raise = maxBet + lastRaiseIncrement (TDA rule)
-  const minRaise = currentMaxBet + lastRaiseIncrement;
+  // Minimum total bet for a legal raise (TDA) — same as game-helpers minRaiseTotal
+  const minLegalTotal = currentMaxBet + lastRaiseIncrement;
+  // Most this seat can put in this street (total bet level)
+  const maxTotalBet = botCurrentBet + botStack;
 
   // Pot-sized raise
   const potSizedRaise = currentMaxBet + potSize;
@@ -431,17 +443,23 @@ function calculateRaiseAmount(
     raiseAmount = potSizedRaise;
   } else {
     // Moderate hand - smaller raise
-    raiseAmount = Math.max(potSizedRaise * 0.75, minRaise);
+    raiseAmount = Math.max(potSizedRaise * 0.75, minLegalTotal);
   }
 
-  // Round to nearest big blind
-  raiseAmount = Math.round(raiseAmount / bigBlind) * bigBlind;
+  // Enforce min legal total before blind alignment (ceil, not round — avoids dropping below min)
+  raiseAmount = Math.max(raiseAmount, minLegalTotal);
+  raiseAmount = ceilToBigBlind(raiseAmount, bigBlind);
+  if (raiseAmount < minLegalTotal) {
+    raiseAmount = ceilToBigBlind(minLegalTotal, bigBlind);
+  }
 
-  // Don't raise more than stack
-  raiseAmount = Math.min(raiseAmount, currentMaxBet + botStack);
+  // Cannot exceed this seat's stack (total bet level)
+  raiseAmount = Math.min(raiseAmount, maxTotalBet);
 
-  // Must be at least minimum raise
-  raiseAmount = Math.max(raiseAmount, minRaise);
+  // Short stack: all-in for less than a full min raise is legal in executeBettingAction
+  if (raiseAmount < minLegalTotal) {
+    return maxTotalBet;
+  }
 
   return raiseAmount;
 }
@@ -539,20 +557,26 @@ export function makeBotDecision(gameState: BotGameState): BotDecision {
 
   // 2. Check if we should raise (use finalEquity)
   if (shouldRaise(finalEquity, potOdds, position, spr)) {
+    const minLegalTotal = maxBet + gameState.lastRaiseIncrement;
+    const maxTotalBet = botCurrentBet + botStack;
+
     const raiseAmount = calculateRaiseAmount(
       maxBet,
       botStack,
+      botCurrentBet,
       potTotal,
       finalEquity,
       effectiveBigBlind,
       gameState.lastRaiseIncrement,
     );
 
-    // If we can't afford a meaningful raise (min increment), just call/check
-    if (
-      raiseAmount <= maxBet ||
-      raiseAmount - maxBet < gameState.lastRaiseIncrement
-    ) {
+    // Not actually increasing the bet (must match executeBettingAction: amount > maxBet)
+    if (raiseAmount <= maxBet) {
+      return { action: "CHECK" };
+    }
+
+    // Below min raise only allowed as an all-in for less (same total as max chips)
+    if (raiseAmount < minLegalTotal && raiseAmount !== maxTotalBet) {
       return { action: "CHECK" };
     }
 

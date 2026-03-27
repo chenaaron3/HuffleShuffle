@@ -208,11 +208,11 @@ The bot uses dynamic raise sizing based on hand strength and pot size.
   - Examples: Middle pair, weak draws, marginal hands
   - Goal: Smaller raise to control pot size
 
-**Constraints**:
+**Constraints** (aligned with `executeBettingAction` / TDA min re-raise):
 
-- Minimum raise: 2× current max bet (or 2× big blind if no bet)
-- Maximum raise: Cannot exceed stack size
-- Rounded to nearest big blind
+- Minimum total bet for a raise: current table max bet + `lastRaiseIncrement` (falls back to big blind when no prior raise increment)
+- Maximum total bet: this seat’s current bet this street + remaining stack (`buyIn`)
+- Sized amounts are rounded **up** to big-blind multiples so rounding never produces a raise below the legal minimum; short stacks can still go all-in for less than a full min raise
 
 ### Why This Sizing?
 
