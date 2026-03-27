@@ -22,6 +22,15 @@ interface TableSetupParticipantsTabProps {
 export function TableSetupParticipantsTab({ tableId, isOpen, isActive }: TableSetupParticipantsTabProps) {
     const tableQuery = api.table.get.useQuery({ tableId }, { enabled: isOpen });
 
+    const baseBigBlind = tableQuery.data?.table?.bigBlind ?? 10;
+    const defaultBotBuyIn = baseBigBlind * 20;
+
+    const [botBuyInInput, setBotBuyInInput] = React.useState('');
+    React.useEffect(() => {
+        if (!isOpen || !tableQuery.data?.table) return;
+        setBotBuyInInput(String(tableQuery.data.table.bigBlind * 20));
+    }, [isOpen, tableId, tableQuery.data?.table?.bigBlind]);
+
     const addBotMut = api.table.addBot.useMutation({
         onSuccess: () => {
             void tableQuery.refetch();
@@ -62,11 +71,19 @@ export function TableSetupParticipantsTab({ tableId, isOpen, isActive }: TableSe
     const participantMutationsBusy =
         addBotMut.isPending || removeBotMut.isPending || removePlayerMut.isPending;
 
+    const parsedBotBuyIn = Number.parseInt(botBuyInInput, 10);
+    const resolvedBotBuyIn =
+        Number.isFinite(parsedBotBuyIn) && parsedBotBuyIn > 0 ? parsedBotBuyIn : defaultBotBuyIn;
+    const botBuyInInvalid =
+        botBuyInInput.trim() !== '' &&
+        (!Number.isFinite(parsedBotBuyIn) || parsedBotBuyIn <= 0);
+
     const handleAddBot = React.useCallback(
         (seatNumber: number) => {
-            addBotMut.mutate({ tableId, seatNumber });
+            const buyIn = resolvedBotBuyIn;
+            addBotMut.mutate({ tableId, seatNumber, buyIn });
         },
-        [addBotMut, tableId],
+        [addBotMut, tableId, resolvedBotBuyIn],
     );
 
     const handleRemoveBot = React.useCallback(
@@ -96,6 +113,31 @@ export function TableSetupParticipantsTab({ tableId, isOpen, isActive }: TableSe
                     </div>
                 )}
                 Manage table participants including real players and AI bots. You can kick players or add/remove bots when no game is active.
+            </div>
+
+            <div className="rounded-lg border border-zinc-700/50 bg-zinc-900/40 p-4">
+                <label
+                    htmlFor="bot-buy-in"
+                    className="mb-2 block text-xs font-semibold uppercase tracking-wide text-zinc-400"
+                >
+                    Bot buy-in (chips)
+                </label>
+                <input
+                    id="bot-buy-in"
+                    type="number"
+                    min={1}
+                    step={1}
+                    value={botBuyInInput}
+                    onChange={(e) => setBotBuyInInput(e.target.value)}
+                    disabled={!isJoinable}
+                    className="w-full max-w-xs rounded-md border border-white/10 bg-black/60 px-3 py-2 text-sm text-white outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 disabled:cursor-not-allowed disabled:opacity-50"
+                />
+                <p className="mt-1.5 text-xs text-zinc-500">
+                    Chips each bot gets when added. Default matches 20× big blind ({defaultBotBuyIn} with current blinds).
+                </p>
+                {botBuyInInvalid && (
+                    <p className="mt-1 text-xs text-red-400">Enter a whole number greater than zero.</p>
+                )}
             </div>
 
             <div className="grid gap-3">
@@ -129,7 +171,7 @@ export function TableSetupParticipantsTab({ tableId, isOpen, isActive }: TableSe
                         {isEmpty && isJoinable && (
                             <button
                                 onClick={() => handleAddBot(seatNumber)}
-                                disabled={participantMutationsBusy}
+                                disabled={participantMutationsBusy || botBuyInInvalid}
                                 className="flex items-center gap-2 rounded-md border border-blue-500/50 bg-blue-500/20 px-4 py-2 text-sm font-medium text-blue-400 transition-colors hover:bg-blue-500/30 hover:text-blue-300 disabled:cursor-not-allowed disabled:opacity-50"
                             >
                                 <Bot className="h-4 w-4" />
