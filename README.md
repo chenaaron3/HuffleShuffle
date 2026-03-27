@@ -6,6 +6,8 @@ A Next.js T3-based poker table management and streaming control system that inte
 
 ### Recent Changes
 
+- **Money conservation diagnostics**: `src/server/api/money-conservation-diagnostics.ts` — `buildMoneyConservationDiagnosticReport` / `logMoneyConservationDiagnosticReport` (single `console.log` of the full report for CloudWatch). Called from `logConservationErrorDiagnostics` in `src/server/api/hand-solver.ts`. Filter logs by `[conservation_diagnostic] full_report`. Lambda uses the same file via `lambda/consumer/link/hand-solver.ts` → symlink.
+- **Cursor skill (AWS logs)**: `.cursor/skills/query-aws-logs/SKILL.md` — CloudWatch Logs via AWS CLI for the ingest Lambda (`us-east-1`, log group pattern `/aws/lambda/huffle-shuffle-ingest-{stage}-ingest`), including `$LATEST` stream name quoting.
 - **Table realtime Pusher**: `useTableRealtimePusher` in `src/hooks/use-table-realtime-pusher.ts` — subscribes to `TABLE_UPDATED`, debounces `table.get` + event-feed refresh with a module-level timer per table id (avoids duplicate refetches when multiple handlers bind). Used from `src/pages/table/[id].tsx`.
 - **Side pot orphan layer (tests)**: `src/server/api/hand-solver.side-pots.test.ts` — unit tests for `calculateSidePotsFromCumulativeBets` (e.g. 160/155/155 with high folder) assert **sum(side pot amounts) = total committed chips**, preventing the old conservation failure when orphan layers were dropped. **Harness**: any validate step that includes `game: { state: "SHOWDOWN" }` also asserts `sum(startingBalance) === sum(buyIn)` (same as `validateMoneyConservation` in `hand-solver.ts`); see `handleValidateStep` in `src/test/scenario-step-handlers.ts`.
 - **Scanner ingest**: `raspberrypi/scanner-daemon.ts` — strict line-only valid four-digit card barcode (no extraction/salvage); drop invalid scans before SQS; clear HID accumulator on read error. See [`docs/card-scanning-ingestion.md`](docs/card-scanning-ingestion.md).
@@ -64,6 +66,7 @@ A Next.js T3-based poker table management and streaming control system that inte
 | LiveKit, Pusher video signaling | [`docs/video-streaming.md`](docs/video-streaming.md) |
 | React components, Zustand, mobile UI | [`docs/key-components.md`](docs/key-components.md), [`docs/mobile-support.md`](docs/mobile-support.md) |
 | Local setup, env, test, deploy | [`docs/development.md`](docs/development.md) |
+| Lambda / CloudWatch ingest logs (AWS CLI) | [`.cursor/skills/query-aws-logs/SKILL.md`](.cursor/skills/query-aws-logs/SKILL.md) |
 | Why something is built this way; contributor tasks | [`docs/design-and-workflows.md`](docs/design-and-workflows.md) |
 
 ## Documentation map

@@ -163,7 +163,7 @@ Mobile-specific components organized in a dedicated folder for landscape mobile 
 - `distributeSidePots()`: Distributes side pots to winners based on hand rankings
 - `updateSeatsWithWinnings()`: Updates database with hand evaluation results and winnings
 - `updateEliminationStatus()`: Marks players with 0 chips as eliminated
-- `validateMoneyConservation()`: Validates that sum of startingBalance equals sum of final buyIn (ensures no money creation/destruction)
+- `validateMoneyConservation()`: Validates that sum of startingBalance equals sum of final buyIn (ensures no money creation/destruction). On failure, `logConservationErrorDiagnostics` calls `logMoneyConservationDiagnosticReport` in `src/server/api/money-conservation-diagnostics.ts` (one `console.log` with the full report; filter CloudWatch by `[conservation_diagnostic] full_report`).
 - `completeShowdown()`: Orchestrates the complete showdown process
 
 **Key features:**

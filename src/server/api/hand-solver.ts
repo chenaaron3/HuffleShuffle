@@ -8,6 +8,7 @@ import {
   fetchAllSeatsInOrder,
   mergeBetsIntoPotGeneric,
 } from "./game-utils";
+import { logMoneyConservationDiagnosticReport } from "./money-conservation-diagnostics";
 
 const { Hand: PokerHand } = require("pokersolver");
 
@@ -415,123 +416,18 @@ async function logConservationErrorDiagnostics(
     orderBy: (events, { asc }) => [asc(events.createdAt)],
   });
 
-  const totalStartingBalance = finalSeats.reduce(
-    (sum, seat) => sum + seat.startingBalance,
-    0,
-  );
-  const totalFinalBuyIn = finalSeats.reduce((sum, seat) => sum + seat.buyIn, 0);
-  const totalWinnings = finalSeats.reduce(
-    (sum, seat) => sum + (seat.winAmount || 0),
-    0,
-  );
-  const totalBuyInBeforeWinnings = finalSeats.reduce(
-    (sum, seat) => sum + (seat.buyIn - (seat.winAmount || 0)),
-    0,
-  );
-  const totalBets = totalStartingBalance - totalBuyInBeforeWinnings;
-  const sidePotTotal = sidePots.reduce((sum, pot) => sum + pot.amount, 0);
-  const expectedPot = totalStartingBalance - totalBuyInBeforeWinnings;
-
-  console.log("\n" + "=".repeat(80));
-  console.log("🚨 MONEY CONSERVATION ERROR DETECTED - FULL DIAGNOSTIC REPORT");
-  console.log("=".repeat(80));
-
-  console.log("\n=== Game Information ===");
-  console.log(`Game ID: ${gameId}`);
-  console.log(`Game potTotal: ${gameObj.potTotal}`);
-  console.log(`Game state: ${gameObj.state}`);
-
-  console.log("\n=== Game Events (Chronological) ===");
-  console.log(`Total events: ${allGameEvents.length}`);
-  allGameEvents.forEach((event, idx) => {
-    console.log(
-      `[${idx + 1}] ${event.type} at ${event.createdAt.toISOString()}:`,
-      JSON.stringify(event.details, null, 2),
-    );
+  logMoneyConservationDiagnosticReport({
+    tableId,
+    gameId,
+    gameObj,
+    freshSeats,
+    contenders,
+    finalSeats,
+    allGameEvents,
+    hands,
+    sidePots,
+    seatWinnings,
   });
-
-  console.log("\n=== Seat States BEFORE Winnings Distribution ===");
-  freshSeats.forEach((seat) => {
-    console.log(
-      `  Seat ${seat.id}: buyIn=${seat.buyIn}, startingBalance=${seat.startingBalance}, status=${seat.seatStatus}, currentBet=${seat.currentBet}`,
-    );
-  });
-
-  console.log("\n=== Hand Evaluations ===");
-  hands.forEach((hand) => {
-    console.log(`Player ${hand.seatId} hand:`, {
-      cards: hand.playerCards,
-      handType: hand.hand.name,
-      description: hand.hand.descr,
-      winningCards: hand.hand.cards,
-      score: hand.hand.score,
-    });
-  });
-
-  console.log("\n=== Side Pot Calculation ===");
-  console.log("Recalculated side pots from cumulative bets:", sidePots);
-  console.log(`Side pot total: ${sidePotTotal}`);
-  console.log(`Expected pot (startingBalance - buyIn before): ${expectedPot}`);
-  console.log(`Difference: ${sidePotTotal - expectedPot}`);
-  if (sidePotTotal !== expectedPot && expectedPot > 0) {
-    console.error(
-      `⚠️  WARNING: Recalculated side pots (${sidePotTotal}) != Expected pot (${expectedPot})`,
-    );
-  }
-
-  console.log("\n=== Side Pot Distribution ===");
-  sidePots.forEach((pot) => {
-    console.log(`Pot ${pot.potNumber} (${pot.amount}):`, {
-      betLevelRange: pot.betLevelRange,
-      contributors: pot.contributors,
-      eligibleSeatIds: pot.eligibleSeatIds,
-      winners: pot.winners,
-    });
-  });
-
-  console.log("\n=== Winnings Distribution ===");
-  console.log("Winnings to be distributed:");
-  Object.entries(seatWinnings).forEach(([seatId, amount]) => {
-    console.log(`  Seat ${seatId}: ${amount}`);
-  });
-  console.log(`Total winnings: ${totalWinnings}`);
-
-  console.log("\n=== Seat States AFTER Winnings Distribution ===");
-  finalSeats.forEach((seat) => {
-    const diff = seat.buyIn - seat.startingBalance;
-    const buyInBeforeWinnings = seat.buyIn - (seat.winAmount || 0);
-    const expectedDiff =
-      (seat.winAmount || 0) -
-      (seat.startingBalance - buyInBeforeWinnings);
-    console.log(
-      `  Seat ${seat.id}: startingBalance=${seat.startingBalance}, finalBuyIn=${seat.buyIn}, diff=${diff}, status=${seat.seatStatus}, winAmount=${seat.winAmount || 0}`,
-    );
-    if (diff !== expectedDiff) {
-      console.log(
-        `    ⚠️  WARNING: Expected diff ${expectedDiff} but got ${diff}`,
-      );
-    }
-  });
-
-  console.log("\n=== Money Conservation Summary ===");
-  console.log(`  Total starting balance: ${totalStartingBalance}`);
-  console.log(`  Total final buyIn: ${totalFinalBuyIn}`);
-  console.log(`  Difference: ${totalFinalBuyIn - totalStartingBalance}`);
-  console.log(`  Total winnings distributed: ${totalWinnings}`);
-  console.log(`  Total bets (startingBalance - buyIn_before): ${totalBets}`);
-  console.log(
-    `  Money flow check: startingBalance (${totalStartingBalance}) = buyIn_before (${totalBuyInBeforeWinnings}) + bets (${totalBets})`,
-  );
-  console.log(
-    `  Money flow check: buyIn_before (${totalBuyInBeforeWinnings}) + winnings (${totalWinnings}) = finalBuyIn (${totalFinalBuyIn})`,
-  );
-  if (totalBets !== totalWinnings) {
-    console.log(
-      `  ⚠️  WARNING: Total bets (${totalBets}) != Total winnings (${totalWinnings}). Difference: ${totalWinnings - totalBets}`,
-    );
-  }
-
-  console.log("\n" + "=".repeat(80));
 }
 
 // Validate that money is conserved: sum of startingBalance should equal sum of buyIn
