@@ -6,7 +6,7 @@
 
 - At the start of each new chat, load `README.md` and use it as persistent context; follow **Start here** links into `docs/*.md` only for the task at hand (progressive disclosure)
 - Prefer README.md + `docs/` over prior chat memory when they conflict
-- **Single source of truth**: `README.md` (entry, **Project Status**, navigation) plus **`docs/*.md`** for full reference:
+- **Single source of truth**: `README.md` (entry, navigation) plus **`docs/*.md`** for full reference:
   - Project architecture and design decisions → `docs/architecture.md`, `docs/design-and-workflows.md`
   - Database schema and relationships → `docs/database-schema.md`
   - API endpoints and their usage → `docs/api-endpoints.md`
@@ -15,64 +15,10 @@
   - Development workflows → `docs/development.md`
   - Environment variables and configuration → `docs/development.md`
 
-## README Maintenance Requirements
+## Documentation
 
-### When to Update README
-
-**MANDATORY**: You MUST update `README.md` after any meaningful assistant-driven change, in the same turn before finishing. **Also update the relevant `docs/*.md`** file(s) when the long-form reference would be wrong or incomplete (e.g. new API procedure → `docs/api-endpoints.md`; schema change → `docs/database-schema.md` and **Project Status** schema notes).
-
-**Meaningful changes include**:
-
-- New endpoints or breaking changes to existing ones (tRPC or REST)
-- Schema or migration changes
-- New services/daemons, Pusher channels/events, or stream behavior
-- Updated environment variables or configuration
-- Significant refactors or file moves that affect discoverability
-- New features or components
-- Changes to game logic or state machine
-- Architecture changes
-
-**Trivial changes** (formatting, comments, variable naming) do not require a README update.
-
-### README Structure
-
-- Keep `README.md` concise and skimmable using bullet points; put exhaustive reference in `docs/` and link from the **Documentation map**
-- Maintain a top-of-file section named `## Project Status` with the following subsections:
-  - **Recent Changes** (newest first, keep focused and limited)
-  - **Open Tasks / Next Steps**
-  - **APIs & Routes** (high-level; link to files and list methods/actions)
-  - **Services & Daemons** (Pi daemons, scripts, Pusher events)
-  - **Database / Schema Notes** (enumerate key tables/enums/constraints)
-  - **Env/Config Notes** (list variable names only; no secrets)
-  - **Known Issues**
-- Link files/dirs with backticks (e.g., `src/server/api/routers/table.ts`)
-- Never expose secrets; redact sensitive values
-- Normalize the `## Project Status` section if it drifts, without removing user-authored content outside that section
-
-### How to Update README
-
-1. **Read the current README.md** to understand existing structure
-2. **Identify the relevant section(s)** that need updating
-3. **When updating, summarize meaningful diffs only** - prefer short, actionable bullets over long prose
-4. **Maintain consistency** with existing formatting and style
-5. **Update the Table of Contents** if adding new major sections
-6. **Use code blocks** for code examples (with proper language tags)
-7. **Use code references** for existing code (`startLine:endLine:filepath` format)
-8. **Keep descriptions clear and concise** - this is documentation for LLMs
-
-### README Update Checklist
-
-Before completing any feature or change, verify:
-
-- [ ] README.md has been updated with the new feature/change
-- [ ] Relevant `docs/*.md` file(s) updated if long-form reference changed
-- [ ] `## Project Status` section updated if applicable
-- [ ] All relevant sections have been updated
-- [ ] Code examples are accurate and up-to-date
-- [ ] Environment variables are documented if new ones were added
-- [ ] API endpoints are documented if new ones were added
-- [ ] Database schema is documented if modified
-- [ ] Architecture diagrams/descriptions reflect the changes (in `docs/` where applicable)
+- When APIs, schema, env vars, or other behavior documented in `docs/*.md` changes, update the relevant doc(s).
+- Keep `README.md` a concise entry and **Documentation map**; do not maintain a changelog or “recent changes” list there.
 
 ## Code Style and Patterns
 
@@ -107,7 +53,7 @@ Before completing any feature or change, verify:
 1. Add to `tableRouter` in `src/server/api/routers/table.ts`
 2. Use `protectedProcedure` or `publicProcedure` as appropriate
 3. Add role checks if needed (`ensureDealerRole`, `ensurePlayerRole`)
-4. Update `docs/api-endpoints.md` AND "Project Status" → "APIs & Routes"
+4. Update `docs/api-endpoints.md`
 5. Add input/output type documentation
 
 ### Adding a New Database Field
@@ -115,7 +61,7 @@ Before completing any feature or change, verify:
 1. Update schema in `src/server/db/schema.ts`
 2. Run `npm run db:generate` to create migration
 3. Review migration file in `drizzle/` directory
-4. Update `docs/database-schema.md` AND "Project Status" → "Database / Schema Notes"
+4. Update `docs/database-schema.md`
 5. Update any affected queries or mutations
 
 ### Adding a New Component
@@ -167,7 +113,7 @@ Before completing any feature or change, verify:
 1. **Read README.md** (then the linked `docs/*.md` for depth) — it likely has the answer
 2. **Check existing patterns** - look at similar implementations
 3. **Follow the architecture** - don't introduce new patterns without updating docs
-4. **Update documentation** - if you had to figure something out, document it
+4. **Update documentation** — if you had to figure something out, add or fix the relevant `docs/*.md` (and README navigation links if discoverability changes)
 
 ## Communication
 
@@ -175,7 +121,7 @@ When making changes:
 
 - Explain what you're changing and why
 - Reference relevant sections of README.md and `docs/*.md`
-- Note if README.md / `docs/` need updating
+- Note if `docs/` (or README navigation) need updating
 - Provide context about how the change fits into the overall architecture
 
-Remember: **README.md** is the **primary entry and status** surface; **`docs/`** holds the detailed reference. Keep both accurate and cross-linked.
+Remember: **README.md** is the **primary entry**; **`docs/`** holds the detailed reference. Keep both accurate and cross-linked.

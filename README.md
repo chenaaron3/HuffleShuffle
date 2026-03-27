@@ -4,24 +4,6 @@ A Next.js T3-based poker table management and streaming control system that inte
 
 ## Project Status
 
-### Recent Changes
-
-- **Bot min-raise**: `src/server/api/bot-strategy.ts` — raise sizing uses the same TDA minimum as `executeBettingAction` (`maxBet + lastRaiseIncrement`), caps total bet with `botCurrentBet + buyIn` (not `maxBet + stack`), and uses ceiling-to–big-blind steps so rounding cannot produce an illegal raise (short stacks still shove all-in for less).
-- **Money conservation diagnostics**: `src/server/api/money-conservation-diagnostics.ts` — `buildMoneyConservationDiagnosticReport` / `logMoneyConservationDiagnosticReport` (single `console.log` of the full report for CloudWatch). Called from `logConservationErrorDiagnostics` in `src/server/api/hand-solver.ts`. Filter logs by `[conservation_diagnostic] full_report`. Lambda uses the same file via `lambda/consumer/link/hand-solver.ts` → symlink.
-- **Cursor skill (AWS logs)**: `.cursor/skills/query-aws-logs/SKILL.md` — CloudWatch Logs via AWS CLI for the ingest Lambda (`us-east-1`, log group pattern `/aws/lambda/huffle-shuffle-ingest-{stage}-ingest`), including `$LATEST` stream name quoting.
-- **Table realtime Pusher**: `useTableRealtimePusher` in `src/hooks/use-table-realtime-pusher.ts` — subscribes to `TABLE_UPDATED`, debounces `table.get` + event-feed refresh with a module-level timer per table id (avoids duplicate refetches when multiple handlers bind). Used from `src/pages/table/[id].tsx`.
-- **Side pot orphan layer (tests)**: `src/server/api/hand-solver.side-pots.test.ts` — unit tests for `calculateSidePotsFromCumulativeBets` (e.g. 160/155/155 with high folder) assert **sum(side pot amounts) = total committed chips**, preventing the old conservation failure when orphan layers were dropped. **Harness**: any validate step that includes `game: { state: "SHOWDOWN" }` also asserts `sum(startingBalance) === sum(buyIn)` (same as `validateMoneyConservation` in `hand-solver.ts`); see `handleValidateStep` in `src/test/scenario-step-handlers.ts`.
-- **Scanner ingest**: `raspberrypi/scanner-daemon.ts` — strict line-only valid four-digit card barcode (no extraction/salvage); drop invalid scans before SQS; clear HID accumulator on read error. See [`docs/card-scanning-ingestion.md`](docs/card-scanning-ingestion.md).
-- **Side pots / chip conservation**: `calculateSidePotsFromCumulativeBets` in `src/server/api/hand-solver.ts` (same in `lambda/consumer/link/hand-solver.ts`) does **not** drop layers where every contributor is folded; that amount is **carried** into the next pot with eligible winners, or appended to the **last** such pot (no merge-time refund in `mergeBetsIntoPotGeneric`). See `docs/game-state-machine.md`.
-- **Docs layout**: Long-form reference moved under `docs/`; this file is the entry + status router. See **Documentation map** below.
-- **Root npm scripts**: `lambda:deploy` / `lambda:deploy:prod` run Serverless deploy from repo root via `lambda/consumer` (same as `cd lambda/consumer && npm run deploy`). See `docs/development.md` → **Lambda Consumer**.
-- **Harness scenarios** (`src/test/table.scenarios/blind-all-in-seat-resolution.ts`): SB all-in (full deal, `firstToActFor: player1`); BB all-in (`firstToActFor: player1` + `CHECK`); **4 players** SB+BB both all-in (`firstToActFor: player4` UTG + `CHECK`). Validate helper `firstToActFor` in `scenario.types.ts` / `scenario-step-handlers.ts`. Run: `npm test -- src/test/table.scenario.harness.test.ts --run -t "blind all-in|four players"` (substring on scenario `name`).
-- **Blind seat resolution**: `getBigAndSmallBlindSeats` and preflop UTG setup in `ensureHoleCardsProgression` now walk button→SB→BB with `getNextDealableSeatId` (active + all-in) instead of `getNextActiveSeatId`, so blind posters who go all-in are not skipped for deal order / `assignedSeatId` / first-to-act anchoring. See `src/server/api/game-logic.ts` and `lambda/consumer/link/game-logic.ts`.
-- **Volunteer to show hands**: Players can opt to reveal their hand at showdown when it would normally be hidden (single winner or folded). New `VOLUNTEER_SHOW` action; `seats.voluntaryShow`; `ShowHandControl` in same spot as raise controls. See `src/components/ui/show-hand-control.tsx`, `redactSnapshotForUser` in `src/server/api/routers/table.ts`.
-- Simplified redact snapshot logic: removed redundant `betCount` check; now uses single `showCardsForRunout` with `activePlayerFacingDecision` (currentBet < maxBet) as the source of truth. Added 7 edge case tests. See `redactSnapshotForUser` in `src/server/api/routers/table.ts`.
-- Implemented minimum re-raise rule (TDA): each raise must add at least the previous raise increment; `games.lastRaiseIncrement` tracks this per betting round.
-- Added LiveKit bandwidth tuning in `src/pages/table/[id].tsx` (`dynacast`, `adaptiveStream`, `videoEncoding.maxBitrate`, `videoSimulcastLayers`).
-
 ### Open Tasks / Next Steps
 
 - _(None tracked in-repo.)_

@@ -48,7 +48,7 @@ When contributing to this project:
 1. Follow TypeScript best practices
 2. Use Drizzle ORM for all database operations
 3. Keep game logic in `game-logic.ts` (shared between API and consumer)
-4. Update `README.md` (Project Status / navigation) and the relevant `docs/*.md` file when adding features or changing contracts
+4. Update the relevant `docs/*.md` files when adding features or changing contracts (navigation entry remains `README.md` + **Documentation map**)
 5. Write tests for game logic changes
 6. Ensure state machine transitions are valid
 7. Handle edge cases (all-in players, eliminated players, etc.)
