@@ -295,11 +295,81 @@ export function calculateSidePotsFromCumulativeBets(
   return sidePots;
 }
 
+/**
+ * Order tied winners for odd-chip splits: first seat clockwise from the button,
+ * then continuing around the table (standard casino / Robert's Rules style).
+ */
+function orderWinnersClockwiseFromButton(
+  orderedSeats: SeatRow[],
+  dealerButtonSeatId: string | null,
+  winnerSeatIds: string[],
+): string[] {
+  const winnerSet = new Set(winnerSeatIds);
+  const result: string[] = [];
+  const n = orderedSeats.length;
+  if (n === 0) return [...winnerSeatIds];
+  const mapIndex: Record<string, number> = {};
+  orderedSeats.forEach((s, i) => {
+    mapIndex[s.id] = i;
+  });
+  const buttonIdx = dealerButtonSeatId
+    ? (mapIndex[dealerButtonSeatId] ?? 0)
+    : 0;
+  for (let i = 0; i < n; i++) {
+    const idx = (buttonIdx + 1 + i) % n;
+    const sid = orderedSeats[idx]!.id;
+    if (winnerSet.has(sid)) {
+      result.push(sid);
+      winnerSet.delete(sid);
+    }
+  }
+  for (const w of winnerSeatIds) {
+    if (winnerSet.has(w)) result.push(w);
+  }
+  return result;
+}
+
+/**
+ * Split a pot among tied winners. Remainder after `floor(pot/n)` is assigned one
+ * chip at a time to the first winners in `orderWinnersClockwiseFromButton` order
+ * so the full pot is distributed (fixes money conservation on odd-chip splits).
+ */
+export function distributePotAmountAmongTiedWinners(
+  potAmount: number,
+  winnerSeatIds: string[],
+  orderedSeats: SeatRow[],
+  dealerButtonSeatId: string | null,
+): Record<string, number> {
+  const n = winnerSeatIds.length;
+  if (n === 0) return {};
+  const base = Math.floor(potAmount / n);
+  const remainder = potAmount % n;
+  const ordered = orderWinnersClockwiseFromButton(
+    orderedSeats,
+    dealerButtonSeatId,
+    winnerSeatIds,
+  );
+  const result: Record<string, number> = {};
+  for (const id of ordered) {
+    result[id] = base;
+  }
+  for (let i = 0; i < remainder; i++) {
+    const id = ordered[i]!;
+    result[id] = (result[id] ?? 0) + 1;
+  }
+  for (const id of winnerSeatIds) {
+    if (result[id] === undefined) result[id] = base;
+  }
+  return result;
+}
+
 // Distribute side pots to winners and populate winner information
 function distributeSidePots(
   sidePots: SidePotDetail[],
   hands: EvaluatedHand[],
   seatWinnings: Record<string, number>,
+  orderedSeats: SeatRow[],
+  dealerButtonSeatId: string | null,
 ): void {
   // Create a set of contender seat IDs for fast lookup (for error messages)
   const contenderSeatIds = new Set(hands.map((h) => h.seatId));
@@ -341,16 +411,21 @@ function distributeSidePots(
       return eligibleHands[handIndex]!.seatId;
     });
 
-    // Split pot among winners
-    const potShare = Math.floor(pot.amount / potWinnerSeatIds.length);
+    const perSeat = distributePotAmountAmongTiedWinners(
+      pot.amount,
+      potWinnerSeatIds,
+      orderedSeats,
+      dealerButtonSeatId,
+    );
     for (const winnerId of potWinnerSeatIds) {
-      seatWinnings[winnerId] = (seatWinnings[winnerId] || 0) + potShare;
+      const amt = perSeat[winnerId] ?? 0;
+      seatWinnings[winnerId] = (seatWinnings[winnerId] || 0) + amt;
     }
 
     // Populate winners in side pot detail for UI
     pot.winners = potWinnerSeatIds.map((seatId) => ({
       seatId,
-      amount: potShare,
+      amount: perSeat[seatId] ?? 0,
     }));
   }
 }
@@ -499,7 +574,13 @@ async function completeShowdown(
   const sidePots = calculateSidePotsFromCumulativeBets(freshSeats);
 
   // Distribute side pots (this also populates the winners field)
-  distributeSidePots(sidePots, hands, seatWinnings);
+  distributeSidePots(
+    sidePots,
+    hands,
+    seatWinnings,
+    freshSeats,
+    updatedGame.dealerButtonSeatId,
+  );
 
   // Store side pot details in database for UI display
   await tx

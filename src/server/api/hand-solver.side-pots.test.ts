@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import type { seats } from "~/server/db/schema";
-import { calculateSidePotsFromCumulativeBets } from "./hand-solver";
+import {
+  calculateSidePotsFromCumulativeBets,
+  distributePotAmountAmongTiedWinners,
+} from "./hand-solver";
 
 type SeatRow = typeof seats.$inferSelect;
 
@@ -74,5 +77,37 @@ describe("calculateSidePotsFromCumulativeBets (orphan layers / conservation)", (
 
     expect(sumSidePotAmounts(pots)).toBe(committed);
     expect(pots.length).toBe(3);
+  });
+});
+
+describe("distributePotAmountAmongTiedWinners (odd-chip splits)", () => {
+  it("assigns remainder to first winner clockwise from button (25 → 13 + 12)", () => {
+    const s0 = makeSeat("seat-0", 0, 0, "folded");
+    const s1 = makeSeat("seat-1", 1, 0, "folded");
+    const btn = makeSeat("btn", 2, 0, "all-in");
+    const winnerA = makeSeat("winner-a", 3, 0, "all-in");
+    const ordered = [s0, s1, btn, winnerA];
+    const r = distributePotAmountAmongTiedWinners(
+      25,
+      [btn.id, winnerA.id],
+      ordered,
+      btn.id,
+    );
+    expect(r[winnerA.id]).toBe(13);
+    expect(r[btn.id]).toBe(12);
+    expect(r[winnerA.id]! + r[btn.id]!).toBe(25);
+  });
+
+  it("3-way tie: 100 chips → 34 + 33 + 33", () => {
+    const a = makeSeat("a", 0, 0, "all-in");
+    const b = makeSeat("b", 1, 0, "all-in");
+    const c = makeSeat("c", 2, 0, "all-in");
+    const ordered = [a, b, c];
+    const r = distributePotAmountAmongTiedWinners(100, [a.id, b.id, c.id], ordered, c.id);
+    // Button c: clockwise first is a, then b, then c
+    expect(r[a.id]).toBe(34);
+    expect(r[b.id]).toBe(33);
+    expect(r[c.id]).toBe(33);
+    expect(r[a.id]! + r[b.id]! + r[c.id]!).toBe(100);
   });
 });
