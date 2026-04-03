@@ -24,7 +24,7 @@ import { useTableQuery } from '~/hooks/use-table-query';
 import { useTableRealtimePusher } from '~/hooks/use-table-realtime-pusher';
 import {
     useBettingActorSeatId, useCurrentSeat, useCurrentUserSeatId, useGameState, useIsDealerRole,
-    useMaxBet, useOriginalSeats, usePaddedSeats, useTableSnapshot
+    useCurrentBetTarget, useOriginalSeats, usePaddedSeats, useTableSnapshot
 } from '~/hooks/use-table-selectors';
 import { api } from '~/utils/api';
 import { rsaDecryptBase64 } from '~/utils/crypto';
@@ -67,7 +67,7 @@ export default function TableView() {
     });
 
     // Use selector hooks for computed values
-    const maxBet = useMaxBet();
+    const currentBetTarget = useCurrentBetTarget();
 
     // --- Quick actions hook ---
     const { quickAction, setQuickAction } = useQuickActions({
@@ -75,7 +75,7 @@ export default function TableView() {
         currentSeat,
         gameState: state,
         bettingActorSeatId,
-        maxBet,
+        currentBetTarget,
     });
 
     // --- Dealer timer hook ---

@@ -9,7 +9,7 @@ import { Slider } from '~/components/ui/slider';
 import { Tooltip, TooltipContent, TooltipTrigger } from '~/components/ui/tooltip';
 import { useActions } from '~/hooks/use-actions';
 import {
-    useCurrentSeat, useEffectiveBigBlind, useMaxBet, useMinRaiseIncrement, useTotalPot
+    useCurrentBetTarget, useCurrentSeat, useEffectiveBigBlind, useMinRaiseIncrement, useTotalPot
 } from '~/hooks/use-table-selectors';
 import { cn } from '~/lib/utils';
 
@@ -28,7 +28,7 @@ export function VerticalRaiseControls({ }: VerticalRaiseControlsProps) {
     const currentBet = currentSeat?.currentBet ?? 0;
     const bigBlind = useEffectiveBigBlind() ?? 20;
     const minRaiseIncrement = useMinRaiseIncrement();
-    const maxBet = useMaxBet() ?? 0;
+    const currentBetTarget = useCurrentBetTarget() ?? 0;
 
     // Use actions hook for mutations
     const { mutate: performAction } = useActions();
@@ -38,10 +38,10 @@ export function VerticalRaiseControls({ }: VerticalRaiseControlsProps) {
 
     // Update raise amount when min raise increment or max bet changes
     useEffect(() => {
-        if (minRaiseIncrement && maxBet !== undefined) {
-            setRaiseAmount(maxBet + minRaiseIncrement);
+        if (minRaiseIncrement && currentBetTarget !== undefined) {
+            setRaiseAmount(currentBetTarget + minRaiseIncrement);
         }
-    }, [minRaiseIncrement, maxBet]);
+    }, [minRaiseIncrement, currentBetTarget]);
 
     // Handle raise action
     const handleRaise = () => {
@@ -58,11 +58,11 @@ export function VerticalRaiseControls({ }: VerticalRaiseControlsProps) {
         performAction('CHECK');
     };
     const maxBetAmount = Math.max(0, currentBet + playerBalance);
-    const availableAfterCall = Math.max(0, maxBetAmount - maxBet);
-    // Min raise = maxBet + lastRaiseIncrement (TDA rule); all-in if can't afford full raise
+    const availableAfterCall = Math.max(0, maxBetAmount - currentBetTarget);
+    // Min raise = current bet target + lastRaiseIncrement (TDA rule); all-in if short
     const minRaise = Math.min(
         maxBetAmount, // Can't exceed all-in
-        maxBet + Math.min(minRaiseIncrement || 0, availableAfterCall)
+        currentBetTarget + Math.min(minRaiseIncrement || 0, availableAfterCall)
     );
 
     // Clamp value to valid range
@@ -147,11 +147,11 @@ export function VerticalRaiseControls({ }: VerticalRaiseControlsProps) {
     const isAllInDisabled = playerBalance <= 0;
 
     // Determine if it's a Call or Check
-    // Call: currentBet < maxBet (need to match the bet)
-    // Check: currentBet === maxBet (already matched, no action needed)
-    const isCall = maxBet > 0 && currentBet < maxBet;
+    // Call: currentBet < currentBetTarget (need to match current street target)
+    // Check: currentBet === currentBetTarget (already matched, no action needed)
+    const isCall = currentBetTarget > 0 && currentBet < currentBetTarget;
     // Call amount is limited by player's available balance (may be all-in)
-    const callAmount = isCall ? Math.min(maxBet - currentBet, playerBalance) : 0;
+    const callAmount = isCall ? Math.min(currentBetTarget - currentBet, playerBalance) : 0;
 
     return (
         <motion.div

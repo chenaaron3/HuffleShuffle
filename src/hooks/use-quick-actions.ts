@@ -10,7 +10,7 @@ interface UseQuickActionsParams {
   currentSeat: SeatWithPlayer | undefined;
   gameState: string | undefined;
   bettingActorSeatId: string | null;
-  maxBet: number;
+  currentBetTarget: number;
 }
 
 /**
@@ -22,7 +22,7 @@ export function useQuickActions({
   currentSeat,
   gameState,
   bettingActorSeatId,
-  maxBet,
+  currentBetTarget,
 }: UseQuickActionsParams) {
   const [quickAction, setQuickAction] = React.useState<QuickActionType>(null);
   const setSnapshot = useTableStore(selectSetSnapshot);
@@ -63,7 +63,7 @@ export function useQuickActions({
     const isMyTurn = bettingActorSeatId === currentSeat.id;
     if (!isMyTurn) return;
 
-    const canCheck = myCurrentBet === maxBet;
+    const canCheck = myCurrentBet === currentBetTarget;
 
     if (quickAction === "fold") {
       action.mutate({ tableId: tableId!, action: "FOLD", params: {} });
@@ -85,7 +85,7 @@ export function useQuickActions({
     currentSeat,
     gameState,
     bettingActorSeatId,
-    maxBet,
+    currentBetTarget,
     myCurrentBet, // Add myCurrentBet as dependency so effect re-runs when bet changes
     tableId,
     action,

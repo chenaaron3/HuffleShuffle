@@ -234,6 +234,156 @@ const scenarios: Scenario[] = [
       { type: "action", action: "CHECK", by: "player4" },
     ],
   },
+  {
+    name: "short big blind preflop: check becomes call to full BB",
+    steps: [
+      {
+        type: "join",
+        players: [
+          { key: "player1" },
+          { key: "player2" },
+          { key: "player3", buyIn: 6 },
+        ],
+      },
+      { type: "action", action: "START_GAME", by: "dealer" },
+      {
+        type: "validate",
+        seats: {
+          player2: { seatStatus: "active", currentBet: 5 },
+          player3: { seatStatus: "all-in", currentBet: 6, buyIn: 0 },
+        },
+      },
+      {
+        type: "action",
+        action: "DEAL_CARD",
+        by: "dealer",
+        params: { rank: "A", suit: "s" },
+      },
+      {
+        type: "action",
+        action: "DEAL_CARD",
+        by: "dealer",
+        params: { rank: "K", suit: "s" },
+      },
+      {
+        type: "action",
+        action: "DEAL_CARD",
+        by: "dealer",
+        params: { rank: "Q", suit: "s" },
+      },
+      {
+        type: "action",
+        action: "DEAL_CARD",
+        by: "dealer",
+        params: { rank: "J", suit: "s" },
+      },
+      {
+        type: "action",
+        action: "DEAL_CARD",
+        by: "dealer",
+        params: { rank: "T", suit: "s" },
+      },
+      {
+        type: "action",
+        action: "DEAL_CARD",
+        by: "dealer",
+        params: { rank: "9", suit: "s" },
+      },
+      {
+        type: "validate",
+        game: { state: "BETTING" },
+        firstToActFor: "player1",
+      },
+      { type: "action", action: "CHECK", by: "player1" },
+      {
+        type: "validate",
+        seats: {
+          player1: { currentBet: 10, buyIn: 290, lastAction: "CALL" },
+        },
+      },
+      { type: "action", action: "CHECK", by: "player2" },
+      {
+        type: "validate",
+        seats: {
+          player2: { buyIn: 290, lastAction: "CALL" },
+        },
+      },
+    ],
+  },
+  {
+    name: "short big blind preflop: min raise is based on full BB floor",
+    steps: [
+      {
+        type: "join",
+        players: [
+          { key: "player1" },
+          { key: "player2" },
+          { key: "player3", buyIn: 6 },
+        ],
+      },
+      { type: "action", action: "START_GAME", by: "dealer" },
+      {
+        type: "action",
+        action: "DEAL_CARD",
+        by: "dealer",
+        params: { rank: "A", suit: "s" },
+      },
+      {
+        type: "action",
+        action: "DEAL_CARD",
+        by: "dealer",
+        params: { rank: "K", suit: "s" },
+      },
+      {
+        type: "action",
+        action: "DEAL_CARD",
+        by: "dealer",
+        params: { rank: "Q", suit: "s" },
+      },
+      {
+        type: "action",
+        action: "DEAL_CARD",
+        by: "dealer",
+        params: { rank: "J", suit: "s" },
+      },
+      {
+        type: "action",
+        action: "DEAL_CARD",
+        by: "dealer",
+        params: { rank: "T", suit: "s" },
+      },
+      {
+        type: "action",
+        action: "DEAL_CARD",
+        by: "dealer",
+        params: { rank: "9", suit: "s" },
+      },
+      {
+        type: "validate",
+        game: { state: "BETTING" },
+        firstToActFor: "player1",
+      },
+      {
+        type: "action",
+        action: "RAISE",
+        by: "player1",
+        params: { amount: 16 },
+        isError: true,
+      },
+      {
+        type: "action",
+        action: "RAISE",
+        by: "player1",
+        params: { amount: 20 },
+      },
+      {
+        type: "validate",
+        seats: {
+          player1: { currentBet: 20, buyIn: 280, lastAction: "RAISE" },
+        },
+      },
+    ],
+  },
 ];
 
 export default scenarios;

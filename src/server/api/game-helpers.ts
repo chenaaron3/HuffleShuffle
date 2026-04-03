@@ -132,6 +132,11 @@ export async function executeBettingAction(
   const effectiveBigBlind = game.effectiveBigBlind ?? 0;
   const lastRaiseIncrement =
     (game.lastRaiseIncrement ?? 0) > 0 ? game.lastRaiseIncrement! : effectiveBigBlind;
+  const isPreflop = (game.communityCards?.length ?? 0) === 0;
+  // Preflop, calling must at least match the configured big blind even if BB posted short.
+  const currentBetTarget = isPreflop
+    ? Math.max(maxPlayerBet, effectiveBigBlind)
+    : maxPlayerBet;
 
   // Variables for all actions
   const currentBet = currentSeat.currentBet;
@@ -147,7 +152,7 @@ export async function executeBettingAction(
   if (action === "RAISE") {
     const amount = raiseAmount ?? 0;
     const isAllIn = amount - currentBet >= availableFunds;
-    const minRaiseTotal = maxPlayerBet + lastRaiseIncrement;
+    const minRaiseTotal = currentBetTarget + lastRaiseIncrement;
 
     // Validation: min raise = maxBet + lastRaiseIncrement (TDA rule)
     // Exception: all-in for less than full raise is allowed
@@ -166,14 +171,14 @@ export async function executeBettingAction(
     effectiveAction = "RAISE";
   } else if (action === "CHECK") {
     // Validation: ensure max == currentBet (if not, it becomes a call)
-    if (maxPlayerBet > currentBet) {
+    if (currentBetTarget > currentBet) {
       // This becomes a call - validate that maxbet > currentbet (which we know is true)
-      fundsRequested = maxPlayerBet - currentBet;
+      fundsRequested = currentBetTarget - currentBet;
       effectiveAction = "CALL";
-    } else if (maxPlayerBet < currentBet) {
+    } else if (currentBetTarget < currentBet) {
       throw new Error("Invalid check: current bet exceeds max bet");
     } else {
-      // maxPlayerBet == currentBet, so it's a check
+      // currentBetTarget == currentBet, so it's a check
       fundsRequested = 0;
       effectiveAction = "CHECK";
     }

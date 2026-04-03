@@ -153,11 +153,34 @@ export function useMaxBet() {
   return useMemo(() => {
     return Math.max(
       ...originalSeats
-        .filter((s) => s.seatStatus !== "folded")
+        .filter((s) => s.seatStatus !== "folded" && s.seatStatus !== "eliminated")
         .map((s) => s.currentBet),
       0,
     );
   }, [originalSeats]);
+}
+
+/**
+ * Current street bet target for calling/checking UX.
+ * Preflop, this is floored to effective BB so short-posted BB hands match backend behavior.
+ */
+export function useCurrentBetTarget() {
+  const snapshot = useTableStore(selectTableSnapshot);
+  const maxBet = useMaxBet();
+
+  return useMemo(() => {
+    const effectiveBigBlind =
+      snapshot?.game?.effectiveBigBlind ??
+      snapshot?.blinds?.effectiveBigBlind ??
+      0;
+    const isPreflop = (snapshot?.game?.communityCards?.length ?? 0) === 0;
+    return isPreflop ? Math.max(maxBet, effectiveBigBlind) : maxBet;
+  }, [
+    maxBet,
+    snapshot?.game?.communityCards,
+    snapshot?.game?.effectiveBigBlind,
+    snapshot?.blinds?.effectiveBigBlind,
+  ]);
 }
 
 export function useDealerSeatInfo() {
