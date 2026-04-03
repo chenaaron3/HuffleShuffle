@@ -180,10 +180,10 @@ export default function TableView() {
                             adaptiveStream: { pixelDensity: 'screen' },
                             dynacast: true,
                             videoCaptureDefaults: {
-                                resolution: VideoPresets.h720.resolution,
+                                resolution: VideoPresets.h360.resolution,
                             },
                             publishDefaults: {
-                                videoSimulcastLayers: [VideoPresets.h540, VideoPresets.h216],
+                                videoSimulcastLayers: [VideoPresets.h216],
                                 videoCodec: 'vp9' as VideoCodec,
                             },
                         }}

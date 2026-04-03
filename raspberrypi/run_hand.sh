@@ -40,7 +40,7 @@ command -v lk >/dev/null 2>&1 || { echo "Please Install LiveKit CLI: curl -sSL h
 # Start camera → H.264 TCP
 rm -f "$LOG_FILE"
 libcamera-vid -n --inline -t 0 \
-  --width 1280 --height 720 --framerate 30 \
+  --width 960 --height 540 --framerate 5 \
   --codec h264 --profile baseline \
   --listen -o "tcp://$HOST:$PORT" \
   >"$LOG_FILE" 2>&1 &
