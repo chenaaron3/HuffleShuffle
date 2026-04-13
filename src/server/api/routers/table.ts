@@ -45,6 +45,7 @@ import {
   resetGame,
   triggerBotActions,
 } from "../game-logic";
+import { getCurrentBetTarget } from "../game-utils";
 
 import type { BlindState } from "../blind-timer";
 import type { VideoGrant } from "livekit-server-sdk";
@@ -1118,12 +1119,17 @@ export const tableRouter = createTRPCRouter({
         if (!seat) throw new Error("Seat not found");
         if (seat.seatStatus !== "active") throw new Error("Seat is not active");
 
-        // Fold the player due to timeout using shared helper
-        // This handles the fold, betCount increment, turn rotation, and betting transition
+        // Timeout behavior: check when no chips are owed, otherwise fold.
+        const currentBetTarget = getCurrentBetTarget(game, snapshot.seats);
+        const timeoutAction: "CHECK" | "FOLD" =
+          (seat.currentBet ?? 0) >= currentBetTarget ? "CHECK" : "FOLD";
+
+        // Execute timeout action using shared helper.
+        // This handles betCount increment, turn rotation, and betting transition.
         await executeBettingAction(tx, {
           actorSeatId: input.seatId,
           gameId: game.id,
-          action: "FOLD",
+          action: timeoutAction,
         });
 
         return { ok: true } as const;

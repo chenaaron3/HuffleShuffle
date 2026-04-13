@@ -1,6 +1,7 @@
 const { Hand: PokerHand } = require("pokersolver");
 
 import type { games, seats } from "~/server/db/schema";
+import { getCurrentBetTarget } from "./game-utils";
 
 type SeatRow = typeof seats.$inferSelect;
 type GameRow = typeof games.$inferSelect;
@@ -596,20 +597,8 @@ export function createBotGameState(
   game: GameRow,
   orderedSeats: SeatRow[],
 ): BotGameState {
-  // Calculate max bet from all non-folded players.
-  // Preflop, this is floored to effective BB so bots don't under-call a short BB post.
-  const observedMaxBet = Math.max(
-    ...orderedSeats
-      .filter((s) => s.seatStatus !== "folded" && s.seatStatus !== "eliminated")
-      .map((s) => s.currentBet),
-    0,
-  );
-
   const effectiveBigBlind = game.effectiveBigBlind ?? 0;
-  const isPreflop = (game.communityCards?.length ?? 0) === 0;
-  const maxBet = isPreflop
-    ? Math.max(observedMaxBet, effectiveBigBlind)
-    : observedMaxBet;
+  const maxBet = getCurrentBetTarget(game, orderedSeats);
   const lastRaiseIncrement =
     (game.lastRaiseIncrement ?? 0) > 0 ? game.lastRaiseIncrement! : effectiveBigBlind;
 

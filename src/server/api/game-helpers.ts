@@ -11,7 +11,11 @@ import {
 import { rsaEncryptB64 } from "~/utils/crypto";
 
 import { logCall, logCheck, logFold, logRaise } from "./game-event-logger";
-import { fetchAllSeatsInOrder, getNextActiveSeatId } from "./game-utils";
+import {
+  fetchAllSeatsInOrder,
+  getCurrentBetTarget,
+  getNextActiveSeatId,
+} from "./game-utils";
 import { evaluateBettingTransition } from "./hand-solver";
 
 type Tx = {
@@ -132,11 +136,7 @@ export async function executeBettingAction(
   const effectiveBigBlind = game.effectiveBigBlind ?? 0;
   const lastRaiseIncrement =
     (game.lastRaiseIncrement ?? 0) > 0 ? game.lastRaiseIncrement! : effectiveBigBlind;
-  const isPreflop = (game.communityCards?.length ?? 0) === 0;
-  // Preflop, calling must at least match the configured big blind even if BB posted short.
-  const currentBetTarget = isPreflop
-    ? Math.max(maxPlayerBet, effectiveBigBlind)
-    : maxPlayerBet;
+  const currentBetTarget = getCurrentBetTarget(game, orderedSeats);
 
   // Variables for all actions
   const currentBet = currentSeat.currentBet;
