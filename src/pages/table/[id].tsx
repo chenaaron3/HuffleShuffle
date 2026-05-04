@@ -26,7 +26,7 @@ import { useTableQuery } from '~/hooks/use-table-query';
 import { useTableRealtimePusher } from '~/hooks/use-table-realtime-pusher';
 import {
     useBettingActorSeatId, useCurrentSeat, useCurrentUserSeatId, useGameState, useIsDealerRole,
-    useCurrentBetTarget, useOriginalSeats, usePaddedSeats, useTableSnapshot
+    useCurrentBetTarget, useIsPlayerTurn, useOriginalSeats, usePaddedSeats, useTableSnapshot
 } from '~/hooks/use-table-selectors';
 import { api } from '~/utils/api';
 import { rsaDecryptBase64 } from '~/utils/crypto';
@@ -56,6 +56,7 @@ export default function TableView() {
     const state = useGameState();
     const bettingActorSeatId = useBettingActorSeatId();
     const currentUserSeatId = useCurrentUserSeatId(session?.user?.id);
+    const isPlayerTurn = useIsPlayerTurn(session?.user?.id);
     const currentSeat = useCurrentSeat(session?.user?.id);
     const [handRoomName, setHandRoomName] = React.useState<string | null>(null);
 
@@ -98,6 +99,7 @@ export default function TableView() {
     useActionTimerLowSound({
         gameState: state,
         turnStartTime: snapshot?.game?.turnStartTime ?? null,
+        enabled: isPlayerTurn,
     });
     useRaiseEventSound({ tableId: id, events });
 

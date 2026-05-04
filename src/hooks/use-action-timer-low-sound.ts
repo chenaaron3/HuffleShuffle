@@ -21,18 +21,20 @@ function turnStartEpochMs(
 
 /**
  * Plays once per action clock when remaining time first enters the last ~5 seconds.
+ * Use `enabled` so only the actor (e.g. `useIsPlayerTurn`) hears it.
  */
 export function useActionTimerLowSound(params: {
   gameState: string | undefined;
   turnStartTime: Date | string | null | undefined;
+  enabled?: boolean;
 }) {
-  const { gameState, turnStartTime } = params;
+  const { gameState, turnStartTime, enabled = true } = params;
   const { play } = useSoundEffects();
   const trackedTurnStartMs = useRef<number | null>(null);
   const lowSoundFired = useRef(false);
 
   useEffect(() => {
-    if (gameState !== 'BETTING') {
+    if (!enabled || gameState !== 'BETTING') {
       trackedTurnStartMs.current = null;
       lowSoundFired.current = false;
       return;
@@ -66,5 +68,5 @@ export function useActionTimerLowSound(params: {
     tick();
     const id = window.setInterval(tick, 200);
     return () => window.clearInterval(id);
-  }, [gameState, turnStartTime, play]);
+  }, [enabled, gameState, turnStartTime, play]);
 }
