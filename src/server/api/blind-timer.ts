@@ -7,6 +7,8 @@ export type BlindState = {
   elapsedSeconds: number;
   stepSeconds: number;
   startedAt: Date | null;
+  /** True when the timer is frozen at elapsedSeconds (not advancing). */
+  isPaused: boolean;
   effectiveSmallBlind: number;
   effectiveBigBlind: number;
 };
@@ -31,6 +33,7 @@ export function computeBlindState(
       elapsedSeconds: 0,
       stepSeconds: DEFAULT_BLIND_STEP_SECONDS,
       startedAt: null,
+      isPaused: false,
       effectiveSmallBlind: 0,
       effectiveBigBlind: 0,
     };
@@ -38,9 +41,11 @@ export function computeBlindState(
 
   const stepSeconds = sanitizeStepSeconds(table.blindStepSeconds);
   const startedAt = table.blindTimerStartedAt;
+  const isPaused = Boolean(table.blindTimerIsPaused);
 
-  const elapsedSeconds =
-    startedAt != null
+  const elapsedSeconds = isPaused
+    ? Math.max(0, table.blindTimerFrozenElapsedSeconds ?? 0)
+    : startedAt != null
       ? Math.max(0, Math.floor((now.getTime() - startedAt.getTime()) / 1000))
       : 0;
 
@@ -51,7 +56,8 @@ export function computeBlindState(
     multiplier,
     elapsedSeconds,
     stepSeconds,
-    startedAt,
+    startedAt: isPaused ? null : startedAt,
+    isPaused,
     effectiveSmallBlind: table.smallBlind * multiplier,
     effectiveBigBlind: table.bigBlind * multiplier,
   };

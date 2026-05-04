@@ -37,6 +37,16 @@ export function TableSetupBlindsTab({ tableId, isOpen, isActive }: TableSetupBli
             void tableQuery.refetch();
         },
     });
+    const pauseBlindTimerMut = api.blinds.pause.useMutation({
+        onSuccess: () => {
+            void tableQuery.refetch();
+        },
+    });
+    const resumeBlindTimerMut = api.blinds.resume.useMutation({
+        onSuccess: () => {
+            void tableQuery.refetch();
+        },
+    });
     const setBlindStepMut = api.blinds.setInterval.useMutation({
         onSuccess: () => {
             void tableQuery.refetch();
@@ -57,12 +67,13 @@ export function TableSetupBlindsTab({ tableId, isOpen, isActive }: TableSetupBli
         setStepMinutes(rounded);
     }, [blinds]);
 
-    const isTimerRunning = Boolean(blinds?.startedAt);
+    const isWallClockRunning = Boolean(blinds?.startedAt);
+    const isPaused = blinds?.isPaused ?? false;
     const elapsedSeconds = blinds?.elapsedSeconds ?? 0;
     const stepSeconds = blinds?.stepSeconds ?? 0;
 
     React.useEffect(() => {
-        if (!isTimerRunning) {
+        if (!isWallClockRunning) {
             setTick(0);
             return;
         }
@@ -70,18 +81,20 @@ export function TableSetupBlindsTab({ tableId, isOpen, isActive }: TableSetupBli
             setTick((prev) => prev + 1);
         }, 1000);
         return () => clearInterval(interval);
-    }, [isTimerRunning]);
+    }, [isWallClockRunning]);
 
-    const liveElapsedSeconds = isTimerRunning ? elapsedSeconds + tick : elapsedSeconds;
+    const liveElapsedSeconds = isWallClockRunning ? elapsedSeconds + tick : elapsedSeconds;
 
     let secondsUntilNextIncrease: number | null = null;
-    if (isTimerRunning && stepSeconds > 0) {
+    if ((isWallClockRunning || isPaused) && stepSeconds > 0) {
         const remainder = liveElapsedSeconds % stepSeconds;
         secondsUntilNextIncrease = remainder === 0 ? stepSeconds : stepSeconds - remainder;
     }
 
     const progressPercent =
-        isTimerRunning && stepSeconds > 0 && secondsUntilNextIncrease !== null
+        (isWallClockRunning || isPaused) &&
+            stepSeconds > 0 &&
+            secondsUntilNextIncrease !== null
             ? Math.min(
                 100,
                 Math.floor(((stepSeconds - secondsUntilNextIncrease) / stepSeconds) * 100),
@@ -100,7 +113,11 @@ export function TableSetupBlindsTab({ tableId, isOpen, isActive }: TableSetupBli
         setBlindStepMut.mutate({ tableId, stepSeconds: seconds });
     }, [parsedMinutes, setBlindStepMut, stepMinutesInvalid, tableId]);
 
-    const anyTimerPending = startBlindTimerMut.isPending || resetBlindTimerMut.isPending;
+    const anyTimerPending =
+        startBlindTimerMut.isPending ||
+        resetBlindTimerMut.isPending ||
+        pauseBlindTimerMut.isPending ||
+        resumeBlindTimerMut.isPending;
 
     if (!isActive) {
         return null;
@@ -112,8 +129,13 @@ export function TableSetupBlindsTab({ tableId, isOpen, isActive }: TableSetupBli
                 <CardHeader className="space-y-1">
                     <div className="flex items-center justify-between">
                         <CardTitle className="text-base text-zinc-100">Blind Timer</CardTitle>
-                        <Badge variant={isTimerRunning ? 'secondary' : 'outline'}>
-                            {isTimerRunning ? 'Running' : 'Stopped'}
+                        <Badge
+                            variant={isWallClockRunning ? 'secondary' : 'outline'}
+                            className={
+                                isPaused ? 'border-amber-500/60 text-amber-200' : undefined
+                            }
+                        >
+                            {isWallClockRunning ? 'Running' : isPaused ? 'Paused' : 'Stopped'}
                         </Badge>
                     </div>
                 </CardHeader>
@@ -139,15 +161,17 @@ export function TableSetupBlindsTab({ tableId, isOpen, isActive }: TableSetupBli
                     <div className="md:col-span-3 space-y-2">
                         <div className="flex items-center justify-between text-xs">
                             <span className="uppercase tracking-wide text-zinc-500">
-                                {isTimerRunning && secondsUntilNextIncrease !== null
-                                    ? `Next increase in ${formatDuration(secondsUntilNextIncrease)}`
-                                    : 'Timer not running'}
+                                {isPaused
+                                    ? 'Timer paused — resume to continue the countdown'
+                                    : isWallClockRunning && secondsUntilNextIncrease !== null
+                                      ? `Next increase in ${formatDuration(secondsUntilNextIncrease)}`
+                                      : 'Timer not running'}
                             </span>
-                            {isTimerRunning && progressPercent > 0 && (
+                            {(isWallClockRunning || isPaused) && progressPercent > 0 && (
                                 <span className="text-zinc-400">{progressPercent}%</span>
                             )}
                         </div>
-                        {isTimerRunning && stepSeconds > 0 ? (
+                        {(isWallClockRunning || isPaused) && stepSeconds > 0 ? (
                             <div className="h-2 w-full overflow-hidden rounded-full bg-zinc-800">
                                 <div
                                     className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 transition-all duration-1000 ease-out"
@@ -159,16 +183,44 @@ export function TableSetupBlindsTab({ tableId, isOpen, isActive }: TableSetupBli
                         )}
                     </div>
                 </CardContent>
-                <CardFooter className="flex justify-center">
-                    {isTimerRunning ? (
-                        <Button
-                            variant="destructive"
-                            onClick={() => resetBlindTimerMut.mutate({ tableId })}
-                            disabled={anyTimerPending}
-                            className="w-full max-w-xs bg-red-500 hover:bg-red-400"
-                        >
-                            {resetBlindTimerMut.isPending ? 'Stopping…' : 'Stop Timer'}
-                        </Button>
+                <CardFooter className="flex flex-col items-stretch gap-2 sm:flex-row sm:justify-center">
+                    {isWallClockRunning ? (
+                        <>
+                            <Button
+                                variant="secondary"
+                                onClick={() => pauseBlindTimerMut.mutate({ tableId })}
+                                disabled={anyTimerPending}
+                                className="w-full max-w-xs"
+                            >
+                                {pauseBlindTimerMut.isPending ? 'Pausing…' : 'Pause'}
+                            </Button>
+                            <Button
+                                variant="destructive"
+                                onClick={() => resetBlindTimerMut.mutate({ tableId })}
+                                disabled={anyTimerPending}
+                                className="w-full max-w-xs bg-red-500 hover:bg-red-400"
+                            >
+                                {resetBlindTimerMut.isPending ? 'Stopping…' : 'Stop Timer'}
+                            </Button>
+                        </>
+                    ) : isPaused ? (
+                        <>
+                            <Button
+                                onClick={() => resumeBlindTimerMut.mutate({ tableId })}
+                                disabled={anyTimerPending}
+                                className="w-full max-w-xs bg-emerald-500 text-emerald-950 hover:bg-emerald-400"
+                            >
+                                {resumeBlindTimerMut.isPending ? 'Resuming…' : 'Resume'}
+                            </Button>
+                            <Button
+                                variant="destructive"
+                                onClick={() => resetBlindTimerMut.mutate({ tableId })}
+                                disabled={anyTimerPending}
+                                className="w-full max-w-xs bg-red-500 hover:bg-red-400"
+                            >
+                                {resetBlindTimerMut.isPending ? 'Stopping…' : 'Stop Timer'}
+                            </Button>
+                        </>
                     ) : (
                         <Button
                             onClick={() => startBlindTimerMut.mutate({ tableId })}

@@ -11,13 +11,14 @@ export function useLiveBlindState() {
   const [tick, setTick] = useState(0);
   const blinds = snapshot?.blinds;
 
-  const isTimerRunning = Boolean(blinds?.startedAt);
+  const isWallClockRunning = Boolean(blinds?.startedAt);
+  const isPaused = blinds?.isPaused ?? false;
   const elapsedSeconds = blinds?.elapsedSeconds ?? 0;
   const stepSeconds = blinds?.stepSeconds ?? 0;
 
   // Sync local tick with timer status
   useEffect(() => {
-    if (!isTimerRunning) {
+    if (!isWallClockRunning) {
       setTick(0);
       return;
     }
@@ -28,7 +29,7 @@ export function useLiveBlindState() {
       setTick((prev) => prev + 1);
     }, 1000);
     return () => clearInterval(interval);
-  }, [isTimerRunning, elapsedSeconds]);
+  }, [isWallClockRunning, elapsedSeconds]);
 
   // Extract primitive values from blinds to avoid unnecessary recalculations
   const multiplier = blinds?.multiplier ?? 1;
@@ -46,7 +47,7 @@ export function useLiveBlindState() {
       };
     }
 
-    const liveElapsedSeconds = isTimerRunning
+    const liveElapsedSeconds = isWallClockRunning
       ? elapsedSeconds + tick
       : elapsedSeconds;
     const remainder = liveElapsedSeconds % stepSeconds;
@@ -81,10 +82,11 @@ export function useLiveBlindState() {
       multiplier: currentMultiplier,
       effectiveSmallBlind: displaySmallBlind,
       effectiveBigBlind: displayBigBlind,
-      secondsUntilNextIncrease: isTimerRunning
+      secondsUntilNextIncrease: isWallClockRunning || isPaused
         ? secondsUntilNextIncrease
         : stepSeconds,
-      progressPercent: isTimerRunning ? progressPercent : 0,
+      progressPercent:
+        isWallClockRunning || isPaused ? progressPercent : 0,
     };
   }, [
     multiplier,
@@ -93,8 +95,9 @@ export function useLiveBlindState() {
     stepSeconds,
     elapsedSeconds,
     tick,
-    isTimerRunning,
+    isWallClockRunning,
+    isPaused,
   ]);
 
-  return liveState;
+  return { ...liveState, isPaused };
 }

@@ -122,6 +122,8 @@ export const pokerTables = createTable(
     bigBlind: d.integer().notNull(),
     blindStepSeconds: d.integer().notNull().default(600),
     blindTimerStartedAt: d.timestamp({ withTimezone: true }),
+    blindTimerIsPaused: d.boolean().notNull().default(false),
+    blindTimerFrozenElapsedSeconds: d.integer(),
     maxSeats: d.integer().notNull().default(MAX_SEATS_PER_TABLE),
     createdAt: d
       .timestamp({ withTimezone: true })

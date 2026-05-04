@@ -4,7 +4,10 @@ import { createContext, useCallback, useContext, useMemo, useRef } from 'react';
 
 import type { ReactNode } from 'react';
 
-type SoundEffectKey = 'turnNotification';
+type SoundEffectKey =
+    | 'turnNotification'
+    | 'actionTimeLow'
+    | 'playerRaise';
 
 type SoundEffectConfig = {
     src: string;
@@ -16,6 +19,12 @@ type SoundEffectManifest = Record<SoundEffectKey, SoundEffectConfig>;
 const SOUND_EFFECTS: SoundEffectManifest = {
     turnNotification: {
         src: '/audio/ding_strong.wav',
+    },
+    actionTimeLow: {
+        src: '/audio/clock.mp3',
+    },
+    playerRaise: {
+        src: '/audio/chips.mp3',
     },
 };
 

@@ -26,7 +26,8 @@ export function PotAndBlindsDisplay({ className }: PotAndBlindsDisplayProps) {
     const displayBigBlind = liveBlindState.effectiveBigBlind;
     const secondsUntilNextIncrease = liveBlindState.secondsUntilNextIncrease;
     const progressPercent = liveBlindState.progressPercent;
-    const isTimerRunning = Boolean(blinds?.startedAt);
+    const blindTimerVisible =
+        Boolean(blinds?.startedAt) || Boolean(blinds?.isPaused);
 
     return (
         <motion.div
@@ -58,7 +59,7 @@ export function PotAndBlindsDisplay({ className }: PotAndBlindsDisplayProps) {
                 {blinds && (
                     <div className="relative w-full flex flex-col items-center px-5 py-1.5">
                         {/* Background Progress Timer Gradient - Only in Blinds Section */}
-                        {isTimerRunning && (
+                        {blindTimerVisible && (
                             <div
                                 className="absolute inset-0 bg-emerald-900/30 pointer-events-none z-0"
                                 style={{
@@ -75,7 +76,7 @@ export function PotAndBlindsDisplay({ className }: PotAndBlindsDisplayProps) {
 
                         {/* Always show timer while running */}
                         <AnimatePresence>
-                            {isTimerRunning && (
+                            {blindTimerVisible && (
                                 <motion.div
                                     initial={{ opacity: 0, height: 0, marginTop: 0 }}
                                     animate={{ opacity: 1, height: 'auto', marginTop: 4 }}
@@ -83,7 +84,9 @@ export function PotAndBlindsDisplay({ className }: PotAndBlindsDisplayProps) {
                                     className="relative z-10 overflow-hidden flex flex-col items-center"
                                 >
                                     <div className="text-emerald-400 font-mono text-xs font-medium bg-black/40 px-2 py-0.5 rounded-md">
-                                        2x in {formatTimeRemaining(secondsUntilNextIncrease)}
+                                        {blinds?.isPaused
+                                            ? 'Paused'
+                                            : `2x in ${formatTimeRemaining(secondsUntilNextIncrease)}`}
                                     </div>
                                 </motion.div>
                             )}

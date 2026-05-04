@@ -85,6 +85,13 @@
       "when": 1760000000000,
       "tag": "0014_add_blind_timer",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1760000000001,
+      "tag": "0020_add_blind_timer_pause",
+      "breakpoints": true
     }
   ]
 }

@@ -16,8 +16,10 @@ import { QuickActions } from '~/components/ui/quick-actions';
 import { SeatSection } from '~/components/ui/seat-section';
 import { useBackgroundBlur } from '~/hooks/use-background-blur';
 import { useBlindIncreaseToast } from '~/hooks/use-blind-increase-toast';
+import { useActionTimerLowSound } from '~/hooks/use-action-timer-low-sound';
 import { useDealerCardSound } from '~/hooks/use-dealer-card-sound';
 import { useDealerTimer } from '~/hooks/use-dealer-timer';
+import { useRaiseEventSound } from '~/hooks/use-raise-event-sound';
 import { useQuickActions } from '~/hooks/use-quick-actions';
 import { useTableEvents } from '~/hooks/use-table-events';
 import { useTableQuery } from '~/hooks/use-table-query';
@@ -92,6 +94,12 @@ export default function TableView() {
     useDealerCardSound({
         isDealer: !!isDealerAtTable,
     });
+
+    useActionTimerLowSound({
+        gameState: state,
+        turnStartTime: snapshot?.game?.turnStartTime ?? null,
+    });
+    useRaiseEventSound({ tableId: id, events });
 
     // --- Blind increase toast hook ---
     useBlindIncreaseToast();

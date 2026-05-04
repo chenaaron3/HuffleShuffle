@@ -8,6 +8,9 @@ import { MAX_SEATS_PER_TABLE } from '~/server/db/schema';
 import { api } from '~/utils/api';
 import { generateRsaKeyPairForTable } from '~/utils/crypto';
 
+/** Chips deducted from wallet and seated stack when a player joins from the lobby. */
+const DEFAULT_JOIN_CHIPS = 1000;
+
 export default function LobbyPage() {
     const { data: session, status } = useSession();
     const router = useRouter();
@@ -38,7 +41,7 @@ export default function LobbyPage() {
         onSuccess: ({ tableId }) => void router.push(`/table/${tableId}`),
     });
 
-    const [form, setForm] = useState({ name: 'Table', smallBlind: 5, bigBlind: 10, buyIn: 200, maxSeats: MAX_SEATS_PER_TABLE });
+    const [form, setForm] = useState({ name: 'Table', smallBlind: 5, bigBlind: 10, maxSeats: MAX_SEATS_PER_TABLE });
 
     // Redirect to table if user has an existing seat
     useEffect(() => {
@@ -89,8 +92,8 @@ export default function LobbyPage() {
                 <title>Lobby - HuffleShuffle</title>
             </Head>
             <main className="min-h-screen bg-black text-white">
-                <div className="mx-auto grid max-w-6xl grid-cols-1 gap-8 px-6 py-10 md:grid-cols-3">
-                    <section className="md:col-span-2">
+                <div className="mx-auto max-w-6xl px-6 py-10">
+                    <section>
                         <h2 className="mb-4 text-2xl font-semibold">Available Tables</h2>
                         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                             {(tables ?? []).map((t) => (
@@ -124,7 +127,7 @@ export default function LobbyPage() {
                                                 onClick={async () => {
                                                     if (!t.isJoinable) return;
                                                     const { publicKeyPem } = await generateRsaKeyPairForTable(t.id);
-                                                    joinMutation.mutate({ tableId: t.id, buyIn: form.buyIn, userPublicKey: publicKeyPem });
+                                                    joinMutation.mutate({ tableId: t.id, buyIn: DEFAULT_JOIN_CHIPS, userPublicKey: publicKeyPem });
                                                 }}
                                                 disabled={!t.isJoinable || t.availableSeats === 0}
                                                 className={`rounded-md px-3 py-2 text-sm font-medium ${t.isJoinable && t.availableSeats > 0
@@ -140,23 +143,6 @@ export default function LobbyPage() {
                             ))}
                         </div>
                     </section>
-
-                    <aside className="space-y-6">
-                        {isDealer ? (
-                            <></>
-                        ) : (
-                            <div className="rounded-lg border border-white/10 bg-zinc-900/50 p-4">
-                                <h3 className="mb-3 text-lg font-medium">Set Buy-In</h3>
-                                <label className="block text-sm text-zinc-300">
-                                    Amount
-                                    <input type="number" value={form.buyIn}
-                                        onChange={(e) => setForm({ ...form, buyIn: Number(e.target.value) })}
-                                        className="mt-1 w-full rounded-md border border-white/10 bg-black/50 px-3 py-2 outline-none ring-0" />
-                                </label>
-                                <p className="mt-2 text-xs text-zinc-400">Choose the amount transferred from your wallet when joining.</p>
-                            </div>
-                        )}
-                    </aside>
                 </div >
             </main >
         </>
