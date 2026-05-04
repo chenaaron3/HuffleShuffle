@@ -33,6 +33,8 @@ export const users = createTable(
       .primaryKey()
       .default(sql`gen_random_uuid()`),
     name: d.varchar({ length: 255 }),
+    /** Shown at the table; updated when joining from the lobby. */
+    displayName: d.varchar({ length: 255 }).notNull().default("Player"),
     email: d.varchar({ length: 255 }).notNull(),
     emailVerified: d
       .timestamp({
@@ -137,6 +139,22 @@ export const pokerTables = createTable(
   ],
 );
 
+/**
+ * Optional one row per `poker_table` with `ON DELETE RESTRICT` so the parent row
+ * cannot be removed (e.g. accidental delete in Studio) until this row is deleted first.
+ */
+export const protectedPokerTables = createTable("protected_poker_table", (d) => ({
+  tableId: d
+    .varchar({ length: 255 })
+    .notNull()
+    .primaryKey()
+    .references(() => pokerTables.id, { onDelete: "restrict" }),
+  createdAt: d
+    .timestamp({ withTimezone: true })
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull(),
+}));
+
 // Seat status enum for tracking player state
 export const seatStatusEnum = pgEnum("seat_status", [
   "active",
@@ -157,7 +175,7 @@ export const seats = createTable(
     tableId: d
       .varchar({ length: 255 })
       .notNull()
-      .references(() => pokerTables.id),
+      .references(() => pokerTables.id, { onDelete: "cascade" }),
     playerId: d
       .varchar({ length: 255 })
       .notNull()
@@ -221,7 +239,7 @@ export const games = createTable(
     tableId: d
       .varchar({ length: 255 })
       .notNull()
-      .references(() => pokerTables.id),
+      .references(() => pokerTables.id, { onDelete: "cascade" }),
     isCompleted: d.boolean().notNull().default(false),
     state: gameStateEnum("state").notNull().default("DEAL_HOLE_CARDS"),
     dealerButtonSeatId: d
@@ -299,8 +317,10 @@ export const gameEvents = createTable(
     tableId: d
       .varchar({ length: 255 })
       .notNull()
-      .references(() => pokerTables.id),
-    gameId: d.varchar({ length: 255 }).references(() => games.id),
+      .references(() => pokerTables.id, { onDelete: "cascade" }),
+    gameId: d
+      .varchar({ length: 255 })
+      .references(() => games.id, { onDelete: "cascade" }),
     type: gameEventEnum("type").notNull(),
     details: d
       .jsonb()
@@ -354,7 +374,7 @@ export const piDevices = createTable(
     tableId: d
       .varchar({ length: 255 })
       .notNull()
-      .references(() => pokerTables.id),
+      .references(() => pokerTables.id, { onDelete: "cascade" }),
     type: piDeviceTypeEnum("type").notNull(),
     seatNumber: d.integer(),
     publicKey: d.text(),
@@ -367,10 +387,24 @@ export const piDevices = createTable(
 );
 
 // Relations (now that all tables are declared)
+export const protectedPokerTablesRelations = relations(
+  protectedPokerTables,
+  ({ one }) => ({
+    table: one(pokerTables, {
+      fields: [protectedPokerTables.tableId],
+      references: [pokerTables.id],
+    }),
+  }),
+);
+
 export const pokerTablesRelations = relations(pokerTables, ({ one, many }) => ({
   dealer: one(users, {
     fields: [pokerTables.dealerId],
     references: [users.id],
+  }),
+  protection: one(protectedPokerTables, {
+    fields: [pokerTables.id],
+    references: [protectedPokerTables.tableId],
   }),
   seats: many(seats),
   games: many(games),

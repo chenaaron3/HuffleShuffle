@@ -1,51 +1,36 @@
-import { and, eq, gt, isNull, or, sql } from "drizzle-orm";
-import { AccessToken } from "livekit-server-sdk";
-import process from "process";
-import ts from "typescript";
-import { z } from "zod";
-import {
-  createTRPCRouter,
-  protectedProcedure,
-  publicProcedure,
-} from "~/server/api/trpc";
-import { db } from "~/server/db";
+import { and, eq, gt, isNull, or, sql } from 'drizzle-orm';
+import { AccessToken } from 'livekit-server-sdk';
+import process from 'process';
+import ts from 'typescript';
+import { z } from 'zod';
+import { createTRPCRouter, protectedProcedure, publicProcedure } from '~/server/api/trpc';
+import { db } from '~/server/db';
 import {
   games,
   MAX_SEATS_PER_TABLE,
   piDevices,
   pokerTables,
+  protectedPokerTables,
   seats,
   users,
 } from "~/server/db/schema";
-import { getRoomServiceClient } from "~/server/livekit";
-import { endHandStream, startHandStream } from "~/server/signal";
-import { rsaEncryptB64 } from "~/utils/crypto";
+import { getRoomServiceClient } from '~/server/livekit';
+import { endHandStream, startHandStream } from '~/server/signal';
+import { rsaEncryptB64 } from '~/utils/crypto';
 
-import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
-import { TrackSource, TrackType } from "@livekit/protocol";
+import { SendMessageCommand, SQSClient } from '@aws-sdk/client-sqs';
+import { TrackSource, TrackType } from '@livekit/protocol';
 
-import { computeBlindState } from "../blind-timer";
+import { computeBlindState } from '../blind-timer';
+import { generateBotPublicKey, getBotIdForSeat, getBotName } from '../bot-constants';
 import {
-  generateBotPublicKey,
-  getBotIdForSeat,
-  getBotName,
-  isBot,
-} from "../bot-constants";
+    createSeatTransaction, executeBettingAction, removePlayerSeatTransaction
+} from '../game-helpers';
 import {
-  createSeatTransaction,
-  executeBettingAction,
-  removePlayerSeatTransaction,
-} from "../game-helpers";
-import {
-  createNewGame,
-  dealCard,
-  generateRandomCard,
-  notifyTableUpdate,
-  parseRankSuitToBarcode,
-  resetGame,
-  triggerBotActions,
-} from "../game-logic";
-import { getCurrentBetTarget } from "../game-utils";
+    createNewGame, dealCard, generateRandomCard, notifyTableUpdate, parseRankSuitToBarcode,
+    resetGame, triggerBotActions
+} from '../game-logic';
+import { getCurrentBetTarget } from '../game-utils';
 
 import type { BlindState } from "../blind-timer";
 import type { VideoGrant } from "livekit-server-sdk";
@@ -60,7 +45,11 @@ const ensurePlayerRole = (role: string | undefined) => {
 type DB = typeof db;
 type SeatRow = typeof seats.$inferSelect;
 export type SeatWithPlayer = SeatRow & {
-  player?: { id: string; name: string | null } | null;
+  player?: {
+    id: string;
+    name: string | null;
+    displayName: string;
+  } | null;
   cardsVisibleToOthers?: boolean;
 };
 type GameRow = typeof games.$inferSelect;
@@ -92,6 +81,7 @@ const summarizeTable = async (
             columns: {
               id: true,
               name: true,
+              displayName: true,
             },
           },
         },
@@ -134,13 +124,9 @@ export function redactSnapshotForUser(
   const nonFoldedSeats = snapshot.seats.filter(
     (s) => s.seatStatus !== "folded" && s.seatStatus !== "eliminated",
   );
-  const maxBet = Math.max(
-    ...nonFoldedSeats.map((s) => s.currentBet ?? 0),
-    0,
-  );
+  const maxBet = Math.max(...nonFoldedSeats.map((s) => s.currentBet ?? 0), 0);
   const activePlayerFacingDecision = snapshot.seats.some(
-    (s) =>
-      s.seatStatus === "active" && (s.currentBet ?? 0) < maxBet,
+    (s) => s.seatStatus === "active" && (s.currentBet ?? 0) < maxBet,
   );
   const showCardsForRunout =
     (activeCount === 0 && allInCount >= 2) ||
@@ -306,6 +292,7 @@ export const tableRouter = createTRPCRouter({
       with: {
         games: { orderBy: (g, { desc }) => [desc(g.createdAt)], limit: 1 },
         seats: { columns: { id: true } },
+        protection: true,
       },
     });
 
@@ -321,6 +308,9 @@ export const tableRouter = createTRPCRouter({
         smallBlind: t.smallBlind,
         bigBlind: t.bigBlind,
         maxSeats: t.maxSeats,
+        dealerId: t.dealerId,
+        /** DB row exists in `protected_poker_table` — blocks deleting the poker_table row. */
+        isLocked: !!t.protection,
         isJoinable,
         availableSeats,
         playerCount,
@@ -442,6 +432,42 @@ export const tableRouter = createTRPCRouter({
       return { success: true };
     }),
 
+  setTableDeleteLock: protectedProcedure
+    .input(
+      z.object({
+        tableId: z.string(),
+        locked: z.boolean(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      ensureDealerRole(ctx.session.user.role);
+
+      await db.transaction(async (tx) => {
+        const table = await tx.query.pokerTables.findFirst({
+          where: eq(pokerTables.id, input.tableId),
+          columns: { id: true },
+        });
+        if (!table) throw new Error("Table not found");
+
+        if (input.locked) {
+          const existing = await tx.query.protectedPokerTables.findFirst({
+            where: eq(protectedPokerTables.tableId, input.tableId),
+          });
+          if (!existing) {
+            await tx.insert(protectedPokerTables).values({
+              tableId: input.tableId,
+            });
+          }
+        } else {
+          await tx
+            .delete(protectedPokerTables)
+            .where(eq(protectedPokerTables.tableId, input.tableId));
+        }
+      });
+
+      return { locked: input.locked } as const;
+    }),
+
   join: protectedProcedure
     .input(
       z.object({
@@ -494,7 +520,6 @@ export const tableRouter = createTRPCRouter({
           throw new Error("No available seats found");
         }
 
-        // Use shared helper to create seat
         const seat = await createSeatTransaction(tx, {
           tableId: input.tableId,
           playerId: userId,
@@ -586,22 +611,27 @@ export const tableRouter = createTRPCRouter({
 
         const botPublicKey = generateBotPublicKey();
 
+        const botLabel = getBotName(seatNumber);
         if (!existingBot) {
-          // Create bot user with near-infinite balance
           await tx.insert(users).values({
             id: botUserId,
-            name: getBotName(seatNumber),
+            name: botLabel,
+            displayName: botLabel,
             email: `bot-seat-${seatNumber}@huffle-shuffle.local`,
             role: "player",
             balance: 2147483647, // Max 32-bit integer
             publicKey: botPublicKey,
           });
+        } else {
+          await tx
+            .update(users)
+            .set({ displayName: botLabel, name: botLabel })
+            .where(eq(users.id, botUserId));
         }
 
         // Default buy-in is 20x big blind
         const buyInAmount = input.buyIn ?? snapshot.bigBlind * 20;
 
-        // Use shared helper to create bot seat (will deduct from bot's balance)
         const seat = await createSeatTransaction(tx, {
           tableId: input.tableId,
           playerId: botUserId,
@@ -786,6 +816,7 @@ export const tableRouter = createTRPCRouter({
                 playerId: true,
                 seatNumber: true,
                 buyIn: true,
+                startingBalance: true,
               },
             },
             piDevices: {
@@ -841,6 +872,7 @@ export const tableRouter = createTRPCRouter({
           playerId: userId,
           seatNumber: input.toSeatNumber,
           buyIn: fromSeat.buyIn,
+          startingBalance: fromSeat.startingBalance,
           encryptedUserNonce: encUser,
           encryptedPiNonce: encPi,
         });

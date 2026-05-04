@@ -92,6 +92,41 @@
       "when": 1760000000001,
       "tag": "0020_add_blind_timer_pause",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1760000000002,
+      "tag": "0021_seat_display_name",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1760000000003,
+      "tag": "0022_seat_display_name_not_null",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1760000000004,
+      "tag": "0023_user_display_name_drop_seat_display_name",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1760000000005,
+      "tag": "0024_poker_table_cascade_delete",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1760000000006,
+      "tag": "0025_protected_poker_table",
+      "breakpoints": true
     }
   ]
 }

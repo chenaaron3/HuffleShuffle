@@ -78,7 +78,7 @@ async function setupDealerButton(
     dealerButtonSeatId: previousSeat.id,
     communityCards: [],
     potTotal: 0,
-    sidePots: [],
+    sidePotDetails: [],
     betCount: 0,
     requiredBetCount: 0,
   });
@@ -199,6 +199,7 @@ describe("PHH Simulation Tests", () => {
               role: "dealer",
               balance: 0,
               name: "PHH Dealer",
+              displayName: "PHH Dealer",
             },
             ...playerKeys.map((k, i) => ({
               id: playerIds[k],
@@ -206,6 +207,7 @@ describe("PHH Simulation Tests", () => {
               role: "player" as const,
               balance: 100000000, // 100M chips - enough for any tournament stack
               name: `Player ${i + 1}`,
+              displayName: `Player ${i + 1}`,
             })),
           ])
           .onConflictDoUpdate({
@@ -215,6 +217,7 @@ describe("PHH Simulation Tests", () => {
               role: sql`EXCLUDED.role`,
               balance: sql`EXCLUDED.balance`,
               name: sql`EXCLUDED.name`,
+              displayName: sql`EXCLUDED."displayName"`,
             },
           });
 

@@ -176,6 +176,7 @@ export async function upsertHeadlessDealerUser(dealerId: string) {
       role: "dealer",
       balance: 0,
       name: "Headless Dealer",
+      displayName: "Headless Dealer",
     })
     .onConflictDoUpdate({
       target: users.id,
@@ -184,6 +185,7 @@ export async function upsertHeadlessDealerUser(dealerId: string) {
         role: sql`EXCLUDED.role`,
         balance: sql`EXCLUDED.balance`,
         name: sql`EXCLUDED.name`,
+        displayName: sql`EXCLUDED."displayName"`,
       },
     });
 }

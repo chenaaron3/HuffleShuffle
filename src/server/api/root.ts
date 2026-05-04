@@ -1,6 +1,7 @@
 import { blindsRouter } from "~/server/api/routers/blinds";
 import { setupRouter } from "~/server/api/routers/setup";
 import { tableRouter } from "~/server/api/routers/table";
+import { userRouter } from "~/server/api/routers/user";
 import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
 
 /**
@@ -10,6 +11,7 @@ import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
  */
 export const appRouter = createTRPCRouter({
   table: tableRouter,
+  user: userRouter,
   setup: setupRouter,
   blinds: blindsRouter,
 });

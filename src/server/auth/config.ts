@@ -16,14 +16,17 @@ declare module "next-auth" {
     user: {
       id: string;
       role: "player" | "dealer";
+      displayName: string;
     } & DefaultSession["user"];
   }
-
-  // interface User {
-  //   // ...other properties
-  //   // role: UserRole;
-  // }
 }
+
+/** Drizzle `users` row shape; callback `user` is AdapterUser but loads from our table. */
+type SessionCallbackUser = {
+  id: string;
+  role: "player" | "dealer";
+  displayName: string;
+};
 
 /**
  * Options for NextAuth.js used to configure adapters, providers, callbacks, etc.
@@ -50,13 +53,17 @@ export const authConfig = {
     verificationTokensTable: verificationTokens,
   }),
   callbacks: {
-    session: ({ session, user }) => ({
-      ...session,
-      user: {
-        ...session.user,
-        id: user.id,
-        role: (user as any).role as "player" | "dealer",
-      },
-    }),
+    session: ({ session, user }) => {
+      const u = user as unknown as SessionCallbackUser;
+      return {
+        ...session,
+        user: {
+          ...session.user,
+          id: u.id,
+          role: u.role,
+          displayName: u.displayName,
+        },
+      };
+    },
   },
 } satisfies NextAuthConfig;

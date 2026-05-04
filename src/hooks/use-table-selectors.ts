@@ -139,10 +139,10 @@ export function useActivePlayerName() {
   const bettingActorSeatId = useBettingActorSeatId();
   return useMemo(() => {
     if (state === "BETTING") {
-      return (
-        originalSeats.find((s: SeatWithPlayer) => s.id === bettingActorSeatId)
-          ?.player?.name ?? undefined
+      const actor = originalSeats.find(
+        (s: SeatWithPlayer) => s.id === bettingActorSeatId,
       );
+      return actor?.player?.displayName;
     }
     return undefined;
   }, [state, originalSeats, bettingActorSeatId]);

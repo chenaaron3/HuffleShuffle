@@ -17,7 +17,8 @@ function formatTime(dateStr: string | Date): string {
 function seatName(seatId: string | undefined | null, seats: SeatWithPlayer[]): string {
     if (!seatId) return 'Unknown';
     const s = seats.find((x) => x.id === seatId);
-    return s?.player?.name ?? (typeof s?.seatNumber === 'number' ? `Seat ${s.seatNumber + 1}` : 'Unknown');
+    if (!s) return 'Unknown';
+    return s.player?.displayName ?? 'Unknown';
 }
 
 export function EventFeed({

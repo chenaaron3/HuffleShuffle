@@ -23,6 +23,9 @@ export async function handleJoinStep(
 ): Promise<void> {
   for (const p of step.players) {
     const playerBuyIn = p.buyIn ?? defaultBuyIn;
+    await callers[p.key].user.updateDisplayName({
+      displayName: `Player ${p.key.replace("player", "")}`,
+    });
     await callers[p.key].table.join({
       tableId,
       buyIn: playerBuyIn,

@@ -21,7 +21,8 @@ interface SidePotChartProps {
 
 function getSeatName(seatId: string, seats: SeatWithPlayer[]): string {
     const seat = seats.find((s) => s.id === seatId);
-    return seat?.player?.name ?? `Seat ${(seat?.seatNumber ?? -1) + 1}`;
+    if (!seat) return 'Seat ?';
+    return seat.player?.displayName ?? 'Seat ?';
 }
 
 // Transform side pot data into recharts format

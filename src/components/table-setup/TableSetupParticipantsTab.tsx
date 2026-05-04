@@ -59,6 +59,7 @@ export function TableSetupParticipantsTab({ tableId, isOpen, isActive }: TableSe
                         playerId,
                         player: seat.player ?? null,
                         buyIn: seat.buyIn ?? 0,
+                        displayName: seat.player?.displayName ?? 'Player',
                     }
                     : null,
                 isBot: seat ? BOT_USER_IDS.includes(playerId ?? '') : false,
@@ -160,7 +161,7 @@ export function TableSetupParticipantsTab({ tableId, isOpen, isActive }: TableSe
                             </div>
                             <div>
                                 <div className="font-medium">
-                                    {isBot ? `Bot ${seatNumber + 1}` : seat ? seat.player?.name ?? 'Player' : 'Empty Seat'}
+                                    {isBot ? `Bot ${seatNumber + 1}` : seat ? seat.displayName : 'Empty Seat'}
                                 </div>
                                 <div className="text-xs text-zinc-400">
                                     {isBot ? 'AI Player' : seat ? `${seat.buyIn} chips` : 'Available'}

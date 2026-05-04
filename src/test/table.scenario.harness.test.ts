@@ -84,6 +84,7 @@ describe("table scenario harness", () => {
           role: "dealer",
           balance: 0,
           name: "Dealer",
+          displayName: "Dealer",
         },
         ...(Object.keys(playerIds) as PlayerKey[]).map((k, i) => ({
           id: playerIds[k],
@@ -91,6 +92,7 @@ describe("table scenario harness", () => {
           role: "player" as const,
           balance: 1000,
           name: `${i + 1}`,
+          displayName: `Player ${i + 1}`,
         })),
       ])
       .onConflictDoUpdate({
@@ -100,6 +102,7 @@ describe("table scenario harness", () => {
           role: sql`EXCLUDED.role`,
           balance: sql`EXCLUDED.balance`,
           name: sql`EXCLUDED.name`,
+          displayName: sql`EXCLUDED."displayName"`,
         },
       });
 

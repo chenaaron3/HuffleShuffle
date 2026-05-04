@@ -521,7 +521,7 @@ export function SeatCard({
                     : 'bg-black/80 border-white/10 text-white'
                     }`}
             >
-                {isSelf ? 'You' : (seat.player?.name ?? 'Player')}
+                {isSelf ? 'You' : (seat.player?.displayName ?? 'Player')}
             </div>
         </motion.div>
     );

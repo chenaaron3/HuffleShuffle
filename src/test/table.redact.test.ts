@@ -25,7 +25,7 @@ function createMockSeat(
     winAmount: 0,
     winningCards: [],
     voluntaryShow: false,
-    player: { id: "player-1", name: "Player 1" },
+    player: { id: "player-1", name: "Player 1", displayName: "Player 1" },
     ...overrides,
   } as SeatWithPlayer;
 }
