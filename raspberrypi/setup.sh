@@ -30,7 +30,10 @@ fi
 
 echo "[setup] Installing LiveKit CLI"
 if ! command -v lk >/dev/null 2>&1; then
-  bash -lc "curl -sSL https://get.livekit.io/cli | bash"
+  if ! bash -lc "curl -sSL https://get.livekit.io/cli | bash"; then
+    echo "[setup] WARNING: LiveKit CLI install failed; continuing setup." >&2
+    echo "[setup] Install manually before streaming: curl -sSL https://get.livekit.io/cli | bash" >&2
+  fi
 fi
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"

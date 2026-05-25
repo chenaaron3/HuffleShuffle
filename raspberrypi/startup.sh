@@ -21,13 +21,14 @@ wait_for_network() {
     local attempt=0
     
     while [ $attempt -lt $max_attempts ]; do
-        if ping -c 1 github.com >/dev/null 2>&1; then
+        # Use HTTPS, not ping: NoNewPrivileges in the systemd unit blocks ICMP for non-root.
+        if curl -fsS --connect-timeout 3 --max-time 5 -o /dev/null https://github.com 2>/dev/null; then
             log "Network connectivity confirmed"
             return 0
         fi
         log "Network not ready, attempt $((attempt + 1))/$max_attempts"
         sleep 2
-        ((attempt++))
+        attempt=$((attempt + 1))
     done
     
     log "ERROR: Network connectivity timeout after $max_attempts attempts"
