@@ -992,6 +992,15 @@ export const tableRouter = createTRPCRouter({
             barcode = await generateRandomCard(tx, input.tableId, game ?? null);
           }
 
+          const scannerDevice = await tx.query.piDevices.findFirst({
+            where: and(
+              eq(piDevices.tableId, input.tableId),
+              eq(piDevices.type, "scanner"),
+            ),
+          });
+          if (!scannerDevice)
+            throw new Error("No scanner registered for this table");
+
           const region = process.env.AWS_REGION || "us-east-1";
           const queueUrl = process.env.SQS_QUEUE_URL;
           const sqs = new SQSClient({ region });
@@ -1000,7 +1009,7 @@ export const tableRouter = createTRPCRouter({
             new SendMessageCommand({
               QueueUrl: queueUrl,
               MessageBody: JSON.stringify({
-                serial: "10000000672a9ed2",
+                serial: scannerDevice.serial,
                 barcode,
                 ts,
               }),
