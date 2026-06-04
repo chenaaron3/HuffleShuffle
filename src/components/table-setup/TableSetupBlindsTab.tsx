@@ -4,6 +4,7 @@ import { Button } from '~/components/ui/button';
 import {
     Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle
 } from '~/components/ui/card';
+import { isBlindMultiplierAtCap } from '~/lib/blind-timer';
 import { api } from '~/utils/api';
 
 function formatDuration(seconds: number): string {
@@ -84,22 +85,29 @@ export function TableSetupBlindsTab({ tableId, isOpen, isActive }: TableSetupBli
     }, [isWallClockRunning]);
 
     const liveElapsedSeconds = isWallClockRunning ? elapsedSeconds + tick : elapsedSeconds;
+    const blindSteps =
+        stepSeconds > 0 ? Math.floor(liveElapsedSeconds / stepSeconds) : 0;
+    const isAtMaxMultiplier = isBlindMultiplierAtCap(blindSteps);
 
     let secondsUntilNextIncrease: number | null = null;
-    if ((isWallClockRunning || isPaused) && stepSeconds > 0) {
+    if ((isWallClockRunning || isPaused) && stepSeconds > 0 && !isAtMaxMultiplier) {
         const remainder = liveElapsedSeconds % stepSeconds;
         secondsUntilNextIncrease = remainder === 0 ? stepSeconds : stepSeconds - remainder;
     }
 
     const progressPercent =
-        (isWallClockRunning || isPaused) &&
-            stepSeconds > 0 &&
-            secondsUntilNextIncrease !== null
-            ? Math.min(
-                100,
-                Math.floor(((stepSeconds - secondsUntilNextIncrease) / stepSeconds) * 100),
-            )
-            : 0;
+        isAtMaxMultiplier
+            ? 100
+            : (isWallClockRunning || isPaused) &&
+                stepSeconds > 0 &&
+                secondsUntilNextIncrease !== null
+              ? Math.min(
+                    100,
+                    Math.floor(
+                        ((stepSeconds - secondsUntilNextIncrease) / stepSeconds) * 100,
+                    ),
+                )
+              : 0;
 
     const parsedMinutes = Number(stepMinutes);
     const stepMinutesInvalid = Number.isNaN(parsedMinutes) || parsedMinutes <= 0;
@@ -163,9 +171,11 @@ export function TableSetupBlindsTab({ tableId, isOpen, isActive }: TableSetupBli
                             <span className="uppercase tracking-wide text-zinc-500">
                                 {isPaused
                                     ? 'Timer paused — resume to continue the countdown'
-                                    : isWallClockRunning && secondsUntilNextIncrease !== null
-                                      ? `Next increase in ${formatDuration(secondsUntilNextIncrease)}`
-                                      : 'Timer not running'}
+                                    : isAtMaxMultiplier
+                                      ? 'Maximum blind level reached'
+                                      : isWallClockRunning && secondsUntilNextIncrease !== null
+                                        ? `Next increase in ${formatDuration(secondsUntilNextIncrease)}`
+                                        : 'Timer not running'}
                             </span>
                             {(isWallClockRunning || isPaused) && progressPercent > 0 && (
                                 <span className="text-zinc-400">{progressPercent}%</span>

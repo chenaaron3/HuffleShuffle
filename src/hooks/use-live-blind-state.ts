@@ -1,4 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
+import {
+  computeBlindMultiplier,
+  isBlindMultiplierAtCap,
+} from '~/lib/blind-timer';
 import { useTableSnapshot } from '~/hooks/use-table-selectors';
 
 /**
@@ -44,23 +48,30 @@ export function useLiveBlindState() {
         effectiveBigBlind,
         secondsUntilNextIncrease: stepSeconds,
         progressPercent: 0,
+        isAtMaxMultiplier: false,
       };
     }
 
     const liveElapsedSeconds = isWallClockRunning
       ? elapsedSeconds + tick
       : elapsedSeconds;
-    const remainder = liveElapsedSeconds % stepSeconds;
-    const secondsUntilNextIncrease =
-      remainder === 0 ? stepSeconds : stepSeconds - remainder;
+    const steps = Math.floor(liveElapsedSeconds / stepSeconds);
+    const atMaxMultiplier = isBlindMultiplierAtCap(steps);
 
-    // Calculate progress (0 to 100)
-    const progressPercent =
-      ((stepSeconds - secondsUntilNextIncrease) / stepSeconds) * 100;
+    const remainder = liveElapsedSeconds % stepSeconds;
+    const secondsUntilNextIncrease = atMaxMultiplier
+      ? 0
+      : remainder === 0
+        ? stepSeconds
+        : stepSeconds - remainder;
+
+    // Calculate progress (0 to 100); full bar when capped
+    const progressPercent = atMaxMultiplier
+      ? 100
+      : ((stepSeconds - secondsUntilNextIncrease) / stepSeconds) * 100;
 
     // Calculate local blind increase
     // If we have passed the step threshold locally before server update
-    const steps = Math.floor(liveElapsedSeconds / stepSeconds);
     let currentMultiplier = multiplier;
     let displaySmallBlind = effectiveSmallBlind;
     let displayBigBlind = effectiveBigBlind;
@@ -72,7 +83,7 @@ export function useLiveBlindState() {
       const baseSmall = effectiveSmallBlind / multiplier;
       const baseBig = effectiveBigBlind / multiplier;
 
-      currentMultiplier = Math.max(1, Math.pow(2, steps));
+      currentMultiplier = computeBlindMultiplier(steps);
 
       displaySmallBlind = Math.round(baseSmall * currentMultiplier);
       displayBigBlind = Math.round(baseBig * currentMultiplier);
@@ -87,8 +98,10 @@ export function useLiveBlindState() {
         : stepSeconds,
       progressPercent:
         isWallClockRunning || isPaused ? progressPercent : 0,
+      isAtMaxMultiplier: atMaxMultiplier,
     };
   }, [
+    blinds,
     multiplier,
     effectiveSmallBlind,
     effectiveBigBlind,
