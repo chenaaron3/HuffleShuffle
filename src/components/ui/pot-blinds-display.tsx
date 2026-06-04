@@ -26,6 +26,7 @@ export function PotAndBlindsDisplay({ className }: PotAndBlindsDisplayProps) {
     const displayBigBlind = liveBlindState.effectiveBigBlind;
     const secondsUntilNextIncrease = liveBlindState.secondsUntilNextIncrease;
     const progressPercent = liveBlindState.progressPercent;
+    const isAtMaxMultiplier = liveBlindState.isAtMaxMultiplier;
     const blindTimerVisible =
         Boolean(blinds?.startedAt) || Boolean(blinds?.isPaused);
 
@@ -86,7 +87,9 @@ export function PotAndBlindsDisplay({ className }: PotAndBlindsDisplayProps) {
                                     <div className="text-emerald-400 font-mono text-xs font-medium bg-black/40 px-2 py-0.5 rounded-md">
                                         {blinds?.isPaused
                                             ? 'Paused'
-                                            : `2x in ${formatTimeRemaining(secondsUntilNextIncrease)}`}
+                                            : isAtMaxMultiplier
+                                              ? 'Max blinds'
+                                              : `2x in ${formatTimeRemaining(secondsUntilNextIncrease)}`}
                                     </div>
                                 </motion.div>
                             )}

@@ -1,3 +1,8 @@
+import {
+  computeBlindMultiplier,
+  DEFAULT_BLIND_STEP_SECONDS,
+  MAX_BLIND_MULTIPLIER,
+} from "~/lib/blind-timer";
 import type { pokerTables } from "~/server/db/schema";
 
 export type TableRow = typeof pokerTables.$inferSelect;
@@ -13,8 +18,7 @@ export type BlindState = {
   effectiveBigBlind: number;
 };
 
-export const DEFAULT_BLIND_STEP_SECONDS = 600;
-export const MAX_BLIND_MULTIPLIER = 64;
+export { DEFAULT_BLIND_STEP_SECONDS, MAX_BLIND_MULTIPLIER };
 
 export function sanitizeStepSeconds(value: number | null | undefined): number {
   if (typeof value !== "number" || Number.isNaN(value)) {
@@ -50,7 +54,7 @@ export function computeBlindState(
       : 0;
 
   const steps = stepSeconds > 0 ? Math.floor(elapsedSeconds / stepSeconds) : 0;
-  const multiplier = Math.min(MAX_BLIND_MULTIPLIER, Math.max(1, 2 ** steps));
+  const multiplier = computeBlindMultiplier(steps);
 
   return {
     multiplier,
