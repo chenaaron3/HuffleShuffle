@@ -1,6 +1,6 @@
-import { useSession } from "next-auth/react";
-import { useMemo } from "react";
-import { selectTableSnapshot, useTableStore } from "~/stores/table-store";
+import { useSession } from 'next-auth/react';
+import { useMemo } from 'react';
+import { selectTableSnapshot, useTableStore } from '~/stores/table-store';
 
 import type { SeatWithPlayer } from "~/server/api/routers/table";
 
@@ -153,7 +153,9 @@ export function useMaxBet() {
   return useMemo(() => {
     return Math.max(
       ...originalSeats
-        .filter((s) => s.seatStatus !== "folded" && s.seatStatus !== "eliminated")
+        .filter(
+          (s) => s.seatStatus !== "folded" && s.seatStatus !== "eliminated",
+        )
         .map((s) => s.currentBet),
       0,
     );
@@ -287,6 +289,25 @@ export function useCanVolunteerShow(userId: string | undefined) {
     // Can volunteer if cards are not yet visible to others
     return currentSeat.cardsVisibleToOthers === false;
   }, [userId, gameState, currentSeat]);
+}
+
+/**
+ * Tournament winner: the last non-eliminated player once a hand has finished
+ * (SHOWDOWN). Returns null while the game is still contested.
+ */
+export function useTournamentWinner(): SeatWithPlayer["player"] | null {
+  const state = useGameState();
+  const originalSeats = useOriginalSeats();
+  return useMemo(() => {
+    if (state !== "SHOWDOWN") return null;
+    // A lone player at the table is not a winner; someone must be beaten.
+    // if (originalSeats.length < 2) return null;
+    const remaining = originalSeats.filter(
+      (s: SeatWithPlayer) => s.seatStatus !== "eliminated",
+    );
+    if (remaining.length !== 1) return null;
+    return remaining[0]?.player ?? null;
+  }, [state, originalSeats]);
 }
 
 export function useSidePotDetails() {

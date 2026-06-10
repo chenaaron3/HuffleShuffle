@@ -11,6 +11,7 @@ interface CardSlotProps {
     winningCards?: string[];
     seatId?: string;
     compact?: boolean;
+    seatStatus?: string;
 }
 
 export function CardSlot({
@@ -21,9 +22,12 @@ export function CardSlot({
     gameState,
     winningCards,
     seatId,
-    compact = false
+    compact = false,
+    seatStatus
 }: CardSlotProps) {
     const isEmpty = !card;
+    const isFolded = seatStatus === 'folded';
+    const isEliminated = seatStatus === 'eliminated';
 
     // Calculate placeholder dimensions to match actual card size
     // CardImage uses width={size} and height={Math.round(size * 1.4)}
@@ -32,17 +36,26 @@ export function CardSlot({
 
     return (
         <div className="relative">
+            {(isFolded || isEliminated) && (
+                <div
+                    className={`pointer-events-none absolute inset-0 z-10 rounded-sm mix-blend-multiply ${isEliminated ? 'bg-red-600/80' : 'bg-zinc-600/80'
+                        }`}
+                />
+            )}
             {isEmpty ? (
                 // Empty card placeholder - sized to match actual cards
                 <div
-                    className="rounded flex items-center justify-center border border-zinc-500/40 bg-zinc-800/40"
+                    className={`rounded flex items-center justify-center border ${isEliminated
+                        ? 'border-red-500/50 bg-red-900/40'
+                        : 'border-zinc-500/40 bg-zinc-800/40'
+                        }`}
                     style={{
                         width: `${placeholderWidth}px`,
                         height: `${placeholderHeight}px`
                     }}
                 >
                     {/* Optional: Add a subtle indicator for empty slot */}
-                    <div className="w-2 h-2 rounded-full bg-zinc-700/30"></div>
+                    <div className={`w-2 h-2 rounded-full ${isEliminated ? 'bg-red-700/40' : 'bg-zinc-700/30'}`}></div>
                 </div>
             ) : (
                 // Actual card with animation

@@ -21,8 +21,28 @@
   }
 }
 
+@keyframes gold-shimmer {
+  0% { background-position: 200% center; }
+  100% { background-position: -200% center; }
+}
+
+@keyframes shine {
+  0% { background-position: 0% 0%; }
+  50% { background-position: 100% 100%; }
+  100% { background-position: 0% 0%; }
+}
+
 @layer utilities {
   .animate-subtle-bounce { animation: subtle-bounce 1.8s ease-in-out infinite; }
+  /* Gold gradient text with a moving shine; pair with bg-clip-text text-transparent */
+  .animate-gold-shimmer {
+    background-size: 200% auto;
+    animation: gold-shimmer 3s linear infinite;
+  }
+  /* Used by ShineBorder; duration configurable via --duration */
+  .animate-shine {
+    animation: shine var(--duration, 14s) linear infinite;
+  }
   .no-scrollbar::-webkit-scrollbar { display: none; }
   .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 }

@@ -14,6 +14,7 @@ import { MediaPermissionsModal } from '~/components/ui/media-permissions-modal';
 import { MobileBettingView, MobileTableLayout } from '~/components/ui/mobile';
 import { QuickActions } from '~/components/ui/quick-actions';
 import { SeatSection } from '~/components/ui/seat-section';
+import { WinnerDialog } from '~/components/ui/winner-dialog';
 import { useBackgroundBlur } from '~/hooks/use-background-blur';
 import { useBlindIncreaseToast } from '~/hooks/use-blind-increase-toast';
 import { useActionTimerLowSound } from '~/hooks/use-action-timer-low-sound';
@@ -297,6 +298,7 @@ export default function TableView() {
                         <div className="text-zinc-400">Connecting to table audio/video…</div>
                     </div>
                 )}
+                <WinnerDialog />
             </main>
             {isDealerRole && (
                 <TableSetupModal tableId={tableIdStr} open={showSetup} onClose={() => setShowSetup(false)} />

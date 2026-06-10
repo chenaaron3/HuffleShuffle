@@ -150,6 +150,8 @@ export function VerticalRaiseControls({ }: VerticalRaiseControlsProps) {
     // Call: currentBet < currentBetTarget (need to match current street target)
     // Check: currentBet === currentBetTarget (already matched, no action needed)
     const isCall = currentBetTarget > 0 && currentBet < currentBetTarget;
+    // Bet = first wager on the street (no outstanding bet to match); Raise = increasing an existing bet
+    const isOpeningBet = currentBetTarget === 0;
     // Call amount is limited by player's available balance (may be all-in)
     const callAmount = isCall ? Math.min(currentBetTarget - currentBet, playerBalance) : 0;
 
@@ -328,7 +330,7 @@ export function VerticalRaiseControls({ }: VerticalRaiseControlsProps) {
                         </>
                     ) : (
                         <>
-                            Raise <RollingNumber value={validatedAmount} prefix="$" className="font-semibold" />
+                            {isOpeningBet ? 'Bet' : 'Raise'} <RollingNumber value={validatedAmount} prefix="$" className="font-semibold" />
                         </>
                     )}
                 </Button>

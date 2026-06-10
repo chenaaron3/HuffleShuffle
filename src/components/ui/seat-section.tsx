@@ -430,6 +430,7 @@ export function SeatCard({
                                     winningCards={seat.winningCards ?? undefined}
                                     seatId={seat.id}
                                     compact={true}
+                                    seatStatus={seat.seatStatus}
                                 />
                             );
                         })}
