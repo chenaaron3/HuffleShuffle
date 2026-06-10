@@ -301,7 +301,7 @@ export function useTournamentWinner(): SeatWithPlayer["player"] | null {
   return useMemo(() => {
     if (state !== "SHOWDOWN") return null;
     // A lone player at the table is not a winner; someone must be beaten.
-    // if (originalSeats.length < 2) return null;
+    if (originalSeats.length < 2) return null;
     const remaining = originalSeats.filter(
       (s: SeatWithPlayer) => s.seatStatus !== "eliminated",
     );
