@@ -89,7 +89,7 @@ export function PotAndBlindsDisplay({ className }: PotAndBlindsDisplayProps) {
                                             ? 'Paused'
                                             : isAtMaxMultiplier
                                               ? 'Max blinds'
-                                              : `2x in ${formatTimeRemaining(secondsUntilNextIncrease)}`}
+                                              : `Up in ${formatTimeRemaining(secondsUntilNextIncrease)}`}
                                     </div>
                                 </motion.div>
                             )}

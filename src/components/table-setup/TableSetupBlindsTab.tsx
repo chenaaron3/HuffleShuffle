@@ -247,7 +247,7 @@ export function TableSetupBlindsTab({ tableId, isOpen, isActive }: TableSetupBli
                 <CardHeader>
                     <CardTitle className="text-base text-zinc-100">Adjust Interval</CardTitle>
                     <CardDescription>
-                        Configure how many minutes each blind level lasts before doubling.
+                        Configure how many minutes each blind level lasts before increasing.
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="flex flex-col gap-3 md:flex-row md:items-end">

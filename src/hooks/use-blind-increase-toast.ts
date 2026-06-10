@@ -5,7 +5,7 @@ import { useLiveBlindState } from '~/hooks/use-live-blind-state';
 /**
  * Hook that watches for blind increases and shows a toast notification.
  * Uses live blind state multiplier to detect increases (more frequent updates).
- * The multiplier doubles every stepSeconds interval.
+ * The multiplier advances one blind level every stepSeconds interval.
  */
 export function useBlindIncreaseToast() {
   const liveBlindState = useLiveBlindState();
