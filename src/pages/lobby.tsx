@@ -52,19 +52,11 @@ export default function LobbyPage() {
 
     const updateDisplayNameMutation = api.user.updateDisplayName.useMutation();
 
-    const joinMutation = api.table.join.useMutation({
-        onSuccess: ({ tableId }) => {
-            setPendingJoinTableId(null);
-            void router.push(`/table/${tableId}`);
-        },
-        onError: (error) => {
-            console.error(error);
-            alert(error.message);
-        },
-    });
+    const joinMutation = api.table.join.useMutation();
 
-    const joinFlowPending =
-        updateDisplayNameMutation.isPending || joinMutation.isPending;
+    // Single flag covering the entire join flow (display name -> keygen -> join
+    // -> navigation) so the dialog doesn't flicker between async steps.
+    const [joinFlowPending, setJoinFlowPending] = useState(false);
 
     const [form, setForm] = useState({ name: 'Table', smallBlind: 5, bigBlind: 10, maxSeats: MAX_SEATS_PER_TABLE });
     const [pendingJoinTableId, setPendingJoinTableId] = useState<string | null>(null);
@@ -260,22 +252,25 @@ export default function LobbyPage() {
                             onClick={async () => {
                                 const name = joinDisplayName.trim();
                                 if (!name || !pendingJoinTableId) return;
+                                setJoinFlowPending(true);
                                 try {
                                     await updateDisplayNameMutation.mutateAsync({
                                         displayName: name,
                                     });
                                     const { publicKeyPem } =
                                         await generateRsaKeyPairForTable(pendingJoinTableId);
-                                    joinMutation.mutate({
+                                    const { tableId } = await joinMutation.mutateAsync({
                                         tableId: pendingJoinTableId,
                                         buyIn: DEFAULT_JOIN_CHIPS,
                                         userPublicKey: publicKeyPem,
                                     });
+                                    // Keep the dialog open (and the flag set) until navigation
+                                    // completes so the lobby doesn't flash back into view.
+                                    await router.push(`/table/${tableId}`);
                                 } catch (err) {
                                     console.error(err);
-                                    alert(
-                                        err instanceof Error ? err.message : 'Failed to update display name',
-                                    );
+                                    alert(err instanceof Error ? err.message : 'Failed to join table');
+                                    setJoinFlowPending(false);
                                 }
                             }}
                         >

@@ -1,10 +1,10 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { Track } from 'livekit-client';
-import { Mic, MicOff } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import * as React from 'react';
 import { BackgroundBlurToggle } from '~/components/ui/background-blur-toggle';
 import { CardSlot } from '~/components/ui/card-slot';
+import { ParticipantMuteButton } from '~/components/ui/participant-mute-button';
 import { RollingNumber } from '~/components/ui/chip-animations';
 import { TextHoverEffect } from '~/components/ui/text-hover-effect';
 import { useTableQuery } from '~/hooks/use-table-query';
@@ -178,20 +178,11 @@ export function SeatCard({
         }
     }, [tableId, isMoving, canMoveSeat, seatNumber, changeSeat, updateSnapshot, utils]);
     const trackRefs = useTracks([Track.Source.Camera]);
-    const audioRefs = useTracks([Track.Source.Microphone]);
     const videoTrackRef = seat ? trackRefs.find(
         (t) => t.participant.identity === seat.player?.id && t.source === Track.Source.Camera
     ) : null;
-    const audioTrackRef = seat ? audioRefs.find(
-        (t) => t.participant.identity === seat.player?.id && t.source === Track.Source.Microphone
-    ) : null;
-    const audioPublication = audioTrackRef?.publication ?? null;
-    const isAudioMuted = audioPublication ? audioPublication.isMuted : true;
-    const hasAudioTrack = !!audioPublication;
     const playerId = seat?.player?.id ?? null;
-    const { mutate: mutateAudioMute, isPending: isMuting } = api.table.setParticipantAudioMuted.useMutation();
     const isSelf = !!myUserId && seat?.player?.id === myUserId;
-    const showDealerMute = Boolean(dealerCanControlAudio && !isSelf && playerId && hasAudioTrack);
     const effectiveBigBlind = useEffectiveBigBlind();
     const blindsRemaining = Math.ceil((seat?.buyIn ?? 0) / effectiveBigBlind);
     const isTotalHovered = useInteractionStore((s) => s.isBlindsHovered);
@@ -199,19 +190,6 @@ export function SeatCard({
 
     const totalText = `$${(seat?.buyIn ?? 0)} total`;
     const blindsText = `${blindsRemaining} ${blindsRemaining === 1 ? 'blind' : 'blinds'}`;
-
-    const handleDealerToggleMute = React.useCallback(() => {
-        if (!playerId || !audioPublication) return;
-        mutateAudioMute({
-            tableId,
-            playerId,
-            muted: !isAudioMuted,
-        });
-    }, [audioPublication, isAudioMuted, mutateAudioMute, playerId, tableId]);
-
-    const dealerMuteButtonClasses = isAudioMuted
-        ? 'bg-red-500/90 text-white hover:bg-red-500 disabled:bg-red-500/60 disabled:text-white/70'
-        : 'bg-white/90 text-black hover:bg-white disabled:bg-white/60 disabled:text-black/50';
 
     // Timer border hook for active players during betting
     const timerBorder = useTimerBorder({
@@ -326,24 +304,11 @@ export function SeatCard({
                                     <VideoTrack trackRef={videoTrackRef} className="h-full w-full object-cover" />
                                 </ParticipantTile>
                             </div>
-                            {showDealerMute && (
-                                <div className="pointer-events-auto absolute inset-0 flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-30">
-                                    <button
-                                        type="button"
-                                        onClick={handleDealerToggleMute}
-                                        disabled={isMuting}
-                                        className={`flex h-8 w-8 items-center justify-center rounded-md text-xs font-medium transition-colors ${dealerMuteButtonClasses}`}
-                                        aria-label={isAudioMuted ? 'Unmute player microphone' : 'Mute player microphone'}
-                                        title={isAudioMuted ? 'Unmute player microphone' : 'Mute player microphone'}
-                                    >
-                                        {isAudioMuted ? (
-                                            <MicOff className="h-4 w-4" aria-hidden="true" />
-                                        ) : (
-                                            <Mic className="h-4 w-4" aria-hidden="true" />
-                                        )}
-                                    </button>
-                                </div>
-                            )}
+                            <ParticipantMuteButton
+                                tableId={tableId}
+                                playerId={playerId}
+                                canControlAudio={dealerCanControlAudio}
+                            />
                         </>
                     )
                 ) : (

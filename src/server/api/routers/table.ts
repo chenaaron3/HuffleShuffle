@@ -6,14 +6,8 @@ import { z } from 'zod';
 import { createTRPCRouter, protectedProcedure, publicProcedure } from '~/server/api/trpc';
 import { db } from '~/server/db';
 import {
-  games,
-  MAX_SEATS_PER_TABLE,
-  piDevices,
-  pokerTables,
-  protectedPokerTables,
-  seats,
-  users,
-} from "~/server/db/schema";
+    games, MAX_SEATS_PER_TABLE, piDevices, pokerTables, protectedPokerTables, seats, users
+} from '~/server/db/schema';
 import { getRoomServiceClient } from '~/server/livekit';
 import { endHandStream, startHandStream } from '~/server/signal';
 import { rsaEncryptB64 } from '~/utils/crypto';

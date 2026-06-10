@@ -4,9 +4,8 @@ import { TableSetupBlindsTab } from '~/components/table-setup/TableSetupBlindsTa
 import { TableSetupHardwareTab } from '~/components/table-setup/TableSetupHardwareTab';
 import { TableSetupParticipantsTab } from '~/components/table-setup/TableSetupParticipantsTab';
 
-import type {
-    TableSetupHardwareTabHandle,
-} from '~/components/table-setup/TableSetupHardwareTab';
+import type { TableSetupHardwareTabActions } from '~/components/table-setup/TableSetupHardwareTab';
+
 type Tab = 'hardware' | 'participants' | 'blinds';
 
 export function TableSetupModal({
@@ -19,21 +18,15 @@ export function TableSetupModal({
     onClose: () => void;
 }) {
     const [activeTab, setActiveTab] = React.useState<Tab>('participants');
-    const hardwareRef = React.useRef<TableSetupHardwareTabHandle | null>(null);
+    const [hardwareActions, setHardwareActions] = React.useState<TableSetupHardwareTabActions | null>(null);
 
     React.useEffect(() => {
         if (!open) return;
         setActiveTab('participants');
+        setHardwareActions(null);
     }, [open]);
 
     if (!open) return null;
-
-    const handleSaveHardware = () => {
-        hardwareRef.current?.save();
-    };
-
-    const hardwareCanSave = hardwareRef.current?.canSave ?? false;
-    const hardwareSaving = hardwareRef.current?.isSaving ?? false;
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
@@ -81,11 +74,11 @@ export function TableSetupModal({
 
                 <div className="flex-1 overflow-y-auto p-4">
                     <TableSetupHardwareTab
-                        ref={hardwareRef}
                         tableId={tableId}
                         isOpen={open}
                         isActive={activeTab === 'hardware'}
                         onClose={onClose}
+                        onActionsChange={setHardwareActions}
                     />
                     <TableSetupParticipantsTab
                         tableId={tableId}
@@ -102,13 +95,13 @@ export function TableSetupModal({
                     >
                         Cancel
                     </button>
-                    {activeTab === 'hardware' && (
+                    {activeTab === 'hardware' && hardwareActions && (
                         <button
-                            onClick={handleSaveHardware}
-                            disabled={!hardwareCanSave || hardwareSaving}
+                            onClick={hardwareActions.save}
+                            disabled={!hardwareActions.canSave || hardwareActions.isSaving}
                             className="rounded-md bg-white px-3 py-2 text-sm font-medium text-black transition hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-60"
                         >
-                            {hardwareSaving ? 'Saving…' : 'Save'}
+                            {hardwareActions.isSaving ? 'Saving…' : 'Save'}
                         </button>
                     )}
                 </div>
