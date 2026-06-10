@@ -39,8 +39,16 @@ function fireSideCannons(colors: string[]) {
   frame();
 }
 
-/** Bigger celebration reserved for the winner themselves. */
-function fireGoldenFireworks() {
+/**
+ * Bigger celebration reserved for the winner themselves.
+ *
+ * Note: the `isSelf` guard lives inside this function on purpose. Calling it
+ * as the lone body of an `if` statement triggers an SWC minifier bug
+ * (Next 15.2.x) that inlines the body as `if (...) let x = ...`, which is
+ * invalid JS and breaks the production build.
+ */
+function fireGoldenFireworks(isSelf: boolean) {
+  if (!isSelf) return;
   const end = Date.now() + CONFETTI_DURATION_MS;
 
   const interval = window.setInterval(() => {
@@ -75,7 +83,7 @@ export function WinnerDialog() {
     if (!winnerId) return;
     setDismissed(false);
     fireSideCannons(GOLD_COLORS);
-    if (isSelf) fireGoldenFireworks();
+    fireGoldenFireworks(isSelf);
   }, [winnerId, isSelf]);
 
   return (
