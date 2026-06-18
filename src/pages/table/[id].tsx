@@ -10,7 +10,6 @@ import { TableSetupModal } from '~/components/TableSetupModal';
 import { DealerCamera } from '~/components/ui/dealer-camera';
 import { EventFeed } from '~/components/ui/event-feed';
 import { HandCamera } from '~/components/ui/hand-camera';
-import { MediaPermissionsModal } from '~/components/ui/media-permissions-modal';
 import { MobileBettingView, MobileTableLayout } from '~/components/ui/mobile';
 import { QuickActions } from '~/components/ui/quick-actions';
 import { SeatSection } from '~/components/ui/seat-section';
@@ -26,8 +25,8 @@ import { useTableEvents } from '~/hooks/use-table-events';
 import { useTableQuery } from '~/hooks/use-table-query';
 import { useTableRealtimePusher } from '~/hooks/use-table-realtime-pusher';
 import {
-    useBettingActorSeatId, useCurrentSeat, useCurrentUserSeatId, useGameState, useIsDealerRole,
-    useCurrentBetTarget, useIsPlayerTurn, useOriginalSeats, usePaddedSeats, useTableSnapshot
+    useBettingActorSeatId, useCurrentSeat, useGameState, useIsDealerRole,
+    useCurrentBetTarget, useIsPlayerTurn, useOriginalSeats, useTableSnapshot
 } from '~/hooks/use-table-selectors';
 import { api } from '~/utils/api';
 import { rsaDecryptBase64 } from '~/utils/crypto';
@@ -47,16 +46,14 @@ export default function TableView() {
 
     // Use the hook that manages query and updates store
     const tableQuery = useTableQuery(id);
-    const updateSnapshot = tableQuery.updateSnapshot;
+    const refetchTable = tableQuery.refetch;
 
     const tableIdStr = id;
     // Use selector hooks for computed values
     const snapshot = useTableSnapshot();
-    const seats = usePaddedSeats(); // For rendering (includes nulls for empty seats)
     const originalSeats = useOriginalSeats(); // For calculations (only actual seats)
     const state = useGameState();
     const bettingActorSeatId = useBettingActorSeatId();
-    const currentUserSeatId = useCurrentUserSeatId(session?.user?.id);
     const isPlayerTurn = useIsPlayerTurn(session?.user?.id);
     const currentSeat = useCurrentSeat(session?.user?.id);
     const [handRoomName, setHandRoomName] = React.useState<string | null>(null);
@@ -66,7 +63,7 @@ export default function TableView() {
 
     useTableRealtimePusher({
         tableId: id,
-        refetch: tableQuery.refetch,
+        refetch: refetchTable,
         refreshEventFeed,
     });
 
@@ -107,7 +104,7 @@ export default function TableView() {
     // --- Blind increase toast hook ---
     useBlindIncreaseToast();
     React.useEffect(() => {
-        (async () => {
+        void (async () => {
             if (!id || !currentSeat?.encryptedUserNonce) return;
             try {
                 const roomName = await rsaDecryptBase64(id, currentSeat.encryptedUserNonce);
@@ -124,11 +121,11 @@ export default function TableView() {
         if (state === 'SHOWDOWN') {
             // Small delay to ensure backend has updated
             const timer = setTimeout(() => {
-                void tableQuery.refetch();
+                void refetchTable();
             }, 100);
             return () => clearTimeout(timer);
         }
-    }, [state]);
+    }, [state, refetchTable]);
 
     // Cleanup Pusher connection on unmount
     React.useEffect(() => {
@@ -235,7 +232,7 @@ export default function TableView() {
                                             {/* Hand area: flex layout with centered camera and quick actions */}
                                             <div className="flex w-full items-start gap-3">
                                                 <div className="flex-1 min-w-0">
-                                                    <EventFeed events={events} seats={originalSeats as any} />
+                                                    <EventFeed events={events} seats={originalSeats} />
                                                 </div>
                                                 <div className="flex gap-3 items-center">
                                                     <HandCamera
@@ -263,10 +260,6 @@ export default function TableView() {
                                             side="right"
                                         />
                                     </div>
-                                    <TableAnimation
-                                        seats={originalSeats}
-                                        gameState={state ?? ''}
-                                    />
                                 </>
                             }
                             mobileContent={{
@@ -303,7 +296,6 @@ export default function TableView() {
             {isDealerRole && (
                 <TableSetupModal tableId={tableIdStr} open={showSetup} onClose={() => setShowSetup(false)} />
             )}
-            {/* <MediaPermissionsModal isPlayer={isPlayer ?? false} /> */}
         </>
     );
 }
