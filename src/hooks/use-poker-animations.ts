@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { getPotPosition, getSeatPosition } from '~/utils/dom-positions';
 
 import type { SeatWithPlayer } from "~/server/api/routers/table";
@@ -19,60 +19,79 @@ export function usePokerAnimations({
   gameState,
 }: UsePokerAnimationsProps) {
   const previousSeatsRef = useRef<SeatWithPlayer[]>([]);
+  const animatedDealStateRef = useRef<string | null>(null);
+  const animatedShowdownWinnersRef = useRef<string | null>(null);
   const [chipStreams, setChipStreams] = useState<ChipStream[]>([]);
 
   // Function to trigger chip stream
-  const triggerChipStream = (
+  const triggerChipStream = useCallback((
     from: { x: number; y: number },
     to: { x: number; y: number },
     amount: number,
   ) => {
     const id = Math.random().toString(36).substr(2, 9);
     setChipStreams((prev) => [...prev, { id, from, to, amount }]);
-  };
+  }, []);
 
   // Function to remove chip stream
-  const removeChipStream = (id: string) => {
+  const removeChipStream = useCallback((id: string) => {
     setChipStreams((prev) => prev.filter((stream) => stream.id !== id));
-  };
+  }, []);
 
   // Check if game state has changed
   useEffect(() => {
-    if (["DEAL_FLOP", "DEAL_TURN", "DEAL_RIVER"].includes(gameState)) {
-      // Trigger chip streams from all seats with bets to pot
-      // Use previous seats because current seats have bets reset to 0
-      previousSeatsRef.current.forEach((previousSeat) => {
-        if (
-          previousSeat &&
-          previousSeat.seatStatus === "active" &&
-          previousSeat.currentBet > 0
-        ) {
-          // Get exact DOM positions - start from the bet chip, not the seat center
-          const fromPosition = getSeatPosition(previousSeat.id);
-          const toPosition = getPotPosition();
+    const dealStates = ["DEAL_FLOP", "DEAL_TURN", "DEAL_RIVER"];
+    if (dealStates.includes(gameState)) {
+      if (animatedDealStateRef.current !== gameState) {
+        animatedDealStateRef.current = gameState;
+        // Trigger chip streams from all seats with bets to pot
+        // Use previous seats because current seats have bets reset to 0
+        previousSeatsRef.current.forEach((previousSeat) => {
+          if (
+            previousSeat &&
+            previousSeat.seatStatus === "active" &&
+            previousSeat.currentBet > 0
+          ) {
+            // Get exact DOM positions - start from the bet chip, not the seat center
+            const fromPosition = getSeatPosition(previousSeat.id);
+            const toPosition = getPotPosition();
 
-          triggerChipStream(fromPosition, toPosition, previousSeat.currentBet);
-        }
-      });
+            triggerChipStream(fromPosition, toPosition, previousSeat.currentBet);
+          }
+        });
+      }
+    } else {
+      animatedDealStateRef.current = null;
     }
 
     // Detect winner distribution (showdown state)
     if (gameState === "SHOWDOWN") {
-      // Trigger chip streams from pot to winners
-      seats.forEach((seat) => {
-        if (seat && seat.winAmount && seat.winAmount > 0) {
-          // Get exact DOM positions - from pot to seat center (where balance is displayed)
-          const fromPosition = getPotPosition();
-          const toPosition = getSeatPosition(seat.id);
+      const winnerKey = seats
+        .filter((seat) => (seat.winAmount ?? 0) > 0)
+        .map((seat) => `${seat.id}:${seat.winAmount}`)
+        .sort()
+        .join("|");
 
-          triggerChipStream(fromPosition!, toPosition!, seat.winAmount);
-        }
-      });
+      if (winnerKey && animatedShowdownWinnersRef.current !== winnerKey) {
+        animatedShowdownWinnersRef.current = winnerKey;
+        // Trigger chip streams from pot to winners
+        seats.forEach((seat) => {
+          if (seat && seat.winAmount && seat.winAmount > 0) {
+            // Get exact DOM positions - from pot to seat center (where balance is displayed)
+            const fromPosition = getPotPosition();
+            const toPosition = getSeatPosition(seat.id);
+
+            triggerChipStream(fromPosition, toPosition, seat.winAmount);
+          }
+        });
+      }
+    } else {
+      animatedShowdownWinnersRef.current = null;
     }
 
     // Update previous seats after processing the state change
     previousSeatsRef.current = seats;
-  }, [seats, gameState]);
+  }, [seats, gameState, triggerChipStream]);
 
   // Return the animation functions and chip streams
   return {
