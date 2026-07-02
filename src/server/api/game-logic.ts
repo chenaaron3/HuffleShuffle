@@ -16,6 +16,7 @@ import {
     nonEliminatedCountOf
 } from './game-utils';
 import { evaluateBettingTransition } from './hand-solver';
+import { withTableMutation } from './table-transaction';
 
 type DB = typeof db;
 type SeatRow = typeof seats.$inferSelect;
@@ -639,8 +640,8 @@ export async function triggerBotActions(
       return;
     }
 
-    // Execute bot action
-    await database.transaction(async (txInner) => {
+    // Execute bot action under the per-table mutation lock
+    await withTableMutation(database, tableId, async (txInner) => {
       // Re-fetch within transaction
       const orderedSeats = await txInner.query.seats.findMany({
         where: eq(seats.tableId, tableId),

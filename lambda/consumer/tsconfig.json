@@ -25,7 +25,8 @@
     "link/schema.ts",
     "link/game-logic.ts",
     "link/game-utils.ts",
-    "link/hand-solver.ts"
+    "link/hand-solver.ts",
+    "link/table-transaction.ts"
   ],
   "exclude": [
     "node_modules",

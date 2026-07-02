@@ -1,6 +1,6 @@
 // Load environment variables from .env file
 import { config } from 'dotenv';
-import { and, eq, sql } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { drizzle, PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 
@@ -10,6 +10,7 @@ import {
     dealCard, notifyTableUpdate, parseBarcodeToRankSuit, triggerBotActions
 } from './link/game-logic';
 import * as schema from './link/schema';
+import { withTableMutation } from './link/table-transaction';
 
 import type {
   SQSEvent,
@@ -52,27 +53,31 @@ async function handleScan(msg: ScanMessage): Promise<void> {
   if (!device) throw new Error("Device not registered");
   if (device.type !== "scanner") throw new Error("Invalid device type");
 
-  await dbInstance
-    .update(schema.piDevices)
-    .set({ lastSeenAt: sql`CURRENT_TIMESTAMP` })
-    .where(eq(schema.piDevices.serial, serial));
-
   const { rank, suit } = parseBarcodeToRankSuit(barcode);
   const code = `${rank}${suit}`;
 
-  await dbInstance.transaction(async (tx) => {
-    const tableId = device.tableId;
-    if (!tableId) throw new Error("Device not assigned to a table");
+  const tableId = device.tableId;
+  if (!tableId) throw new Error("Device not assigned to a table");
+
+  await withTableMutation(dbInstance, tableId, async (tx) => {
+    await tx
+      .update(schema.piDevices)
+      .set({ lastSeenAt: sql`CURRENT_TIMESTAMP` })
+      .where(eq(schema.piDevices.serial, serial));
 
     const game = await tx.query.games.findFirst({
       where: eq(schema.games.tableId, tableId),
       orderBy: (games, { desc }) => [desc(games.createdAt)],
     });
 
-    // Use shared game logic instead of duplicating code
-    await dealCard(tx, tableId, game ?? null, code);
+    await dealCard(
+      tx as Parameters<typeof dealCard>[0],
+      tableId,
+      game ?? null,
+      code,
+    );
   });
-  await notifyTableUpdate(device.tableId);
+  await notifyTableUpdate(tableId);
 
   // Process bot actions if a betting round started and it's a bot's turn
   await triggerBotActions(dbInstance, device.tableId);

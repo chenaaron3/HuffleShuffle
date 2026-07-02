@@ -1,9 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import {
-  computeBlindMultiplier,
-  isBlindMultiplierAtCap,
-} from '~/lib/blind-timer';
 import { useTableSnapshot } from '~/hooks/use-table-selectors';
+import { computeBlindMultiplier, isBlindMultiplierAtCap } from '~/lib/blind-timer';
 
 /**
  * Hook that calculates live blind state with client-side interpolation.
@@ -93,11 +90,9 @@ export function useLiveBlindState() {
       multiplier: currentMultiplier,
       effectiveSmallBlind: displaySmallBlind,
       effectiveBigBlind: displayBigBlind,
-      secondsUntilNextIncrease: isWallClockRunning || isPaused
-        ? secondsUntilNextIncrease
-        : stepSeconds,
-      progressPercent:
-        isWallClockRunning || isPaused ? progressPercent : 0,
+      secondsUntilNextIncrease:
+        isWallClockRunning || isPaused ? secondsUntilNextIncrease : stepSeconds,
+      progressPercent: isWallClockRunning || isPaused ? progressPercent : 0,
       isAtMaxMultiplier: atMaxMultiplier,
     };
   }, [

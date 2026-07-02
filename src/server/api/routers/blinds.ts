@@ -9,6 +9,7 @@ import { db } from "~/server/db";
 import { pokerTables } from "~/server/db/schema";
 
 import { notifyTableUpdate } from "../game-logic";
+import { withTableMutation } from "../table-transaction";
 
 const ensureDealerRole = (role: string | undefined) => {
   if (role !== "dealer") throw new Error("FORBIDDEN: dealer role required");
@@ -19,25 +20,28 @@ export const blindsRouter = createTRPCRouter({
     .input(z.object({ tableId: z.string() }))
     .mutation(async ({ ctx, input }) => {
       ensureDealerRole(ctx.session.user.role);
-      const startedAt = new Date();
-      const rows = await db
-        .update(pokerTables)
-        .set({
-          blindTimerStartedAt: startedAt,
-          blindTimerIsPaused: false,
-          blindTimerFrozenElapsedSeconds: null,
-        })
-        .where(
-          and(
-            eq(pokerTables.id, input.tableId),
-            eq(pokerTables.dealerId, ctx.session.user.id),
-          ),
-        )
-        .returning();
+      const table = await withTableMutation(db, input.tableId, async (tx) => {
+        const startedAt = new Date();
+        const rows = await tx
+          .update(pokerTables)
+          .set({
+            blindTimerStartedAt: startedAt,
+            blindTimerIsPaused: false,
+            blindTimerFrozenElapsedSeconds: null,
+          })
+          .where(
+            and(
+              eq(pokerTables.id, input.tableId),
+              eq(pokerTables.dealerId, ctx.session.user.id),
+            ),
+          )
+          .returning();
 
-      const table = rows[0];
-      if (!table)
-        throw new Error("Table not found or you are not the dealer for it");
+        const updated = rows[0];
+        if (!updated)
+          throw new Error("Table not found or you are not the dealer for it");
+        return updated;
+      });
 
       await notifyTableUpdate(input.tableId);
 
@@ -49,24 +53,27 @@ export const blindsRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       ensureDealerRole(ctx.session.user.role);
 
-      const rows = await db
-        .update(pokerTables)
-        .set({
-          blindTimerStartedAt: null,
-          blindTimerIsPaused: false,
-          blindTimerFrozenElapsedSeconds: null,
-        })
-        .where(
-          and(
-            eq(pokerTables.id, input.tableId),
-            eq(pokerTables.dealerId, ctx.session.user.id),
-          ),
-        )
-        .returning();
+      const table = await withTableMutation(db, input.tableId, async (tx) => {
+        const rows = await tx
+          .update(pokerTables)
+          .set({
+            blindTimerStartedAt: null,
+            blindTimerIsPaused: false,
+            blindTimerFrozenElapsedSeconds: null,
+          })
+          .where(
+            and(
+              eq(pokerTables.id, input.tableId),
+              eq(pokerTables.dealerId, ctx.session.user.id),
+            ),
+          )
+          .returning();
 
-      const table = rows[0];
-      if (!table)
-        throw new Error("Table not found or you are not the dealer for it");
+        const updated = rows[0];
+        if (!updated)
+          throw new Error("Table not found or you are not the dealer for it");
+        return updated;
+      });
 
       await notifyTableUpdate(input.tableId);
 
@@ -78,38 +85,41 @@ export const blindsRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       ensureDealerRole(ctx.session.user.role);
 
-      const table = await db.query.pokerTables.findFirst({
-        where: and(
-          eq(pokerTables.id, input.tableId),
-          eq(pokerTables.dealerId, ctx.session.user.id),
-        ),
-      });
-      if (!table)
-        throw new Error("Table not found or you are not the dealer for it");
-      if (table.blindTimerIsPaused || table.blindTimerStartedAt == null) {
-        throw new Error("Blind timer is not running");
-      }
-
-      const elapsed = computeBlindState(table).elapsedSeconds;
-
-      const rows = await db
-        .update(pokerTables)
-        .set({
-          blindTimerStartedAt: null,
-          blindTimerIsPaused: true,
-          blindTimerFrozenElapsedSeconds: elapsed,
-        })
-        .where(
-          and(
+      const updated = await withTableMutation(db, input.tableId, async (tx) => {
+        const table = await tx.query.pokerTables.findFirst({
+          where: and(
             eq(pokerTables.id, input.tableId),
             eq(pokerTables.dealerId, ctx.session.user.id),
           ),
-        )
-        .returning();
+        });
+        if (!table)
+          throw new Error("Table not found or you are not the dealer for it");
+        if (table.blindTimerIsPaused || table.blindTimerStartedAt == null) {
+          throw new Error("Blind timer is not running");
+        }
 
-      const updated = rows[0];
-      if (!updated)
-        throw new Error("Table not found or you are not the dealer for it");
+        const elapsed = computeBlindState(table).elapsedSeconds;
+
+        const rows = await tx
+          .update(pokerTables)
+          .set({
+            blindTimerStartedAt: null,
+            blindTimerIsPaused: true,
+            blindTimerFrozenElapsedSeconds: elapsed,
+          })
+          .where(
+            and(
+              eq(pokerTables.id, input.tableId),
+              eq(pokerTables.dealerId, ctx.session.user.id),
+            ),
+          )
+          .returning();
+
+        const row = rows[0];
+        if (!row)
+          throw new Error("Table not found or you are not the dealer for it");
+        return row;
+      });
 
       await notifyTableUpdate(input.tableId);
 
@@ -121,39 +131,42 @@ export const blindsRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       ensureDealerRole(ctx.session.user.role);
 
-      const table = await db.query.pokerTables.findFirst({
-        where: and(
-          eq(pokerTables.id, input.tableId),
-          eq(pokerTables.dealerId, ctx.session.user.id),
-        ),
-      });
-      if (!table)
-        throw new Error("Table not found or you are not the dealer for it");
-      if (!table.blindTimerIsPaused) {
-        throw new Error("Blind timer is not paused");
-      }
-
-      const frozen = table.blindTimerFrozenElapsedSeconds ?? 0;
-      const startedAt = new Date(Date.now() - frozen * 1000);
-
-      const rows = await db
-        .update(pokerTables)
-        .set({
-          blindTimerStartedAt: startedAt,
-          blindTimerIsPaused: false,
-          blindTimerFrozenElapsedSeconds: null,
-        })
-        .where(
-          and(
+      const updated = await withTableMutation(db, input.tableId, async (tx) => {
+        const table = await tx.query.pokerTables.findFirst({
+          where: and(
             eq(pokerTables.id, input.tableId),
             eq(pokerTables.dealerId, ctx.session.user.id),
           ),
-        )
-        .returning();
+        });
+        if (!table)
+          throw new Error("Table not found or you are not the dealer for it");
+        if (!table.blindTimerIsPaused) {
+          throw new Error("Blind timer is not paused");
+        }
 
-      const updated = rows[0];
-      if (!updated)
-        throw new Error("Table not found or you are not the dealer for it");
+        const frozen = table.blindTimerFrozenElapsedSeconds ?? 0;
+        const startedAt = new Date(Date.now() - frozen * 1000);
+
+        const rows = await tx
+          .update(pokerTables)
+          .set({
+            blindTimerStartedAt: startedAt,
+            blindTimerIsPaused: false,
+            blindTimerFrozenElapsedSeconds: null,
+          })
+          .where(
+            and(
+              eq(pokerTables.id, input.tableId),
+              eq(pokerTables.dealerId, ctx.session.user.id),
+            ),
+          )
+          .returning();
+
+        const row = rows[0];
+        if (!row)
+          throw new Error("Table not found or you are not the dealer for it");
+        return row;
+      });
 
       await notifyTableUpdate(input.tableId);
 
@@ -171,20 +184,23 @@ export const blindsRouter = createTRPCRouter({
       ensureDealerRole(ctx.session.user.role);
       const sanitized = sanitizeStepSeconds(input.stepSeconds);
 
-      const rows = await db
-        .update(pokerTables)
-        .set({ blindStepSeconds: sanitized })
-        .where(
-          and(
-            eq(pokerTables.id, input.tableId),
-            eq(pokerTables.dealerId, ctx.session.user.id),
-          ),
-        )
-        .returning();
+      const table = await withTableMutation(db, input.tableId, async (tx) => {
+        const rows = await tx
+          .update(pokerTables)
+          .set({ blindStepSeconds: sanitized })
+          .where(
+            and(
+              eq(pokerTables.id, input.tableId),
+              eq(pokerTables.dealerId, ctx.session.user.id),
+            ),
+          )
+          .returning();
 
-      const table = rows[0];
-      if (!table)
-        throw new Error("Table not found or you are not the dealer for it");
+        const updated = rows[0];
+        if (!updated)
+          throw new Error("Table not found or you are not the dealer for it");
+        return updated;
+      });
 
       await notifyTableUpdate(input.tableId);
 

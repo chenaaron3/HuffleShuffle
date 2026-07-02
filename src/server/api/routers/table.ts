@@ -25,6 +25,7 @@ import {
     resetGame, triggerBotActions
 } from '../game-logic';
 import { getCurrentBetTarget } from '../game-utils';
+import { withTableMutation } from '../table-transaction';
 
 import type { BlindState } from "../blind-timer";
 import type { VideoGrant } from "livekit-server-sdk";
@@ -362,7 +363,7 @@ export const tableRouter = createTRPCRouter({
       const userId = ctx.session.user.id;
       ensureDealerRole(ctx.session.user.role);
 
-      await db.transaction(async (tx) => {
+      await withTableMutation(db, input.tableId, async (tx) => {
         // Get the table and verify it's joinable
         const snapshot = await tx.query.pokerTables.findFirst({
           where: eq(pokerTables.id, input.tableId),
@@ -393,7 +394,7 @@ export const tableRouter = createTRPCRouter({
       const userId = ctx.session.user.id;
       ensureDealerRole(ctx.session.user.role);
 
-      await db.transaction(async (tx) => {
+      await withTableMutation(db, input.tableId, async (tx) => {
         // Get the table
         const snapshot = await tx.query.pokerTables.findFirst({
           where: eq(pokerTables.id, input.tableId),
@@ -436,7 +437,7 @@ export const tableRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       ensureDealerRole(ctx.session.user.role);
 
-      await db.transaction(async (tx) => {
+      await withTableMutation(db, input.tableId, async (tx) => {
         const table = await tx.query.pokerTables.findFirst({
           where: eq(pokerTables.id, input.tableId),
           columns: { id: true },
@@ -478,7 +479,7 @@ export const tableRouter = createTRPCRouter({
       });
       if (!user) throw new Error("User not found");
 
-      const result = await db.transaction(async (tx) => {
+      const result = await withTableMutation(db, input.tableId, async (tx) => {
         const snapshot = await tx.query.pokerTables.findFirst({
           where: eq(pokerTables.id, input.tableId),
           with: {
@@ -540,7 +541,7 @@ export const tableRouter = createTRPCRouter({
       const userId = ctx.session.user.id;
       ensurePlayerRole(ctx.session.user.role);
 
-      const result = await db.transaction(async (tx) => {
+      const result = await withTableMutation(db, input.tableId, async (tx) => {
         return await removePlayerSeatTransaction(tx, {
           tableId: input.tableId,
           playerId: userId,
@@ -563,7 +564,7 @@ export const tableRouter = createTRPCRouter({
       const userId = ctx.session.user.id;
       ensureDealerRole(ctx.session.user.role);
 
-      const result = await db.transaction(async (tx) => {
+      const result = await withTableMutation(db, input.tableId, async (tx) => {
         const snapshot = await tx.query.pokerTables.findFirst({
           where: eq(pokerTables.id, input.tableId),
           with: {
@@ -658,7 +659,7 @@ export const tableRouter = createTRPCRouter({
       const userId = ctx.session.user.id;
       ensureDealerRole(ctx.session.user.role);
 
-      const result = await db.transaction(async (tx) => {
+      const result = await withTableMutation(db, input.tableId, async (tx) => {
         const table = await tx.query.pokerTables.findFirst({
           where: eq(pokerTables.id, input.tableId),
         });
@@ -710,7 +711,7 @@ export const tableRouter = createTRPCRouter({
       const userId = ctx.session.user.id;
       ensureDealerRole(ctx.session.user.role);
 
-      const result = await db.transaction(async (tx) => {
+      const result = await withTableMutation(db, input.tableId, async (tx) => {
         // Verify caller is the dealer of this table
         const table = await tx.query.pokerTables.findFirst({
           where: eq(pokerTables.id, input.tableId),
@@ -798,7 +799,7 @@ export const tableRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
       ensurePlayerRole(ctx.session.user.role);
-      const result = await db.transaction(async (tx) => {
+      const result = await withTableMutation(db, input.tableId, async (tx) => {
         // Verify table exists, is joinable, and batch seats + pi devices
         const table = await tx.query.pokerTables.findFirst({
           where: eq(pokerTables.id, input.tableId),
@@ -926,7 +927,7 @@ export const tableRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
-      await db.transaction(async (tx) => {
+      await withTableMutation(db, input.tableId, async (tx) => {
         const snapshot = await tx.query.pokerTables.findFirst({
           where: eq(pokerTables.id, input.tableId),
           with: {
@@ -1120,7 +1121,7 @@ export const tableRouter = createTRPCRouter({
       const userId = ctx.session.user.id;
       ensureDealerRole(ctx.session.user.role);
 
-      await db.transaction(async (tx) => {
+      await withTableMutation(db, input.tableId, async (tx) => {
         // Verify the caller is the dealer of this table
         const table = await tx.query.pokerTables.findFirst({
           where: eq(pokerTables.id, input.tableId),

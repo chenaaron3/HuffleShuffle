@@ -1,6 +1,7 @@
 import { and, asc, desc, eq, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { createTRPCRouter, protectedProcedure } from '~/server/api/trpc';
+import { withTableMutation } from '~/server/api/table-transaction';
 import { db } from '~/server/db';
 import { piDevices, pokerTables } from '~/server/db/schema';
 
@@ -69,7 +70,7 @@ export const setupRouter = createTRPCRouter({
       const desiredScanner = (input.scannerSerial ?? "").trim();
       const desiredHand = input.handSerials.map((s) => s.trim());
 
-      await db.transaction(async (tx) => {
+      await withTableMutation(db, input.tableId, async (tx) => {
         // Reset all devices for this table to baseline (card, no seat)
         await tx
           .update(piDevices)
