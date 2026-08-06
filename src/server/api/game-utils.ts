@@ -18,6 +18,17 @@ type Tx = {
 const pickNextIndex = (currentIndex: number, total: number) =>
   (currentIndex + 1) % total;
 
+// Next seat in table order (wraps), including eliminated — for blind history lookup.
+export const getNextSeatIdInOrder = (
+  orderedSeats: Array<SeatRow>,
+  currentSeatId: string,
+): string => {
+  const n = orderedSeats.length;
+  const idx = orderedSeats.findIndex((s) => s.id === currentSeatId);
+  const nextIdx = idx >= 0 ? pickNextIndex(idx, n) : 0;
+  return orderedSeats[nextIdx]!.id;
+};
+
 // The input seats don't have to all be active since the
 // current seat can be inactive. This finds the first active
 // seat after the current seat (skips eliminated players).

@@ -222,11 +222,13 @@ export function useBlindSeatNumbers() {
       return -1;
     };
 
-    const smallBlindSeatNumber = findNextOccupiedSeat(dealerSeatNumber);
+    const smallBlindSeatNumber = snapshot?.game?.skipSmallBlind
+      ? -1
+      : findNextOccupiedSeat(dealerSeatNumber);
     const bigBlindSeatNumber =
       smallBlindSeatNumber >= 0
         ? findNextOccupiedSeat(smallBlindSeatNumber)
-        : -1;
+        : findNextOccupiedSeat(dealerSeatNumber);
 
     return {
       smallBlindIdx: smallBlindSeatNumber,
@@ -235,6 +237,7 @@ export function useBlindSeatNumbers() {
     };
   }, [
     snapshot?.game?.dealerButtonSeatId,
+    snapshot?.game?.skipSmallBlind,
     snapshot?.table?.maxSeats,
     paddedSeats,
   ]);

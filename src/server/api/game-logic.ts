@@ -13,7 +13,7 @@ import { createBotGameState, makeBotDecision } from './bot-strategy';
 import { executeBettingAction } from './game-helpers';
 import {
     activeCountOf, fetchAllSeatsInOrder, getNextActiveSeatId, getNextDealableSeatId,
-    nonEliminatedCountOf
+    getNextSeatIdInOrder, nonEliminatedCountOf
 } from './game-utils';
 import { evaluateBettingTransition } from './hand-solver';
 import { withTableMutation } from './table-transaction';
@@ -53,14 +53,8 @@ export async function ensureHoleCardsProgression(
       .set({ assignedSeatId: nextSeatId })
       .where(eq(games.id, gameObj.id));
   } else {
-    // Initialize betting round: SB/BB are positional — use dealable (active + all-in)
-    // so all-in blind posters stay in the chain; UTG is next active after BB.
-    const smallBlindSeatId = getNextDealableSeatId(
-      orderedSeats,
-      gameObj.dealerButtonSeatId!,
-    );
-    const bigBlindSeatId = getNextDealableSeatId(orderedSeats, smallBlindSeatId);
-    const firstToActId = getNextActiveSeatId(orderedSeats, bigBlindSeatId);
+    const { bigBlindSeat } = getBigAndSmallBlindSeats(orderedSeats, gameObj);
+    const firstToActId = getNextActiveSeatId(orderedSeats, bigBlindSeat.id);
     await startBettingRound(tx, tableId, gameObj, orderedSeats, firstToActId);
   }
 }
@@ -344,6 +338,53 @@ export async function resetGame(
   }
 }
 
+export type HandBlindLayout = {
+  dealerButtonSeatId: string;
+  skipSmallBlind: boolean;
+};
+
+/** Resolve button and blind mode for a new hand (Option A: BB-only catch-up when previous BB busted). */
+export function resolveHandBlindLayout(
+  orderedSeats: Array<SeatRow>,
+  previousGame: GameRow | null,
+): HandBlindLayout {
+  if (!previousGame?.dealerButtonSeatId) {
+    return { dealerButtonSeatId: orderedSeats[0]!.id, skipSmallBlind: false };
+  }
+
+  if (previousGame.wasReset) {
+    return {
+      dealerButtonSeatId: previousGame.dealerButtonSeatId,
+      skipSmallBlind: false,
+    };
+  }
+
+  const prevButton = previousGame.dealerButtonSeatId;
+  const prevSmallBlindSeatId = getNextSeatIdInOrder(orderedSeats, prevButton);
+  const prevBigBlindSeatId = getNextSeatIdInOrder(
+    orderedSeats,
+    prevSmallBlindSeatId,
+  );
+  const prevBigBlindSeat = orderedSeats.find((s) => s.id === prevBigBlindSeatId)!;
+
+  if (prevBigBlindSeat.seatStatus === "eliminated") {
+    const prevSmallBlindSeat = orderedSeats.find(
+      (s) => s.id === prevSmallBlindSeatId,
+    )!;
+    const dealerButtonSeatId =
+      prevSmallBlindSeat.seatStatus === "eliminated"
+        ? getNextActiveSeatId(orderedSeats, prevButton)
+        : prevSmallBlindSeatId;
+
+    return { dealerButtonSeatId, skipSmallBlind: true };
+  }
+
+  return {
+    dealerButtonSeatId: getNextActiveSeatId(orderedSeats, prevButton),
+    skipSmallBlind: false,
+  };
+}
+
 export async function createNewGame(
   tx: Tx,
   table: TableRow,
@@ -375,24 +416,10 @@ export async function createNewGame(
   const effectiveSmallBlind = blindState.effectiveSmallBlind;
   const effectiveBigBlind = blindState.effectiveBigBlind;
 
-  // Create a new game object
-  let dealerButtonSeatId = orderedSeats[0]!.id;
-  if (previousGame) {
-    // If there was a previous game and it was NOT reset, progress the dealer button
-    // If it WAS reset (via RESET_TABLE action), reuse the same button position
-    if (previousGame.wasReset) {
-      // If previous game had a null dealer button, fallback to first seat
-      dealerButtonSeatId =
-        previousGame.dealerButtonSeatId ?? orderedSeats[0]!.id;
-    } else {
-      // Normal game progression - advance the button
-      const prevButton = previousGame.dealerButtonSeatId;
-      if (prevButton) {
-        dealerButtonSeatId = getNextActiveSeatId(orderedSeats, prevButton);
-      }
-      // If prevButton is null, dealerButtonSeatId remains as orderedSeats[0]!.id
-    }
-  }
+  const { dealerButtonSeatId, skipSmallBlind } = resolveHandBlindLayout(
+    orderedSeats,
+    previousGame,
+  );
   const createdRows = await (tx as DB)
     .insert(games)
     .values({
@@ -400,6 +427,7 @@ export async function createNewGame(
       isCompleted: false,
       state: "DEAL_HOLE_CARDS",
       dealerButtonSeatId,
+      skipSmallBlind,
       communityCards: [],
       potTotal: 0,
       betCount: 0,
@@ -411,18 +439,21 @@ export async function createNewGame(
   const game = createdRows?.[0];
   if (!game) throw new Error("Failed to create game");
 
-  // Collect big and small blind
+  // Collect blinds; deal hole cards starting at SB (or BB when no SB)
   await collectBigAndSmallBlind(tx, orderedSeats, game);
-  const { smallBlindSeat } = getBigAndSmallBlindSeats(orderedSeats, game);
+  const { smallBlindSeat, bigBlindSeat } = getBigAndSmallBlindSeats(
+    orderedSeats,
+    game,
+  );
 
-  // Small blind gets the first turn
+  const firstDealSeatId = smallBlindSeat?.id ?? bigBlindSeat.id;
   await tx
     .update(games)
     .set({
-      assignedSeatId: smallBlindSeat.id,
+      assignedSeatId: firstDealSeatId,
     })
     .where(eq(games.id, game.id));
-  game.assignedSeatId = smallBlindSeat.id;
+  game.assignedSeatId = firstDealSeatId;
 
   await logStartGame(tx as any, table.id, game.id, {
     dealerButtonSeatId,
@@ -433,15 +464,26 @@ export async function createNewGame(
 export function getBigAndSmallBlindSeats(
   orderedSeats: Array<SeatRow>,
   game: GameRow,
-): { smallBlindSeat: SeatRow; bigBlindSeat: SeatRow } {
-  const smallBlindSeat = getNextDealableSeatId(
+): { smallBlindSeat: SeatRow | null; bigBlindSeat: SeatRow } {
+  if (game.skipSmallBlind) {
+    const bigBlindSeatId = getNextDealableSeatId(
+      orderedSeats,
+      getNextSeatIdInOrder(orderedSeats, game.dealerButtonSeatId!),
+    );
+    return {
+      smallBlindSeat: null,
+      bigBlindSeat: orderedSeats.find((s) => s.id === bigBlindSeatId)!,
+    };
+  }
+
+  const smallBlindSeatId = getNextDealableSeatId(
     orderedSeats,
     game.dealerButtonSeatId!,
   );
-  const bigBlindSeat = getNextDealableSeatId(orderedSeats, smallBlindSeat);
+  const bigBlindSeatId = getNextDealableSeatId(orderedSeats, smallBlindSeatId);
   return {
-    smallBlindSeat: orderedSeats.find((s) => s.id === smallBlindSeat)!,
-    bigBlindSeat: orderedSeats.find((s) => s.id === bigBlindSeat)!,
+    smallBlindSeat: orderedSeats.find((s) => s.id === smallBlindSeatId)!,
+    bigBlindSeat: orderedSeats.find((s) => s.id === bigBlindSeatId)!,
   };
 }
 
@@ -468,24 +510,25 @@ async function collectBigAndSmallBlind(
   const smallBlindValue = blinds.effectiveSmallBlind;
   const bigBlindValue = blinds.effectiveBigBlind;
 
-  // Collect small blind - if player doesn't have enough, go all-in
-  const smallBlindActual = Math.min(smallBlindValue, smallBlindSeat.buyIn);
-  const smallBlindNewBuyIn = smallBlindSeat.buyIn - smallBlindActual;
-  const smallBlindNewStatus = smallBlindNewBuyIn === 0 ? "all-in" : "active";
+  if (smallBlindSeat) {
+    // Collect small blind - if player doesn't have enough, go all-in
+    const smallBlindActual = Math.min(smallBlindValue, smallBlindSeat.buyIn);
+    const smallBlindNewBuyIn = smallBlindSeat.buyIn - smallBlindActual;
+    const smallBlindNewStatus = smallBlindNewBuyIn === 0 ? "all-in" : "active";
 
-  await tx
-    .update(seats)
-    .set({
-      currentBet: smallBlindActual,
-      buyIn: sql`${seats.buyIn} - ${smallBlindActual}`,
-      seatStatus: smallBlindNewStatus,
-    })
-    .where(eq(seats.id, smallBlindSeat.id));
+    await tx
+      .update(seats)
+      .set({
+        currentBet: smallBlindActual,
+        buyIn: sql`${seats.buyIn} - ${smallBlindActual}`,
+        seatStatus: smallBlindNewStatus,
+      })
+      .where(eq(seats.id, smallBlindSeat.id));
 
-  // Update in-memory seat object
-  smallBlindSeat.currentBet = smallBlindActual;
-  smallBlindSeat.buyIn = smallBlindNewBuyIn;
-  smallBlindSeat.seatStatus = smallBlindNewStatus;
+    smallBlindSeat.currentBet = smallBlindActual;
+    smallBlindSeat.buyIn = smallBlindNewBuyIn;
+    smallBlindSeat.seatStatus = smallBlindNewStatus;
+  }
 
   // Collect big blind - if player doesn't have enough, go all-in
   const bigBlindActual = Math.min(bigBlindValue, bigBlindSeat.buyIn);

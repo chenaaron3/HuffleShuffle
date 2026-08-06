@@ -48,6 +48,7 @@ function createMockGame(overrides: Partial<any> = {}) {
     turnStartTime: null,
     isCompleted: false,
     wasReset: false,
+    skipSmallBlind: false,
     createdAt: new Date(),
     updatedAt: null,
     ...overrides,
