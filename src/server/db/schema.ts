@@ -118,12 +118,16 @@ export const waitlist = createTable(
       .primaryKey()
       .default(sql`gen_random_uuid()`),
     email: d.varchar({ length: 255 }).notNull(),
+    phone: d.varchar({ length: 20 }).notNull(),
     createdAt: d
       .timestamp({ withTimezone: true })
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
   }),
-  (t) => [uniqueIndex("waitlist_email_idx").on(t.email)],
+  (t) => [
+    uniqueIndex("waitlist_email_idx").on(t.email),
+    uniqueIndex("waitlist_phone_idx").on(t.phone),
+  ],
 );
 
 // Poker table entity
