@@ -1,8 +1,9 @@
-import { signIn, signOut, useSession } from 'next-auth/react';
+import { signOut, useSession } from 'next-auth/react';
 import Head from 'next/head';
 import Link from 'next/link';
 import { CometCard } from '~/components/ui/comet-card';
 import { GlowingEffect } from '~/components/ui/glowing-effect';
+import { WaitlistForm } from '~/components/ui/waitlist-form';
 
 export default function Home() {
   const { data: session } = useSession();
@@ -55,20 +56,18 @@ export default function Home() {
           <p className="max-w-2xl text-lg text-zinc-300">
             Join a table and play Texas Hold’em streamed live with a live dealer. Simple, fast, and social.
           </p>
-          <div className="flex gap-4">
+          <div className="flex w-full max-w-xl flex-col items-center gap-4">
             {session ? (
-              <>
+              <div className="flex gap-4">
                 <Link href="/lobby" className="rounded-md bg-gradient-to-r from-[#FFD700] via-[#F2C14E] to-[#D4AF37] px-6 py-3 font-medium text-black shadow-[0_0_30px_rgba(212,175,55,0.25)] hover:brightness-95">
                   Enter Lobby
                 </Link>
                 <button onClick={() => void signOut()} className="rounded-md border border-white/10 px-6 py-3 text-white hover:bg-white/10">
                   Sign out
                 </button>
-              </>
+              </div>
             ) : (
-              <button onClick={() => void signIn()} className="rounded-md bg-gradient-to-r from-[#FFD700] via-[#F2C14E] to-[#D4AF37] px-6 py-3 font-medium text-black shadow-[0_0_30px_rgba(212,175,55,0.25)] hover:brightness-95">
-                Sign in to Play
-              </button>
+              <WaitlistForm className="w-full" />
             )}
           </div>
         </section>
@@ -116,10 +115,18 @@ export default function Home() {
         {/* CTA Band */}
         <section className="mx-auto mb-24 max-w-5xl rounded-2xl border border-yellow-500/10 bg-gradient-to-r from-[#1a1406] via-[#161107] to-[#120f07] px-6 py-8 text-center shadow-[0_0_60px_rgba(212,175,55,0.15)]">
           <h3 className="mb-3 text-xl font-semibold">Ready to take a seat?</h3>
-          <p className="mx-auto mb-5 max-w-2xl text-sm text-zinc-400">Log in, pick a table, and play with real people and real dealers in minutes.</p>
-          <Link href="/lobby" className="inline-block rounded-md bg-gradient-to-r from-[#FFD700] via-[#F2C14E] to-[#D4AF37] px-6 py-3 font-medium text-black hover:brightness-95">
-            Go to Lobby
-          </Link>
+          <p className="mx-auto mb-5 max-w-2xl text-sm text-zinc-400">
+            {session
+              ? 'Pick a table and play with real people and real dealers in minutes.'
+              : 'Join the waitlist for updates and early access when tables open up.'}
+          </p>
+          {session ? (
+            <Link href="/lobby" className="inline-block rounded-md bg-gradient-to-r from-[#FFD700] via-[#F2C14E] to-[#D4AF37] px-6 py-3 font-medium text-black hover:brightness-95">
+              Enter Lobby
+            </Link>
+          ) : (
+            <WaitlistForm className="mx-auto w-full max-w-md" />
+          )}
         </section>
       </main>
     </>

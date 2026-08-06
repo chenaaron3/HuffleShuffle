@@ -2,6 +2,7 @@ import { blindsRouter } from "~/server/api/routers/blinds";
 import { setupRouter } from "~/server/api/routers/setup";
 import { tableRouter } from "~/server/api/routers/table";
 import { userRouter } from "~/server/api/routers/user";
+import { waitlistRouter } from "~/server/api/routers/waitlist";
 import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
 
 /**
@@ -14,6 +15,7 @@ export const appRouter = createTRPCRouter({
   user: userRouter,
   setup: setupRouter,
   blinds: blindsRouter,
+  waitlist: waitlistRouter,
 });
 
 // export type definition of API

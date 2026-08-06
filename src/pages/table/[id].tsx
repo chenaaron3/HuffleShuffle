@@ -28,6 +28,7 @@ import {
     useBettingActorSeatId, useCurrentSeat, useGameState, useIsDealerRole,
     useCurrentBetTarget, useIsPlayerTurn, useOriginalSeats, useTableSnapshot
 } from '~/hooks/use-table-selectors';
+import { requireAuth } from '~/server/auth/guards';
 import { api } from '~/utils/api';
 import { rsaDecryptBase64 } from '~/utils/crypto';
 import { disconnectPusherClient } from '~/utils/pusher-client';
@@ -35,6 +36,7 @@ import { disconnectPusherClient } from '~/utils/pusher-client';
 import { LiveKitRoom, RoomAudioRenderer, StartAudio } from '@livekit/components-react';
 
 import type { VideoCodec } from 'livekit-client';
+import type { GetServerSideProps } from 'next';
 
 export default function TableView() {
     const router = useRouter();
@@ -299,3 +301,5 @@ export default function TableView() {
         </>
     );
 }
+
+export const getServerSideProps: GetServerSideProps = requireAuth;

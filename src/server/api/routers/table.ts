@@ -281,7 +281,7 @@ export const tableRouter = createTRPCRouter({
       const token = await at.toJwt();
       return { token, serverUrl };
     }),
-  list: publicProcedure.query(async () => {
+  list: protectedProcedure.query(async () => {
     const rows = await db.query.pokerTables.findMany({
       orderBy: (t, { asc }) => [asc(t.createdAt)],
       with: {

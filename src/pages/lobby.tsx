@@ -7,9 +7,12 @@ import {
     Dialog, DialogClose, DialogContent, DialogDescription, DialogHeader, DialogTitle
 } from '~/components/ui/dialog';
 import { useIsDealerRole } from '~/hooks/use-table-selectors';
+import { requireAuth } from '~/server/auth/guards';
 import { MAX_SEATS_PER_TABLE } from '~/server/db/schema';
 import { api } from '~/utils/api';
 import { generateRsaKeyPairForTable } from '~/utils/crypto';
+
+import type { GetServerSideProps } from 'next';
 
 /** Chips deducted from wallet and seated stack when a player joins from the lobby. */
 const DEFAULT_JOIN_CHIPS = 1000;
@@ -282,3 +285,5 @@ export default function LobbyPage() {
         </>
     );
 }
+
+export const getServerSideProps: GetServerSideProps = requireAuth;

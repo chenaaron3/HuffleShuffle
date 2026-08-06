@@ -109,6 +109,23 @@ export const verificationTokens = createTable(
   (t) => [primaryKey({ columns: [t.identifier, t.token] })],
 );
 
+export const waitlist = createTable(
+  "waitlist",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    email: d.varchar({ length: 255 }).notNull(),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  }),
+  (t) => [uniqueIndex("waitlist_email_idx").on(t.email)],
+);
+
 // Poker table entity
 export const pokerTables = createTable(
   "poker_table",
