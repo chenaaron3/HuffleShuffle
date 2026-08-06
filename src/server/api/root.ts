@@ -1,4 +1,5 @@
 import { blindsRouter } from "~/server/api/routers/blinds";
+import { dashboardRouter } from "~/server/api/routers/dashboard";
 import { setupRouter } from "~/server/api/routers/setup";
 import { tableRouter } from "~/server/api/routers/table";
 import { userRouter } from "~/server/api/routers/user";
@@ -16,6 +17,7 @@ export const appRouter = createTRPCRouter({
   setup: setupRouter,
   blinds: blindsRouter,
   waitlist: waitlistRouter,
+  dashboard: dashboardRouter,
 });
 
 // export type definition of API

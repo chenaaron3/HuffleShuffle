@@ -159,3 +159,10 @@ export const protectedProcedure = t.procedure
       },
     });
   });
+
+export const dealerProcedure = protectedProcedure.use(({ ctx, next }) => {
+  if (ctx.session.user.role !== "dealer") {
+    throw new TRPCError({ code: "FORBIDDEN" });
+  }
+  return next({ ctx });
+});

@@ -9,11 +9,17 @@ function normalizePhone(raw: string): string {
   return `+${digits}`;
 }
 
-const phoneSchema = z
+function normalizeInstagram(raw: string | undefined): string | null {
+  const trimmed = raw?.trim();
+  if (!trimmed) return null;
+  return trimmed.replace(/^@+/, "");
+}
+
+const optionalPhoneSchema = z
   .string()
   .trim()
-  .min(1, "Phone number is required")
   .refine((value) => {
+    if (!value) return true;
     const digits = value.replace(/\D/g, "");
     return digits.length >= 10 && digits.length <= 15;
   }, "Enter a valid phone number");
@@ -22,17 +28,26 @@ export const waitlistRouter = createTRPCRouter({
   join: publicProcedure
     .input(
       z.object({
+        name: z.string().trim().min(1, "Name is required").max(255),
         email: z.string().email().max(255),
-        phone: phoneSchema,
+        phone: optionalPhoneSchema.optional(),
+        instagram: z.string().trim().max(255).optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
       const email = input.email.trim().toLowerCase();
-      const phone = normalizePhone(input.phone);
+      const phoneRaw = input.phone?.trim();
+      const phone = phoneRaw ? normalizePhone(phoneRaw) : null;
+      const instagram = normalizeInstagram(input.instagram);
 
       await ctx.db
         .insert(waitlist)
-        .values({ email, phone })
+        .values({
+          name: input.name.trim(),
+          email,
+          phone,
+          instagram,
+        })
         .onConflictDoNothing({ target: waitlist.email });
 
       return { success: true } as const;

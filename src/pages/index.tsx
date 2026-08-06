@@ -67,7 +67,7 @@ export default function Home() {
                 </button>
               </div>
             ) : (
-              <WaitlistForm className="w-full" />
+              <WaitlistForm />
             )}
           </div>
         </section>
@@ -125,7 +125,7 @@ export default function Home() {
               Enter Lobby
             </Link>
           ) : (
-            <WaitlistForm className="mx-auto w-full max-w-md" />
+            <WaitlistForm />
           )}
         </section>
       </main>

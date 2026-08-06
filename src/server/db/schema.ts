@@ -117,8 +117,10 @@ export const waitlist = createTable(
       .notNull()
       .primaryKey()
       .default(sql`gen_random_uuid()`),
+    name: d.varchar({ length: 255 }).notNull(),
     email: d.varchar({ length: 255 }).notNull(),
-    phone: d.varchar({ length: 20 }).notNull(),
+    phone: d.varchar({ length: 20 }),
+    instagram: d.varchar({ length: 255 }),
     createdAt: d
       .timestamp({ withTimezone: true })
       .default(sql`CURRENT_TIMESTAMP`)

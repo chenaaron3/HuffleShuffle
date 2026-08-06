@@ -1,6 +1,7 @@
 import { Lock, Unlock } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import Head from 'next/head';
+import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
 import {
@@ -116,7 +117,17 @@ export default function LobbyPage() {
             <main className="min-h-screen bg-black text-white">
                 <div className="mx-auto max-w-6xl px-6 py-10">
                     <section>
-                        <h2 className="mb-4 text-2xl font-semibold">Available Tables</h2>
+                        <div className="mb-4 flex items-center justify-between gap-4">
+                            <h2 className="text-2xl font-semibold">Available Tables</h2>
+                            {isDealer ? (
+                                <Link
+                                    href="/dashboard"
+                                    className="rounded-md bg-white px-4 py-2 text-sm font-medium text-black hover:bg-zinc-200"
+                                >
+                                    Dashboard
+                                </Link>
+                            ) : null}
+                        </div>
                         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                             {(tables ?? []).map((t) => (
                                 <div key={t.id} className="rounded-lg border border-white/10 bg-zinc-900/50 p-4">
