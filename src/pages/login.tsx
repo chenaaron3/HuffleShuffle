@@ -1,7 +1,7 @@
 import Head from 'next/head';
 import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from '~/components/ui/card';
-import { CometCard } from '~/components/ui/comet-card';
-import { GoogleSignInButton } from '~/components/ui/google-sign-in-button';
+import { CometCard } from '~/components/effects/comet-card';
+import { GoogleSignInButton } from '~/components/auth/google-sign-in-button';
 import { redirectIfAuthenticated } from '~/server/auth/guards';
 
 import type { GetServerSideProps } from 'next';

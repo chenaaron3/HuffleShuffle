@@ -4,7 +4,7 @@ import { useLiveBlindState } from '~/hooks/use-live-blind-state';
 import { useBlinds, useTotalPot } from '~/hooks/use-table-selectors';
 import { cn } from '~/lib/utils';
 
-import { RollingNumber } from './chip-animations';
+import { RollingNumber } from '~/components/table/chips/chip-animations';
 
 interface PotAndBlindsDisplayProps {
     className?: string;

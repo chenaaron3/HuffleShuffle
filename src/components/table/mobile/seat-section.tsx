@@ -5,7 +5,7 @@ import {
     useIsJoinable, usePaddedSeats, useTableId, useTurnStartTime
 } from '~/hooks/use-table-selectors';
 
-import { SeatCard } from '../seat-section';
+import { SeatCard } from '~/components/table/seat';
 
 /**
  * Mobile seat section that renders all seats horizontally in a single row.

@@ -3,7 +3,7 @@ import { Hand } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import { toast } from 'sonner';
 import { Button } from '~/components/ui/button';
-import { GlowingEffect } from '~/components/ui/glowing-effect';
+import { GlowingEffect } from '~/components/effects/glowing-effect';
 import { useActions } from '~/hooks/use-actions';
 import { useCanVolunteerShow } from '~/hooks/use-table-selectors';
 

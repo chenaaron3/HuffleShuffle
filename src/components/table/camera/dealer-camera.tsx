@@ -1,20 +1,20 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { Track } from 'livekit-client';
 import { useSession } from 'next-auth/react';
-import { CardImage } from '~/components/ui/card-img';
+import { CardImage } from '~/components/table/cards/card-img';
 import {
     useCanVolunteerShow, useCommunityCards, useDealerId, useGameState, useIsDealerRole, useIsPlayerTurn, useWinningCards
 } from '~/hooks/use-table-selectors';
 
 import { ParticipantTile, useTracks, VideoTrack } from '@livekit/components-react';
 
-import { ActionButtons } from './action-buttons';
-import { LeaveTableButton } from './leave-table-button';
-import { ShowHandControl } from './show-hand-control';
-import { PotAndBlindsDisplay } from './pot-blinds-display';
-import { SidePotDetails } from './side-pot-details';
-import { TurnIndicator } from './turn-indicator';
-import { VerticalRaiseControls } from './vertical-raise-controls';
+import { ActionButtons } from '~/components/table/betting/action-buttons';
+import { ShowHandControl } from '~/components/table/betting/show-hand-control';
+import { VerticalRaiseControls } from '~/components/table/betting/vertical-raise-controls';
+import { TurnIndicator } from '~/components/table/feed/turn-indicator';
+import { LeaveTableButton } from '~/components/table/leave-table-button';
+import { PotAndBlindsDisplay } from '~/components/table/pot/pot-blinds-display';
+import { SidePotDetails } from '~/components/table/pot/side-pot-details';
 
 interface DealerCameraProps {
     // Hide player betting controls (e.g., for mobile where they're in betting tab)

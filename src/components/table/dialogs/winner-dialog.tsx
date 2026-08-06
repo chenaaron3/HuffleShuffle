@@ -6,7 +6,7 @@ import { motion } from "motion/react";
 import { useSession } from "next-auth/react";
 import * as React from "react";
 import { Dialog, DialogContent, DialogTitle } from "~/components/ui/dialog";
-import { ShineBorder } from "~/components/ui/shine-border";
+import { ShineBorder } from '~/components/effects/shine-border';
 import { useTournamentWinner } from "~/hooks/use-table-selectors";
 
 const CONFETTI_DURATION_MS = 3000;

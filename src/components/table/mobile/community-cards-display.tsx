@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion';
 
-import { CardImage } from '../card-img';
+import { CardImage } from '~/components/table/cards/card-img';
 
 interface CommunityCardsDisplayProps {
   cards: string[];

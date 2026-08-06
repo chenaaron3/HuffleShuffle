@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { ChipStream } from '~/components/ui/chip-animations';
+import { ChipStream } from '~/components/table/chips/chip-animations';
 import { usePokerAnimations } from '~/hooks/use-poker-animations';
 import { getPotPosition, getSeatPosition } from '~/utils/dom-positions';
 

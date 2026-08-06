@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { CardImage } from '~/components/ui/card-img';
+import { CardImage } from '~/components/table/cards/card-img';
 import { gameEvents } from '~/server/db/schema';
 
 import type { SeatWithPlayer } from '~/server/api/routers/table';

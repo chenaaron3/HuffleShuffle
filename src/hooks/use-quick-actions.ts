@@ -2,7 +2,7 @@ import * as React from 'react';
 import { selectSetSnapshot, useTableStore } from '~/stores/table-store';
 import { api } from '~/utils/api';
 
-import type { QuickActionType } from "~/components/ui/quick-actions";
+import type { QuickActionType } from '~/components/table/betting/quick-actions';
 import type { SeatWithPlayer } from "~/server/api/routers/table";
 
 interface UseQuickActionsParams {

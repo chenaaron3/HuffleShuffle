@@ -5,10 +5,10 @@ import {
     useIsPlayerTurn, useTableId, useWinningCards
 } from '~/hooks/use-table-selectors';
 
-import { HandCamera } from '../hand-camera';
-import { ShowHandControl } from '../show-hand-control';
-import { QuickActions } from '../quick-actions';
-import { VerticalRaiseControls } from '../vertical-raise-controls';
+import { HandCamera } from '~/components/table/camera/hand-camera';
+import { ShowHandControl } from '~/components/table/betting/show-hand-control';
+import { QuickActions } from '~/components/table/betting/quick-actions';
+import { VerticalRaiseControls } from '~/components/table/betting/vertical-raise-controls';
 import { CommunityCardsDisplay } from './community-cards-display';
 import { MobileSeatSection } from './seat-section';
 

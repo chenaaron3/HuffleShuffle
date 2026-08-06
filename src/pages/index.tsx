@@ -1,9 +1,9 @@
 import { signOut, useSession } from 'next-auth/react';
 import Head from 'next/head';
 import Link from 'next/link';
-import { CometCard } from '~/components/ui/comet-card';
-import { GlowingEffect } from '~/components/ui/glowing-effect';
-import { WaitlistForm } from '~/components/ui/waitlist-form';
+import { CometCard } from '~/components/effects/comet-card';
+import { GlowingEffect } from '~/components/effects/glowing-effect';
+import { WaitlistForm } from '~/components/table/waitlist-form';
 
 export default function Home() {
   const { data: session } = useSession();
