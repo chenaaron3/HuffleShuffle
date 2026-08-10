@@ -19,32 +19,35 @@ import { rsaEncryptB64 } from "~/utils/crypto";
 import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
 import { TrackSource, TrackType } from "@livekit/protocol";
 
-import { computeBlindState } from "~/server/api/lib/blind-timer";
 import {
   generateBotPublicKey,
   getBotIdForSeat,
   getBotName,
 } from "~/server/api/bots/constants";
-import { executeBettingAction } from "~/server/api/game/betting-actions";
-import { dealCard, generateRandomCard } from "~/server/api/game/dealing";
+import { generateRandomCard } from "~/server/api/game/dealing";
 import {
-  createNewGame,
+  apiActionToDispatchEvent,
+  dispatchGameEvent,
+} from "~/server/api/game/dispatch";
+import {
   notifyTableUpdate,
-  resetGame,
   triggerBotActions,
 } from "~/server/api/game/hand-lifecycle";
 import {
   parseBarcodeToRankSuit,
   parseRankSuitToBarcode,
 } from "~/server/api/game/helpers/cards";
-import { getCurrentBetTarget } from "~/server/api/game/helpers/betting";
 import {
   createSeatTransaction,
   removePlayerSeatTransaction,
 } from "~/server/api/table/seating";
-import type { SeatWithPlayer, TableSnapshot } from "~/server/api/table/types";
+import {
+  redactSnapshotForUser,
+  summarizeTable,
+} from "~/server/api/table/snapshot";
 import { withTableMutation } from "~/server/api/lib/table-transaction";
 import type { VideoGrant } from "livekit-server-sdk";
+
 const ensureDealerRole = (role: string | undefined) => {
   if (role !== "dealer") throw new Error("FORBIDDEN: dealer role required");
 };
@@ -53,182 +56,7 @@ const ensurePlayerRole = (role: string | undefined) => {
   if (role !== "player") throw new Error("FORBIDDEN: player role required");
 };
 
-type DB = typeof db;
-
-const summarizeTable = async (
-  client: DB,
-  tableId: string,
-): Promise<TableSnapshot> => {
-  const snapshot = await client.query.pokerTables.findFirst({
-    where: eq(pokerTables.id, tableId),
-    with: {
-      games: {
-        orderBy: (g, { desc }) => [desc(g.createdAt)],
-        limit: 1,
-      },
-      seats: {
-        orderBy: (s, { asc }) => [asc(s.seatNumber)],
-        with: {
-          player: {
-            columns: {
-              id: true,
-              name: true,
-              displayName: true,
-            },
-          },
-        },
-      },
-    },
-  });
-  if (!snapshot) throw new Error("Table not found");
-  const latestGame = snapshot.games[0] ?? null;
-  const tableSeats = snapshot.seats;
-  // Determine if table is joinable
-  const isJoinable = !latestGame || latestGame.isCompleted;
-  const availableSeats = snapshot.maxSeats - tableSeats.length;
-
-  return {
-    table: snapshot,
-    seats: tableSeats,
-    game: latestGame,
-    isJoinable,
-    availableSeats,
-    blinds: computeBlindState(snapshot),
-  };
-};
-
-export function redactSnapshotForUser(
-  snapshot: TableSnapshot,
-  userId: string,
-): TableSnapshot {
-  const isShowdown = snapshot.game?.state === "SHOWDOWN";
-
-  // Count players by status to determine if all remaining players are all-in
-  const activeCount = snapshot.seats.filter(
-    (s) => s.seatStatus === "active",
-  ).length;
-  const allInCount = snapshot.seats.filter(
-    (s) => s.seatStatus === "all-in",
-  ).length;
-
-  // Show cards when there's a runout (all all-in or one active + others all-in)
-  // and no active player has a pending call/fold decision.
-  const nonFoldedSeats = snapshot.seats.filter(
-    (s) => s.seatStatus !== "folded" && s.seatStatus !== "eliminated",
-  );
-  const maxBet = Math.max(...nonFoldedSeats.map((s) => s.currentBet ?? 0), 0);
-  const activePlayerFacingDecision = snapshot.seats.some(
-    (s) => s.seatStatus === "active" && (s.currentBet ?? 0) < maxBet,
-  );
-  const showCardsForRunout =
-    (activeCount === 0 && allInCount >= 2) ||
-    (activeCount === 1 && allInCount >= 1)
-      ? !activePlayerFacingDecision
-      : false;
-
-  // Check if only one non-folded player remains (everyone else folded)
-  const singleActive =
-    snapshot.seats.filter(
-      (s) =>
-        s.seatStatus === "active" ||
-        s.seatStatus === "all-in" ||
-        (s.seatStatus === "eliminated" && s.cards.length > 0), // eliminated but played counts
-    ).length === 1;
-
-  // Compute visibility for each seat (would other players see this seat's cards?)
-  const computeCardsVisibleToOthers = (s: SeatWithPlayer): boolean => {
-    // Folded: only visible if voluntaryShow
-    if (s.seatStatus === "folded") {
-      return !!s.voluntaryShow;
-    }
-    // Runout: all-in showdown, cards visible
-    if (showCardsForRunout) {
-      return true;
-    }
-    // Showdown: visible unless single winner who hasn't volunteered
-    if (isShowdown) {
-      if (singleActive) {
-        return !!s.voluntaryShow;
-      }
-      return true;
-    }
-    // Default: cards hidden during betting
-    return false;
-  };
-
-  const redactedSeats: SeatWithPlayer[] = snapshot.seats.map((s) => {
-    const cardsVisibleToOthers = computeCardsVisibleToOthers(s);
-    const hiddenCount = (s.cards ?? []).length;
-    const hiddenCards = {
-      ...s,
-      cards: Array(hiddenCount).fill("FD"),
-      handType: null,
-      handDescription: null,
-      winningCards: [],
-      cardsVisibleToOthers,
-    } as SeatWithPlayer;
-
-    // Show cards face up for the current user (always see own cards)
-    if (s.playerId === userId) {
-      return { ...s, cardsVisibleToOthers };
-    }
-    // For other players, apply redaction if cards not visible
-    if (!cardsVisibleToOthers) {
-      return hiddenCards;
-    }
-    return { ...s, cardsVisibleToOthers };
-  });
-  return { ...snapshot, seats: redactedSeats };
-}
-
 export const tableRouter = createTRPCRouter({
-  checkExistingSeat: protectedProcedure.query(async ({ ctx }) => {
-    const userId = ctx.session.user.id;
-    const role = ctx.session.user.role;
-
-    // For dealers, check if they're assigned to a table
-    if (role === "dealer") {
-      const table = await db.query.pokerTables.findFirst({
-        where: eq(pokerTables.dealerId, userId),
-        columns: {
-          id: true,
-          name: true,
-        },
-      });
-
-      if (!table) {
-        return { hasSeat: false };
-      }
-
-      return {
-        hasSeat: true,
-        tableId: table.id,
-      };
-    }
-
-    // For players, check if they have a seat
-    const seat = await db.query.seats.findFirst({
-      where: eq(seats.playerId, userId),
-      with: {
-        table: {
-          columns: {
-            id: true,
-            name: true,
-          },
-        },
-      },
-    });
-
-    if (!seat) {
-      return { hasSeat: false };
-    }
-
-    return {
-      hasSeat: true,
-      tableId: seat.tableId,
-    };
-  }),
-
   livekitToken: protectedProcedure
     .input(z.object({ tableId: z.string(), roomName: z.string().optional() }))
     .query(async ({ ctx, input }) => {
@@ -925,42 +753,22 @@ export const tableRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
       await withTableMutation(db, input.tableId, async (tx) => {
-        const snapshot = await tx.query.pokerTables.findFirst({
-          where: eq(pokerTables.id, input.tableId),
-          with: {
-            games: { orderBy: (g, { desc }) => [desc(g.createdAt)], limit: 1 },
-            seats: { orderBy: (s, { asc }) => [asc(s.seatNumber)] },
-          },
-        });
-        if (!snapshot) throw new Error("Table not found");
-        const orderedSeats = snapshot.seats;
-        const n = orderedSeats.length;
-        if (n < 2 && input.action === "START_GAME")
-          throw new Error("Need at least 2 players to start");
-
-        // Get the last game, whether its finished or not
-        let game = snapshot.games[0];
-        const isDealerCaller = snapshot.dealerId === userId;
-
-        if (input.action === "RESET_TABLE") {
-          if (!isDealerCaller) throw new Error("Only dealer can RESET_TABLE");
-          // If there was a previous game, mark it as complete and set wasReset flag
-          if (game && !game.isCompleted) {
-            await resetGame(tx, game, orderedSeats, true, true); // Reset buyIn to startingBalance, mark as reset
-          }
-          return { ok: true } as const;
-        }
-
-        // Deprecated API, since dealing a card will start the game
-        if (input.action === "START_GAME") {
-          if (!isDealerCaller) throw new Error("Only dealer can START_GAME");
-          game = await createNewGame(tx, snapshot, orderedSeats, game ?? null);
-          return { ok: true } as const;
-        }
-
+        // Deal path: resolve card / SQS in the adapter, then dispatch CARD_DEALT when inline.
         if (input.action === "DEAL_CARD" || input.action === "DEAL_RANDOM") {
-          if (!isDealerCaller) throw new Error("Only dealer can DEAL_CARD");
+          const snapshot = await tx.query.pokerTables.findFirst({
+            where: eq(pokerTables.id, input.tableId),
+            with: {
+              games: {
+                orderBy: (g, { desc }) => [desc(g.createdAt)],
+                limit: 1,
+              },
+            },
+          });
+          if (!snapshot) throw new Error("Table not found");
+          if (snapshot.dealerId !== userId)
+            throw new Error("Only dealer can DEAL_CARD");
 
+          const game = snapshot.games[0] ?? null;
           let cardCode: string;
           let barcode: string;
           if (input.action === "DEAL_CARD") {
@@ -972,7 +780,7 @@ export const tableRouter = createTRPCRouter({
               input.params.suit,
             );
           } else {
-            barcode = await generateRandomCard(tx, input.tableId, game ?? null);
+            barcode = await generateRandomCard(tx, input.tableId, game);
             const { rank, suit } = parseBarcodeToRankSuit(barcode);
             cardCode = `${rank}${suit}`;
           }
@@ -982,8 +790,13 @@ export const tableRouter = createTRPCRouter({
               process.env.NODE_ENV === "development") ||
             process.env.NODE_ENV === "test";
           if (useInlineDeal) {
-            await dealCard(tx, input.tableId, game ?? null, cardCode);
-            return { ok: true } as const;
+            await dispatchGameEvent(
+              tx,
+              input.tableId,
+              { type: "CARD_DEALT", cardCode },
+              { actorUserId: userId },
+            );
+            return;
           }
 
           const scannerDevice = await tx.query.piDevices.findFirst({
@@ -1007,72 +820,23 @@ export const tableRouter = createTRPCRouter({
                 barcode,
                 ts,
               }),
-              MessageGroupId: input.tableId, // Ensures FIFO ordering per table
-              MessageDeduplicationId: `${input.tableId}-${barcode}-${ts}`, // Prevents duplicates
+              MessageGroupId: input.tableId,
+              MessageDeduplicationId: `${input.tableId}-${barcode}-${ts}`,
             }),
           );
           console.log(`published ${barcode} to SQS`);
-          return { ok: true } as const;
+          return;
         }
 
-        if (input.action === "VOLUNTEER_SHOW") {
-          if (!game) throw new Error("No game");
-          if (game.state !== "SHOWDOWN")
-            throw new Error("VOLUNTEER_SHOW only allowed during showdown");
-          const actorSeat = orderedSeats.find((s) => s.playerId === userId);
-          if (!actorSeat) throw new Error("You have no seat at this table");
-          if (actorSeat.seatStatus === "eliminated")
-            throw new Error("Cannot act - eliminated");
-          await tx
-            .update(seats)
-            .set({ voluntaryShow: true })
-            .where(eq(seats.id, actorSeat.id));
-          return { ok: true } as const;
-        }
-
-        if (!game || game.isCompleted) throw new Error("No active game");
-
-        // Player actions require assigned seat
-        const actorSeat = orderedSeats.find((s) => s.playerId === userId);
-        if (!actorSeat) throw new Error("Actor has no seat at this table");
-        if (actorSeat.seatStatus === "eliminated")
-          throw new Error("Cannot act - player is eliminated");
-        if (actorSeat.seatStatus !== "active")
-          throw new Error("Seat cannot act (not active status)");
-
-        if (game.state !== "BETTING")
-          throw new Error("Player actions only allowed in BETTING");
-        if (!game.assignedSeatId)
-          throw new Error("No assigned seat for betting");
-        if (game.assignedSeatId !== actorSeat.id) {
-          const seat = orderedSeats.find((s) => s.id === game.assignedSeatId);
-          if (seat) {
-            console.log("Expected player id:", seat.playerId);
-          } else {
-            console.log("Expected seat id:", game.assignedSeatId);
-          }
-          throw new Error("Not your turn");
-        }
-
-        // Execute betting action using shared helper
-        // This handles the action, betCount increment, turn rotation, and betting transition
-        await executeBettingAction(tx, {
-          actorSeatId: actorSeat.id,
-          gameId: game.id,
-          action: input.action,
-          raiseAmount: input.params?.amount,
+        const event = apiActionToDispatchEvent(input);
+        await dispatchGameEvent(tx, input.tableId, event, {
+          actorUserId: userId,
         });
-        return { ok: true } as const;
       });
 
-      // Notify clients of table update after successful transaction
       await notifyTableUpdate(input.tableId);
-
-      // Process bot actions if it's a bot's turn
-      // This handles both player actions and DEAL_CARD actions that start betting rounds
       await triggerBotActions(db, input.tableId);
 
-      // transaction complete -> fetch committed snapshot
       const snapshot = await summarizeTable(db, input.tableId);
       return redactSnapshotForUser(snapshot, userId);
     }),
@@ -1121,60 +885,16 @@ export const tableRouter = createTRPCRouter({
       ensureDealerRole(ctx.session.user.role);
 
       await withTableMutation(db, input.tableId, async (tx) => {
-        // Verify the caller is the dealer of this table
-        const table = await tx.query.pokerTables.findFirst({
-          where: eq(pokerTables.id, input.tableId),
-        });
-        if (!table) throw new Error("Table not found");
-        if (table.dealerId !== userId)
-          throw new Error("FORBIDDEN: not the dealer of this table");
-
-        // Get current game state
-        const snapshot = await tx.query.pokerTables.findFirst({
-          where: eq(pokerTables.id, input.tableId),
-          with: {
-            games: { orderBy: (g, { desc }) => [desc(g.createdAt)], limit: 1 },
-            seats: { orderBy: (s, { asc }) => [asc(s.seatNumber)] },
-          },
-        });
-        if (!snapshot) throw new Error("Table not found");
-
-        const game = snapshot.games[0];
-        if (!game || game.isCompleted) throw new Error("No active game");
-        if (game.state !== "BETTING")
-          throw new Error("Timeout only allowed during betting");
-
-        // Verify the seat ID matches the currently assigned seat
-        if (game.assignedSeatId !== input.seatId) {
-          throw new Error("Seat ID does not match current player's turn");
-        }
-
-        // Find the seat to timeout
-        const seat = snapshot.seats.find((s) => s.id === input.seatId);
-        if (!seat) throw new Error("Seat not found");
-        if (seat.seatStatus !== "active") throw new Error("Seat is not active");
-
-        // Timeout behavior: check when no chips are owed, otherwise fold.
-        const currentBetTarget = getCurrentBetTarget(game, snapshot.seats);
-        const timeoutAction: "CHECK" | "FOLD" =
-          (seat.currentBet ?? 0) >= currentBetTarget ? "CHECK" : "FOLD";
-
-        // Execute timeout action using shared helper.
-        // This handles betCount increment, turn rotation, and betting transition.
-        await executeBettingAction(tx, {
-          actorSeatId: input.seatId,
-          gameId: game.id,
-          action: timeoutAction,
-        });
-
-        return { ok: true } as const;
+        await dispatchGameEvent(
+          tx,
+          input.tableId,
+          { type: "TIMEOUT", seatId: input.seatId },
+          { actorUserId: userId },
+        );
       });
 
-      // Notify clients of table update after successful transaction
       await notifyTableUpdate(input.tableId);
-      // Process bot actions if it's a bot's turn
       await triggerBotActions(db, input.tableId);
-      // Return fresh snapshot
       const snapshot = await summarizeTable(db, input.tableId);
       return redactSnapshotForUser(snapshot, userId);
     }),

@@ -2,9 +2,54 @@ import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { db } from "~/server/db";
-import { users } from "~/server/db/schema";
+import { pokerTables, seats, users } from "~/server/db/schema";
 
 export const userRouter = createTRPCRouter({
+  checkExistingSeat: protectedProcedure.query(async ({ ctx }) => {
+    const userId = ctx.session.user.id;
+    const role = ctx.session.user.role;
+
+    if (role === "dealer") {
+      const table = await db.query.pokerTables.findFirst({
+        where: eq(pokerTables.dealerId, userId),
+        columns: {
+          id: true,
+          name: true,
+        },
+      });
+
+      if (!table) {
+        return { hasSeat: false };
+      }
+
+      return {
+        hasSeat: true,
+        tableId: table.id,
+      };
+    }
+
+    const seat = await db.query.seats.findFirst({
+      where: eq(seats.playerId, userId),
+      with: {
+        table: {
+          columns: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+    });
+
+    if (!seat) {
+      return { hasSeat: false };
+    }
+
+    return {
+      hasSeat: true,
+      tableId: seat.tableId,
+    };
+  }),
+
   updateDisplayName: protectedProcedure
     .input(
       z.object({

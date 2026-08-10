@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { redactSnapshotForUser } from "~/server/api/routers/table";
+import { redactSnapshotForUser } from "~/server/api/table/snapshot";
 
 import type { TableSnapshot, SeatWithPlayer } from "~/server/api/table/types";
 

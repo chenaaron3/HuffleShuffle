@@ -24,7 +24,7 @@ export default function LobbyPage() {
     const { data: tables, refetch } = api.table.list.useQuery(undefined, { refetchOnWindowFocus: false });
 
     // Check if user has an existing seat
-    const { data: existingSeat } = api.table.checkExistingSeat.useQuery(undefined, {
+    const { data: existingSeat } = api.user.checkExistingSeat.useQuery(undefined, {
         enabled: status === 'authenticated',
     });
 
