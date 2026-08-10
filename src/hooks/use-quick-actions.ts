@@ -3,7 +3,7 @@ import { selectSetSnapshot, useTableStore } from '~/stores/table-store';
 import { api } from '~/utils/api';
 
 import type { QuickActionType } from '~/components/table/betting/quick-actions';
-import type { SeatWithPlayer } from "~/server/api/routers/table";
+import type { SeatWithPlayer } from "~/server/api/table/types";
 
 interface UseQuickActionsParams {
   tableId: string | undefined;

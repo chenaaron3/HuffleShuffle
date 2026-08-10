@@ -3,7 +3,7 @@ import {
     Bar, BarChart, CartesianGrid, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis
 } from 'recharts';
 
-import type { SeatWithPlayer } from '~/server/api/routers/table';
+import type { SeatWithPlayer } from '~/server/api/table/types';
 
 type SidePotDetail = {
     potNumber: number;

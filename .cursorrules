@@ -24,7 +24,7 @@
 
 ### Game Logic
 
-- **ALWAYS use shared game logic** from `src/server/api/game-logic.ts` for card dealing and game state management
+- **ALWAYS use shared dealing / hand lifecycle** from `src/server/api/game/dealing.ts` and `src/server/api/game/hand-lifecycle.ts` for card dealing and game state management
 - **DO NOT duplicate** game logic between tRPC API and Lambda consumer
 - Use transaction-based database operations for consistency
 
@@ -74,13 +74,15 @@
 ### Modifying Game State Machine
 
 1. Update state enum in `src/server/db/schema.ts` if adding new states
-2. Update transition logic in `src/server/api/game-logic.ts`
-3. Update `src/server/api/hand-solver.ts` if affecting showdown logic
+2. Update transition logic in `src/server/api/game/dealing.ts` / `hand-lifecycle.ts` / `hand-solver.ts` as appropriate
+3. Update `src/server/api/game/hand-solver.ts` if affecting showdown logic
 4. Update `docs/game-state-machine.md` with new states/transitions
 5. Update frontend components that depend on game state
 
 ## Testing Considerations
 
+- **Always run tests via `npm test`** (`bash scripts/test-with-db.sh`) — uses local Docker Postgres on `:5433`, never the `.env` / prod `DATABASE_URL`
+- Forward Vitest args after `--` (e.g. `npm test -- -t "TDA example"`). Do **not** run `npx vitest` / `npm run test:db` against the shared DB
 - Game logic changes should be tested with the test suite
 - Database migrations should be tested in development before production
 - Card scanning logic should be tested with test mode or mock messages
@@ -88,10 +90,31 @@
 
 ## File Organization
 
-- **Game Logic**: `src/server/api/game-logic.ts` (shared between API and consumer)
-- **Hand Evaluation**: `src/server/api/hand-solver.ts`
-- **Betting Logic**: `src/server/api/game-helpers.ts`
-- **Utilities**: `src/server/api/game-utils.ts`
+```
+src/server/api/
+├── trpc.ts, root.ts
+├── routers/          # tRPC procedures
+├── game/             # poker rules + state machine (Lambda-linked)
+│   ├── dealing.ts, hand-lifecycle.ts, betting-actions.ts, hand-solver.ts
+│   ├── pot.ts, blind-layout.ts
+│   └── helpers/      # pure: seats, betting, cards (no DB I/O)
+├── table/            # table I/O + shared types
+│   ├── seating.ts
+│   └── types.ts      # SeatWithPlayer, TableSnapshot
+├── bots/             # bot strategy + constants
+└── lib/              # locks, logging, timers, diagnostics
+    ├── table-transaction.ts, game-event-logger.ts, blind-timer.ts
+    └── money-conservation-diagnostics.ts
+```
+
+- **Dealing**: `src/server/api/game/dealing.ts` (shared with Lambda via `lambda/consumer/link/dealing.ts`)
+- **Hand lifecycle**: `src/server/api/game/hand-lifecycle.ts` (create/reset hand, bots, notify; Lambda link)
+- **Betting actions**: `src/server/api/game/betting-actions.ts`
+- **Seating (I/O)**: `src/server/api/table/seating.ts` (`fetchAllSeatsInOrder`, join/leave seat)
+- **Pot**: `src/server/api/game/pot.ts`
+- **Pure helpers**: `src/server/api/game/helpers/` — no DB I/O. Lambda links the directory as `lambda/consumer/link/helpers`
+- **Blind / button layout**: `src/server/api/game/blind-layout.ts` (TDA dead button via seat numbers)
+- **Hand Evaluation**: `src/server/api/game/hand-solver.ts`
 - **API Routes**: `src/server/api/routers/table.ts`
 - **Database Schema**: `src/server/db/schema.ts`
 - **Frontend State**: `src/stores/table-store.ts`
@@ -100,7 +123,7 @@
 
 ## Important Constraints
 
-1. **Never duplicate game logic** - always use shared functions from `game-logic.ts`
+1. **Never duplicate game logic** - always use shared functions from `dealing.ts` / `hand-lifecycle.ts` / `betting-actions.ts`
 2. **Maintain FIFO ordering** for card scans (critical for poker)
 3. **Preserve eliminated status** when resetting games
 4. **Redact cards** from other players except in SHOWDOWN state

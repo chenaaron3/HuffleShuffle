@@ -265,9 +265,10 @@ export const games = createTable(
       .references(() => pokerTables.id, { onDelete: "cascade" }),
     isCompleted: d.boolean().notNull().default(false),
     state: gameStateEnum("state").notNull().default("DEAL_HOLE_CARDS"),
-    dealerButtonSeatId: d
-      .varchar({ length: 255 })
-      .references(() => seats.id, { onDelete: "set null" }),
+    // Ring positions (survive seat row deletion when a player leaves).
+    dealerButtonSeatNumber: d.integer().notNull().default(0),
+    smallBlindSeatNumber: d.integer(), // null when SB is skipped
+    bigBlindSeatNumber: d.integer().notNull().default(0),
     assignedSeatId: d
       .varchar({ length: 255 })
       .references(() => seats.id, { onDelete: "set null" }),
@@ -306,8 +307,7 @@ export const games = createTable(
     effectiveSmallBlind: d.integer().notNull().default(0), // Effective small blind at game start
     effectiveBigBlind: d.integer().notNull().default(0), // Effective big blind at game start
     lastRaiseIncrement: d.integer().notNull().default(0), // Min raise increment for current betting round (TDA rule)
-    wasReset: d.boolean().notNull().default(false), // True if this game was reset via RESET_TABLE action (button should not advance on next game)
-    skipSmallBlind: d.boolean().notNull().default(false), // True when previous BB busted: collect BB only, no SB
+    wasReset: d.boolean().notNull().default(false), // True if this game was reset via RESET_TABLE action (freeze button+blinds on next game)
     createdAt: d
       .timestamp({ withTimezone: true })
       .default(sql`CURRENT_TIMESTAMP`)
@@ -316,7 +316,6 @@ export const games = createTable(
   }),
   (t) => [
     index("game_table_id_idx").on(t.tableId),
-    index("game_dealer_button_seat_id_idx").on(t.dealerButtonSeatId),
     index("game_assigned_seat_id_idx").on(t.assignedSeatId),
   ],
 );
@@ -375,10 +374,6 @@ export const gamesRelations = relations(games, ({ one }) => ({
   table: one(pokerTables, {
     fields: [games.tableId],
     references: [pokerTables.id],
-  }),
-  dealerButtonSeat: one(seats, {
-    fields: [games.dealerButtonSeatId],
-    references: [seats.id],
   }),
 }));
 

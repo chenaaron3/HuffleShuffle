@@ -2,7 +2,7 @@
 
 import { create } from "zustand";
 
-import type { TableSnapshot } from "~/server/api/routers/table";
+import type { TableSnapshot } from "~/server/api/table/types";
 
 export type TableStore = {
   snapshot: TableSnapshot | null;

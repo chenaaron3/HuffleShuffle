@@ -1,7 +1,7 @@
 const { Hand: PokerHand } = require("pokersolver");
 
 import type { games, seats } from "~/server/db/schema";
-import { getCurrentBetTarget } from "./game-utils";
+import { getCurrentBetTarget } from "~/server/api/game/helpers/betting";
 
 type SeatRow = typeof seats.$inferSelect;
 type GameRow = typeof games.$inferSelect;
@@ -30,7 +30,9 @@ export type BotGameState = {
 
   // All seats (for context)
   orderedSeats: SeatRow[];
-  dealerButtonSeatId: string | null;
+  dealerButtonSeatNumber: number;
+  smallBlindSeatNumber: number | null;
+  bigBlindSeatNumber: number;
 
   // Current betting round info
   maxBet: number;
@@ -261,35 +263,38 @@ function calculateEffectiveEquity(
  * Returns: 'early' | 'middle' | 'late' | 'blinds'
  */
 function calculatePosition(
-  botSeatId: string,
+  botSeat: SeatRow,
   orderedSeats: SeatRow[],
-  dealerButtonSeatId: string | null,
+  dealerButtonSeatNumber: number,
+  smallBlindSeatNumber: number | null = null,
+  bigBlindSeatNumber: number | null = null,
 ): "early" | "middle" | "late" | "blinds" {
-  if (!dealerButtonSeatId) return "middle";
+  const botIndex = orderedSeats.findIndex((s) => s.id === botSeat.id);
+  if (botIndex === -1) return "middle";
 
-  const botIndex = orderedSeats.findIndex((s) => s.id === botSeatId);
-  const dealerIndex = orderedSeats.findIndex(
-    (s) => s.id === dealerButtonSeatId,
+  if (
+    botSeat.seatNumber === smallBlindSeatNumber ||
+    botSeat.seatNumber === bigBlindSeatNumber
+  ) {
+    return "blinds";
+  }
+
+  let dealerIndex = orderedSeats.findIndex(
+    (s) => s.seatNumber === dealerButtonSeatNumber,
   );
+  if (dealerIndex < 0) {
+    dealerIndex = 0;
+    for (let i = 0; i < orderedSeats.length; i++) {
+      if (orderedSeats[i]!.seatNumber <= dealerButtonSeatNumber) {
+        dealerIndex = i;
+      } else break;
+    }
+  }
 
-  if (botIndex === -1 || dealerIndex === -1) return "middle";
-
-  // Calculate positions relative to dealer
   const totalSeats = orderedSeats.length;
   const positionsAfterDealer =
     (botIndex - dealerIndex + totalSeats) % totalSeats;
 
-  // Small blind is next after dealer, big blind is after small blind
-  const smallBlindIndex = (dealerIndex + 1) % totalSeats;
-  const bigBlindIndex = (dealerIndex + 2) % totalSeats;
-
-  if (botIndex === smallBlindIndex || botIndex === bigBlindIndex) {
-    return "blinds";
-  }
-
-  // Early: first 2 positions after big blind
-  // Middle: next 2 positions
-  // Late: button and cutoff (last 2 positions before small blind)
   if (positionsAfterDealer <= 2) {
     return "early";
   } else if (positionsAfterDealer <= 4) {
@@ -426,7 +431,7 @@ function calculateRaiseAmount(
   bigBlind: number,
   lastRaiseIncrement: number,
 ): number {
-  // Minimum total bet for a legal raise (TDA) — same as game-helpers minRaiseTotal
+  // Minimum total bet for a legal raise (TDA) — same as betting-actions minRaiseTotal
   const minLegalTotal = currentMaxBet + lastRaiseIncrement;
   // Most this seat can put in this street (total bet level)
   const maxTotalBet = botCurrentBet + botStack;
@@ -476,7 +481,9 @@ export function makeBotDecision(gameState: BotGameState): BotDecision {
     potTotal,
     effectiveBigBlind,
     orderedSeats,
-    dealerButtonSeatId,
+    dealerButtonSeatNumber,
+    smallBlindSeatNumber,
+    bigBlindSeatNumber,
     maxBet,
     botCurrentBet,
     botStack,
@@ -519,9 +526,11 @@ export function makeBotDecision(gameState: BotGameState): BotDecision {
 
   // Calculate position
   const position = calculatePosition(
-    botSeat.id,
+    botSeat,
     orderedSeats,
-    dealerButtonSeatId,
+    dealerButtonSeatNumber,
+    smallBlindSeatNumber,
+    bigBlindSeatNumber,
   );
 
   // Calculate stack-to-pot ratio
@@ -610,7 +619,9 @@ export function createBotGameState(
     effectiveSmallBlind: game.effectiveSmallBlind ?? 0,
     effectiveBigBlind,
     orderedSeats,
-    dealerButtonSeatId: game.dealerButtonSeatId,
+    dealerButtonSeatNumber: game.dealerButtonSeatNumber,
+    smallBlindSeatNumber: game.smallBlindSeatNumber,
+    bigBlindSeatNumber: game.bigBlindSeatNumber,
     maxBet,
     botCurrentBet: botSeat.currentBet ?? 0,
     botStack: botSeat.buyIn ?? 0,

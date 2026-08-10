@@ -85,19 +85,19 @@ const scenarios: Scenario[] = [
       { type: "action", action: "DEAL_CARD", by: "dealer", params: { rank: "Q", suit: "s" } },
       { type: "action", action: "DEAL_CARD", by: "dealer", params: { rank: "J", suit: "s" } },
       { type: "validate", game: { state: "BETTING" } },
-      // Heads-up: SB (player2) acts first. P2 raises to 50 (BB=10, increment 40; min re-raise = 90)
-      { type: "action", action: "RAISE", by: "player2", params: { amount: 50 } },
-      // P1 (BB) tries invalid re-raise to 70 (increment 20 < 40) - must fail
+      // Heads-up (TDA): button = SB (player1) acts first. P1 raises to 50 (BB=10, increment 40; min re-raise = 90)
+      { type: "action", action: "RAISE", by: "player1", params: { amount: 50 } },
+      // P2 (BB) tries invalid re-raise to 70 (increment 20 < 40) - must fail
       {
         type: "action",
         action: "RAISE",
-        by: "player1",
+        by: "player2",
         params: { amount: 70 },
         isError: true,
       },
-      // P1 makes valid min re-raise to 90
-      { type: "action", action: "RAISE", by: "player1", params: { amount: 90 } },
-      { type: "action", action: "CHECK", by: "player2" }, // P2 calls
+      // P2 makes valid min re-raise to 90
+      { type: "action", action: "RAISE", by: "player2", params: { amount: 90 } },
+      { type: "action", action: "CHECK", by: "player1" }, // P1 calls
       { type: "validate", game: { state: "DEAL_FLOP" } },
     ],
   },

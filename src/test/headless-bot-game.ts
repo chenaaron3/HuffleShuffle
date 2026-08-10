@@ -6,7 +6,7 @@
 import { eq, sql } from 'drizzle-orm';
 import { appendFileSync, closeSync, fsyncSync, mkdirSync, openSync, writeFileSync } from 'node:fs';
 import { dirname, isAbsolute, join } from 'node:path';
-import { triggerBotActions } from '~/server/api/game-logic';
+import { triggerBotActions } from '~/server/api/game/hand-lifecycle';
 import { createCaller } from '~/server/api/root';
 import { db } from '~/server/db';
 import { gameEvents, games, piDevices, pokerTables, seats, users } from '~/server/db/schema';

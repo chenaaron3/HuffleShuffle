@@ -3,7 +3,7 @@ import { ChipStream } from '~/components/table/chips/chip-animations';
 import { usePokerAnimations } from '~/hooks/use-poker-animations';
 import { getPotPosition, getSeatPosition } from '~/utils/dom-positions';
 
-import type { SeatWithPlayer } from "~/server/api/routers/table";
+import type { SeatWithPlayer } from "~/server/api/table/types";
 
 interface TableAnimationProps {
     seats: SeatWithPlayer[];

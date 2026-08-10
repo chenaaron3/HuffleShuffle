@@ -23,10 +23,10 @@
   "include": [
     "consumer.ts",
     "link/schema.ts",
-    "link/game-logic.ts",
-    "link/game-utils.ts",
-    "link/hand-solver.ts",
-    "link/table-transaction.ts"
+    "link/dealing.ts",
+    "link/hand-lifecycle.ts",
+    "link/table-transaction.ts",
+    "link/helpers/**/*.ts"
   ],
   "exclude": [
     "node_modules",

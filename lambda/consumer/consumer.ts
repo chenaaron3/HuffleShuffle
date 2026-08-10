@@ -6,9 +6,9 @@ import postgres from 'postgres';
 
 import { DeleteMessageCommand, SQSClient } from '@aws-sdk/client-sqs';
 
-import {
-    dealCard, notifyTableUpdate, parseBarcodeToRankSuit, triggerBotActions
-} from './link/game-logic';
+import { dealCard } from './link/dealing';
+import { notifyTableUpdate, triggerBotActions } from './link/hand-lifecycle';
+import { parseBarcodeToRankSuit } from './link/helpers/cards';
 import * as schema from './link/schema';
 import { withTableMutation } from './link/table-transaction';
 

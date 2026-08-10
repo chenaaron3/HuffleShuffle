@@ -15,7 +15,7 @@ A Next.js T3-based poker table management and streaming control system that inte
 
 ### Services & Daemons
 
-- **Ingest**: `lambda/consumer/consumer.ts` — SQS FIFO → shared `game-logic.ts` → Pusher notify.
+- **Ingest**: `lambda/consumer/consumer.ts` — SQS FIFO → shared `dealing.ts` / `hand-lifecycle.ts` → Pusher notify.
 - **Pi**: `raspberrypi/scanner-daemon.ts`, `hand-daemon.ts`, `dealer-daemon.ts` — scanner → SQS; cameras via Pusher `device-{serial}` events (`start-stream`, `stop-stream`, `dealer-start-stream`, `dealer-stop-stream`). Detail: [`docs/card-scanning-ingestion.md`](docs/card-scanning-ingestion.md), [`docs/video-streaming.md`](docs/video-streaming.md).
 
 ### Database / Schema Notes
@@ -37,13 +37,13 @@ A Next.js T3-based poker table management and streaming control system that inte
 ## Start here (new chat / assistant)
 
 1. Read **Project Status** above, then open **only** the doc that matches the task (table below).
-2. **Non‑negotiables**: All dealing and state transitions go through shared `src/server/api/game-logic.ts` (keep `lambda/consumer/link/game-logic.ts` in sync). DB via Drizzle; table UI state in `src/stores/table-store.ts` + `src/hooks/use-table-selectors.ts`.
+2. **Non‑negotiables**: All dealing and state transitions go through shared `src/server/api/game/dealing.ts` and `game/hand-lifecycle.ts` (keep `lambda/consumer/link/dealing.ts` and `hand-lifecycle.ts` in sync). DB via Drizzle; table UI state in `src/stores/table-store.ts` + `src/hooks/use-table-selectors.ts`.
 
 | If you are… | Open |
 |-------------|------|
 | Orienting / explaining the system | [`docs/architecture.md`](docs/architecture.md), [`docs/overview-and-technology.md`](docs/overview-and-technology.md) |
 | Changing schema or migrations | [`docs/database-schema.md`](docs/database-schema.md), `src/server/db/schema.ts` |
-| Game rules, states, betting | [`docs/game-state-machine.md`](docs/game-state-machine.md), `src/server/api/game-logic.ts` |
+| Game rules, states, betting | [`docs/game-state-machine.md`](docs/game-state-machine.md), `src/server/api/game/dealing.ts`, `hand-lifecycle.ts`, `betting-actions.ts` |
 | tRPC / REST contracts | [`docs/api-endpoints.md`](docs/api-endpoints.md) |
 | SQS, barcode scan pipeline, Lambda consumer | [`docs/card-scanning-ingestion.md`](docs/card-scanning-ingestion.md) |
 | LiveKit, Pusher video signaling | [`docs/video-streaming.md`](docs/video-streaming.md) |

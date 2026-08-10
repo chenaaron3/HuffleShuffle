@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { redactSnapshotForUser } from "~/server/api/routers/table";
 
-import type { TableSnapshot, SeatWithPlayer } from "~/server/api/routers/table";
+import type { TableSnapshot, SeatWithPlayer } from "~/server/api/table/types";
 
 // Helper to create a mock seat
 function createMockSeat(
@@ -36,7 +36,9 @@ function createMockGame(overrides: Partial<any> = {}) {
     id: "game-1",
     tableId: "table-1",
     state: "BETTING",
-    dealerButtonSeatId: "seat-1",
+    dealerButtonSeatNumber: 0,
+    smallBlindSeatNumber: 1,
+    bigBlindSeatNumber: 2,
     assignedSeatId: "seat-1",
     communityCards: [],
     potTotal: 100,
@@ -48,7 +50,6 @@ function createMockGame(overrides: Partial<any> = {}) {
     turnStartTime: null,
     isCompleted: false,
     wasReset: false,
-    skipSmallBlind: false,
     createdAt: new Date(),
     updatedAt: null,
     ...overrides,

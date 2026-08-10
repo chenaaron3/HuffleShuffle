@@ -1,33 +1,49 @@
-import { and, eq, gt, isNull, or, sql } from 'drizzle-orm';
-import { AccessToken } from 'livekit-server-sdk';
-import process from 'process';
-import ts from 'typescript';
-import { z } from 'zod';
-import { createTRPCRouter, protectedProcedure, publicProcedure } from '~/server/api/trpc';
-import { db } from '~/server/db';
+import { and, eq } from "drizzle-orm";
+import { AccessToken } from "livekit-server-sdk";
+import { z } from "zod";
 import {
-    games, MAX_SEATS_PER_TABLE, piDevices, pokerTables, protectedPokerTables, seats, users
-} from '~/server/db/schema';
-import { getRoomServiceClient } from '~/server/livekit';
-import { endHandStream, startHandStream } from '~/server/signal';
-import { rsaEncryptB64 } from '~/utils/crypto';
-
-import { SendMessageCommand, SQSClient } from '@aws-sdk/client-sqs';
-import { TrackSource, TrackType } from '@livekit/protocol';
-
-import { computeBlindState } from '../blind-timer';
-import { generateBotPublicKey, getBotIdForSeat, getBotName } from '../bot-constants';
+  createTRPCRouter,
+  protectedProcedure,
+} from "~/server/api/trpc";
+import { db } from "~/server/db";
 import {
-    createSeatTransaction, executeBettingAction, removePlayerSeatTransaction
-} from '../game-helpers';
-import {
-    createNewGame, dealCard, generateRandomCard, notifyTableUpdate, parseRankSuitToBarcode,
-    resetGame, triggerBotActions
-} from '../game-logic';
-import { getCurrentBetTarget } from '../game-utils';
-import { withTableMutation } from '../table-transaction';
+  games,
+  MAX_SEATS_PER_TABLE,
+  piDevices,
+  pokerTables,
+  protectedPokerTables,
+  seats,
+  users,
+} from "~/server/db/schema";
+import { getRoomServiceClient } from "~/server/livekit";
+import { endHandStream, startHandStream } from "~/server/signal";
+import { rsaEncryptB64 } from "~/utils/crypto";
 
-import type { BlindState } from "../blind-timer";
+import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
+import { TrackSource, TrackType } from "@livekit/protocol";
+
+import { computeBlindState } from "~/server/api/lib/blind-timer";
+import {
+  generateBotPublicKey,
+  getBotIdForSeat,
+  getBotName,
+} from "~/server/api/bots/constants";
+import { executeBettingAction } from "~/server/api/game/betting-actions";
+import { dealCard, generateRandomCard } from "~/server/api/game/dealing";
+import {
+  createNewGame,
+  notifyTableUpdate,
+  resetGame,
+  triggerBotActions,
+} from "~/server/api/game/hand-lifecycle";
+import { parseRankSuitToBarcode } from "~/server/api/game/helpers/cards";
+import { getCurrentBetTarget } from "~/server/api/game/helpers/betting";
+import {
+  createSeatTransaction,
+  removePlayerSeatTransaction,
+} from "~/server/api/table/seating";
+import type { SeatWithPlayer, TableSnapshot } from "~/server/api/table/types";
+import { withTableMutation } from "~/server/api/lib/table-transaction";
 import type { VideoGrant } from "livekit-server-sdk";
 const ensureDealerRole = (role: string | undefined) => {
   if (role !== "dealer") throw new Error("FORBIDDEN: dealer role required");
@@ -38,25 +54,6 @@ const ensurePlayerRole = (role: string | undefined) => {
 };
 
 type DB = typeof db;
-type SeatRow = typeof seats.$inferSelect;
-export type SeatWithPlayer = SeatRow & {
-  player?: {
-    id: string;
-    name: string | null;
-    displayName: string;
-  } | null;
-  cardsVisibleToOthers?: boolean;
-};
-type GameRow = typeof games.$inferSelect;
-type TableRow = typeof pokerTables.$inferSelect;
-export type TableSnapshot = {
-  table: TableRow | null;
-  seats: SeatWithPlayer[];
-  game: GameRow | null;
-  isJoinable: boolean;
-  availableSeats: number;
-  blinds: BlindState;
-};
 
 const summarizeTable = async (
   client: DB,

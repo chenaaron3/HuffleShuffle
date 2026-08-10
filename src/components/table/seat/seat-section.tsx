@@ -6,7 +6,7 @@ import {
 
 import { SeatCard } from './seat-card';
 
-import type { SeatWithPlayer } from '~/server/api/routers/table';
+import type { SeatWithPlayer } from '~/server/api/table/types';
 
 interface SeatSectionProps {
     side: 'left' | 'right';

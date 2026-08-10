@@ -71,6 +71,10 @@ export type ValidateStep = {
   seats?: Partial<Record<PlayerKey, SeatSubset>>;
   // Optional helper to validate that the dealer button is on a specific player's seat
   dealerButtonFor?: PlayerKey;
+  /** Assert games.smallBlindSeatNumber matches this player's seat; null when SB skipped. */
+  smallBlindFor?: PlayerKey | null;
+  /** Assert games.bigBlindSeatNumber matches this player's seat. */
+  bigBlindFor?: PlayerKey;
   /** Assert games.assignedSeatId matches this player (e.g. preflop UTG when in BETTING). */
   firstToActFor?: PlayerKey;
 };

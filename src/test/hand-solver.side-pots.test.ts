@@ -3,7 +3,7 @@ import type { seats } from "~/server/db/schema";
 import {
   calculateSidePotsFromCumulativeBets,
   distributePotAmountAmongTiedWinners,
-} from "./hand-solver";
+} from "~/server/api/game/hand-solver";
 
 type SeatRow = typeof seats.$inferSelect;
 
@@ -91,7 +91,7 @@ describe("distributePotAmountAmongTiedWinners (odd-chip splits)", () => {
       25,
       [btn.id, winnerA.id],
       ordered,
-      btn.id,
+      btn.seatNumber,
     );
     expect(r[winnerA.id]).toBe(13);
     expect(r[btn.id]).toBe(12);
@@ -103,7 +103,12 @@ describe("distributePotAmountAmongTiedWinners (odd-chip splits)", () => {
     const b = makeSeat("b", 1, 0, "all-in");
     const c = makeSeat("c", 2, 0, "all-in");
     const ordered = [a, b, c];
-    const r = distributePotAmountAmongTiedWinners(100, [a.id, b.id, c.id], ordered, c.id);
+    const r = distributePotAmountAmongTiedWinners(
+      100,
+      [a.id, b.id, c.id],
+      ordered,
+      c.seatNumber,
+    );
     // Button c: clockwise first is a, then b, then c
     expect(r[a.id]).toBe(34);
     expect(r[b.id]).toBe(33);

@@ -1,0 +1,13 @@
+---
+description: Shared server helpers live in helpers/ and are linked as a directory into Lambda
+alwaysApply: true
+---
+
+# Lambda shared helpers
+
+- Put **pure** shared helpers in `src/server/api/game/helpers/` (e.g. `seats.ts`, `betting.ts`, `cards.ts`). No DB I/O in helpers.
+- Seat queries / mutations live in `src/server/api/table/seating.ts` (not helpers).
+- Lambda consumes helpers via one directory symlink: `lambda/consumer/link/helpers` → `src/server/api/game/helpers`.
+- **Do not** add new per-file symlinks under `lambda/consumer/link/` for helper modules.
+- Entry-point links that remain: `dealing.ts` → `game/dealing.ts`, `hand-lifecycle.ts` → `game/hand-lifecycle.ts`, `table-transaction.ts` → `lib/table-transaction.ts`, `schema.ts` (imported directly by `consumer.ts`).
+- New helper files are picked up automatically; ensure `lambda/consumer/tsconfig.json` includes `link/helpers/**/*.ts`.

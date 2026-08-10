@@ -12,7 +12,7 @@ export type GameEventType = (typeof gameEventEnum.enumValues)[number];
 
 // --- Detail schemas per event ---
 const StartGameDetails = z.object({
-  dealerButtonSeatId: z.string().nullable(),
+  dealerButtonSeatNumber: z.number().int().nonnegative(),
 });
 
 const RaiseDetails = z.object({

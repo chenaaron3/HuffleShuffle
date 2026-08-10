@@ -2,7 +2,7 @@ import { useSession } from 'next-auth/react';
 import { useMemo } from 'react';
 import { selectTableSnapshot, useTableStore } from '~/stores/table-store';
 
-import type { SeatWithPlayer } from "~/server/api/routers/table";
+import type { SeatWithPlayer } from "~/server/api/table/types";
 
 /**
  * Selector hooks for accessing computed values from the table store.
@@ -189,57 +189,34 @@ export function useDealerSeatInfo() {
   const snapshot = useTableStore(selectTableSnapshot);
   const paddedSeats = usePaddedSeats();
   return useMemo(() => {
-    const dealerSeatId = snapshot?.game?.dealerButtonSeatId ?? null;
-    const dealerSeat = dealerSeatId
-      ? paddedSeats.find((s: SeatWithPlayer | null) => s?.id === dealerSeatId)
-      : null;
-    const dealerSeatNumber = dealerSeat?.seatNumber ?? -1;
-    return { dealerSeatId, dealerSeat, dealerSeatNumber };
-  }, [snapshot?.game?.dealerButtonSeatId, paddedSeats]);
+    const dealerSeatNumber = snapshot?.game?.dealerButtonSeatNumber ?? -1;
+    const dealerSeat =
+      dealerSeatNumber >= 0
+        ? (paddedSeats.find(
+            (s: SeatWithPlayer | null) => s?.seatNumber === dealerSeatNumber,
+          ) ?? null)
+        : null;
+    return {
+      dealerSeatId: dealerSeat?.id ?? null,
+      dealerSeat,
+      dealerSeatNumber,
+    };
+  }, [snapshot?.game?.dealerButtonSeatNumber, paddedSeats]);
 }
 
 export function useBlindSeatNumbers() {
   const snapshot = useTableStore(selectTableSnapshot);
-  const paddedSeats = usePaddedSeats();
 
   return useMemo(() => {
-    const dealerSeatId = snapshot?.game?.dealerButtonSeatId ?? null;
-    const dealerSeat = dealerSeatId
-      ? paddedSeats.find((s) => s?.id === dealerSeatId)
-      : null;
-    const dealerSeatNumber = dealerSeat?.seatNumber ?? -1;
-
-    const findNextOccupiedSeat = (startSeatNumber: number): number => {
-      if (startSeatNumber < 0) return -1;
-      const totalSeats = snapshot?.table?.maxSeats ?? 8;
-      for (let i = 1; i < totalSeats; i++) {
-        const nextSeatNumber = (startSeatNumber + i) % totalSeats;
-        const seat = paddedSeats[nextSeatNumber] || null;
-        if (seat !== null && seat.seatStatus !== "eliminated") {
-          return nextSeatNumber;
-        }
-      }
-      return -1;
-    };
-
-    const smallBlindSeatNumber = snapshot?.game?.skipSmallBlind
-      ? -1
-      : findNextOccupiedSeat(dealerSeatNumber);
-    const bigBlindSeatNumber =
-      smallBlindSeatNumber >= 0
-        ? findNextOccupiedSeat(smallBlindSeatNumber)
-        : findNextOccupiedSeat(dealerSeatNumber);
-
     return {
-      smallBlindIdx: smallBlindSeatNumber,
-      bigBlindIdx: bigBlindSeatNumber,
-      dealerButtonIdx: dealerSeatNumber,
+      smallBlindIdx: snapshot?.game?.smallBlindSeatNumber ?? -1,
+      bigBlindIdx: snapshot?.game?.bigBlindSeatNumber ?? -1,
+      dealerButtonIdx: snapshot?.game?.dealerButtonSeatNumber ?? -1,
     };
   }, [
-    snapshot?.game?.dealerButtonSeatId,
-    snapshot?.game?.skipSmallBlind,
-    snapshot?.table?.maxSeats,
-    paddedSeats,
+    snapshot?.game?.dealerButtonSeatNumber,
+    snapshot?.game?.smallBlindSeatNumber,
+    snapshot?.game?.bigBlindSeatNumber,
   ]);
 }
 

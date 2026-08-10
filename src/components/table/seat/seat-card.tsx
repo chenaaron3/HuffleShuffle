@@ -19,7 +19,7 @@ import { EmptySeatCard } from './empty-seat-card';
 import { getSeatSizeClasses } from './seat-size-classes';
 import { SeatTurnGlow } from './seat-turn-glow';
 
-import type { SeatWithPlayer } from '~/server/api/routers/table';
+import type { SeatWithPlayer } from '~/server/api/table/types';
 
 export interface SeatCardProps {
     seat: SeatWithPlayer | null;

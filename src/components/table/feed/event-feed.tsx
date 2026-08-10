@@ -2,7 +2,7 @@ import * as React from 'react';
 import { CardImage } from '~/components/table/cards/card-img';
 import { gameEvents } from '~/server/db/schema';
 
-import type { SeatWithPlayer } from '~/server/api/routers/table';
+import type { SeatWithPlayer } from '~/server/api/table/types';
 type EventRow = typeof gameEvents.$inferSelect;
 
 function formatTime(dateStr: string | Date): string {

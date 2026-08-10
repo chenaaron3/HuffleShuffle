@@ -3,13 +3,12 @@ import { z } from "zod";
 import {
   computeBlindState,
   sanitizeStepSeconds,
-} from "~/server/api/blind-timer";
+} from "~/server/api/lib/blind-timer";
+import { notifyTableUpdate } from "~/server/api/game/hand-lifecycle";
+import { withTableMutation } from "~/server/api/lib/table-transaction";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { db } from "~/server/db";
 import { pokerTables } from "~/server/db/schema";
-
-import { notifyTableUpdate } from "../game-logic";
-import { withTableMutation } from "../table-transaction";
 
 const ensureDealerRole = (role: string | undefined) => {
   if (role !== "dealer") throw new Error("FORBIDDEN: dealer role required");

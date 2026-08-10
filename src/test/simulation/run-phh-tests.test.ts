@@ -70,12 +70,17 @@ async function setupDealerButton(
     `  Creating dummy game with button at seat ${previousSeat.seatNumber}`,
   );
 
-  // Create a dummy completed game with button at previous position
+  // Next button = previous SB, so set previous SB to the target seat number.
+  const targetSeat = allSeats[targetSeatIndex]!;
+  const nextAfterTarget =
+    allSeats[(targetSeatIndex + 1) % allSeats.length]!;
   await db.insert(games).values({
     tableId,
     isCompleted: true, // Mark as completed so it's treated as a previous game
     state: "SHOWDOWN",
-    dealerButtonSeatId: previousSeat.id,
+    dealerButtonSeatNumber: previousSeat.seatNumber,
+    smallBlindSeatNumber: targetSeat.seatNumber,
+    bigBlindSeatNumber: nextAfterTarget.seatNumber,
     communityCards: [],
     potTotal: 0,
     sidePotDetails: [],

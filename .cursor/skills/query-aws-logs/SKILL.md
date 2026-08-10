@@ -77,7 +77,7 @@ Use single quotes around `--log-stream-names` so `$LATEST` is not expanded.
 
 ## Follow-up in repo
 
-Ingest path: `lambda/consumer/consumer.ts` → shared `game-logic` / `hand-solver`. Money conservation failures throw from `validateMoneyConservation` in `src/server/api/hand-solver.ts`; CloudWatch may include **`logConservationErrorDiagnostics`** output (full seat/pot dump) in the same invocation—pull the **full stream slice** around the error timestamp, not only the ERROR line.
+Ingest path: `lambda/consumer/consumer.ts` → shared `dealing` / `hand-lifecycle` / `hand-solver`. Money conservation failures throw from `validateMoneyConservation` in `src/server/api/hand-solver.ts`; CloudWatch may include **`logConservationErrorDiagnostics`** output (full seat/pot dump) in the same invocation—pull the **full stream slice** around the error timestamp, not only the ERROR line.
 
 ## Other log groups
 

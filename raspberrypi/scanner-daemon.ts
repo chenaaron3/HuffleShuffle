@@ -287,7 +287,7 @@ export async function runScannerDaemon(): Promise<void> {
   const sqs = new SQSClient({ region });
   let lastDealtAt = 0;
 
-  /** Same rules as `parseBarcodeToRankSuit` in game-logic (Pi stays standalone). */
+  /** Same rules as `parseBarcodeToRankSuit` in helpers/cards (Pi stays standalone). */
   const isValidCardBarcode = (digits: string): boolean => {
     if (!/^[0-9]{4}$/.test(digits)) return false;
     const suitCode = digits[0]!;

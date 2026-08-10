@@ -104,11 +104,17 @@ const scenarios: Scenario[] = [
       },
       { type: "validate", game: { state: "BETTING" } },
       {
+        // TDA: dead button on eliminated p2; SB=p3, BB=p4; UTG=p1
         type: "validate",
+        dealerButtonFor: "player2",
+        smallBlindFor: "player3",
+        bigBlindFor: "player4",
+        firstToActFor: "player1",
         seats: { player2: { cards: [], seatStatus: "eliminated" } },
       },
 
       // Betting: p4 goes all-in and loses to p3
+      { type: "action", action: "FOLD", by: "player1" },
       {
         type: "action",
         action: "RAISE",
@@ -116,7 +122,6 @@ const scenarios: Scenario[] = [
         params: { amount: 70 },
       },
       { type: "action", action: "CHECK", by: "player4" },
-      { type: "action", action: "FOLD", by: "player1" },
 
       // Run out the board
       { type: "validate", game: { state: "DEAL_FLOP" } },
@@ -153,14 +158,14 @@ const scenarios: Scenario[] = [
         params: { rank: "4", suit: "h" },
       },
 
-      // p3 wins with three 9s, p4 eliminated
+      // p3 wins with three 9s, p4 eliminated (p1 folded; never posted)
       { type: "validate", game: { state: "SHOWDOWN" } },
       {
         type: "validate",
         seats: {
-          player1: { buyIn: 190 },
+          player1: { buyIn: 200 },
           player2: { seatStatus: "eliminated", buyIn: 0 },
-          player3: { buyIn: 180 },
+          player3: { buyIn: 170 },
           player4: { seatStatus: "eliminated", buyIn: 0 },
         },
       },
@@ -192,15 +197,21 @@ const scenarios: Scenario[] = [
         },
       },
 
-      // Both go all-in: p3 acts first (UTG), p1 calls
-      // After blinds: p1 has 180 chips (10 in pot as BB), p3 has 175 chips (5 in pot as SB)
+      // HU TDA: button=SB=p3 acts first; BB=p1. Stacks 200 / 170 after hand 2.
+      {
+        type: "validate",
+        dealerButtonFor: "player3",
+        smallBlindFor: "player3",
+        bigBlindFor: "player1",
+        firstToActFor: "player3",
+      },
       {
         type: "action",
         action: "RAISE",
         by: "player3",
-        params: { amount: 180 }, // Goes all-in for 175 more (total bet 180)
+        params: { amount: 170 }, // all-in
       },
-      { type: "action", action: "CHECK", by: "player1" }, // Calls for 170 more (total bet 180)
+      { type: "action", action: "CHECK", by: "player1" }, // calls
 
       // Run out the board
       { type: "validate", game: { state: "DEAL_FLOP" } },
@@ -468,7 +479,7 @@ const scenarios: Scenario[] = [
         },
       },
 
-      // HAND 4: Small pot
+      // HAND 4: Small pot — prior BB (p5) eliminated → dead button on p4, no SB, BB=p6; UTG=p8
       { type: "action", action: "RESET_TABLE", by: "dealer" },
       { type: "action", action: "START_GAME", by: "dealer" },
       {
@@ -482,6 +493,14 @@ const scenarios: Scenario[] = [
         },
       },
       {
+        type: "validate",
+        dealerButtonFor: "player4",
+        smallBlindFor: null,
+        bigBlindFor: "player6",
+        firstToActFor: "player8",
+      },
+      { type: "action", action: "FOLD", by: "player8" },
+      {
         type: "action",
         action: "RAISE",
         by: "player2",
@@ -490,23 +509,22 @@ const scenarios: Scenario[] = [
       { type: "action", action: "FOLD", by: "player3" },
       { type: "action", action: "FOLD", by: "player4" },
       { type: "action", action: "FOLD", by: "player6" },
-      { type: "action", action: "FOLD", by: "player8" },
       { type: "validate", game: { state: "SHOWDOWN" } },
       {
         type: "validate",
         seats: {
           player1: { buyIn: 0, seatStatus: "eliminated" },
-          player2: { buyIn: 825 },
+          player2: { buyIn: 820 },
           player3: { buyIn: 200 },
           player4: { buyIn: 185 },
           player5: { buyIn: 0, seatStatus: "eliminated" },
-          player6: { buyIn: 195 },
+          player6: { buyIn: 190 },
           player7: { buyIn: 0, seatStatus: "eliminated" },
-          player8: { buyIn: 190 },
+          player8: { buyIn: 200 },
         },
       },
 
-      // HAND 5: p4 eliminated (Button: p6, SB: p8, BB: p2, First to act: p3)
+      // HAND 5: after BB-only hand, button moves to prior BB (p6); SB=p8, BB=p2; UTG=p3
       { type: "action", action: "RESET_TABLE", by: "dealer" },
       { type: "action", action: "START_GAME", by: "dealer" },
       {
@@ -575,13 +593,13 @@ const scenarios: Scenario[] = [
         type: "validate",
         seats: {
           player1: { buyIn: 0, seatStatus: "eliminated" },
-          player2: { buyIn: 1065 },
+          player2: { buyIn: 1060 },
           player3: { buyIn: 150 },
           player4: { buyIn: 0, seatStatus: "eliminated" },
           player5: { buyIn: 0, seatStatus: "eliminated" },
-          player6: { buyIn: 195 },
+          player6: { buyIn: 190 },
           player7: { buyIn: 0, seatStatus: "eliminated" },
-          player8: { buyIn: 185 },
+          player8: { buyIn: 195 },
         },
       },
 
@@ -647,17 +665,17 @@ const scenarios: Scenario[] = [
         type: "validate",
         seats: {
           player1: { buyIn: 0, seatStatus: "eliminated" },
-          player2: { buyIn: 1060 },
+          player2: { buyIn: 1055 },
           player3: { buyIn: 0, seatStatus: "eliminated" },
           player4: { buyIn: 0, seatStatus: "eliminated" },
           player5: { buyIn: 0, seatStatus: "eliminated" },
-          player6: { buyIn: 350 },
+          player6: { buyIn: 345 },
           player7: { buyIn: 0, seatStatus: "eliminated" },
-          player8: { buyIn: 185 },
+          player8: { buyIn: 195 },
         },
       },
 
-      // HAND 7: p8 eliminated (Button: p2, SB: p6, BB: p8, First to act: p2)
+      // HAND 7: prior BB (p3) eliminated → dead button on p2, no SB, BB=p6; UTG=p8
       { type: "action", action: "RESET_TABLE", by: "dealer" },
       { type: "action", action: "START_GAME", by: "dealer" },
       {
@@ -669,19 +687,20 @@ const scenarios: Scenario[] = [
         },
       },
       {
-        type: "action",
-        action: "RAISE",
-        by: "player2",
-        params: { amount: 100 },
+        type: "validate",
+        dealerButtonFor: "player2",
+        smallBlindFor: null,
+        bigBlindFor: "player6",
+        firstToActFor: "player8",
       },
-      { type: "action", action: "FOLD", by: "player6" },
       {
         type: "action",
         action: "RAISE",
         by: "player8",
-        params: { amount: 185 },
+        params: { amount: 195 },
       },
       { type: "action", action: "CHECK", by: "player2" },
+      { type: "action", action: "FOLD", by: "player6" },
       {
         type: "action",
         action: "DEAL_CARD",
@@ -717,17 +736,17 @@ const scenarios: Scenario[] = [
         type: "validate",
         seats: {
           player1: { buyIn: 0, seatStatus: "eliminated" },
-          player2: { buyIn: 1250 },
+          player2: { buyIn: 1260 },
           player3: { buyIn: 0, seatStatus: "eliminated" },
           player4: { buyIn: 0, seatStatus: "eliminated" },
           player5: { buyIn: 0, seatStatus: "eliminated" },
-          player6: { buyIn: 345 },
+          player6: { buyIn: 335 },
           player7: { buyIn: 0, seatStatus: "eliminated" },
           player8: { buyIn: 0, seatStatus: "eliminated" },
         },
       },
 
-      // HAND 8 (FINAL): p6 eliminated, p2 wins tournament (Button: p6, SB: p6, BB: p2)
+      // HAND 8 (FINAL): HU TDA — button=SB=p6 acts first; BB=p2
       { type: "action", action: "RESET_TABLE", by: "dealer" },
       { type: "action", action: "START_GAME", by: "dealer" },
       {
@@ -738,16 +757,17 @@ const scenarios: Scenario[] = [
         },
       },
       {
-        type: "action",
-        action: "RAISE",
-        by: "player2",
-        params: { amount: 100 },
+        type: "validate",
+        dealerButtonFor: "player6",
+        smallBlindFor: "player6",
+        bigBlindFor: "player2",
+        firstToActFor: "player6",
       },
       {
         type: "action",
         action: "RAISE",
         by: "player6",
-        params: { amount: 345 },
+        params: { amount: 335 },
       },
       { type: "action", action: "CHECK", by: "player2" },
       {

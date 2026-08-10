@@ -1,0 +1,19 @@
+---
+description: Always run tests via npm test (Docker local DB), never against prod DATABASE_URL
+alwaysApply: true
+---
+
+# Testing: local Docker DB only
+
+When running tests in this project:
+
+- **Always** use `npm test` (runs `bash scripts/test-with-db.sh`).
+- That script starts Docker Compose Postgres on `127.0.0.1:5433`, pushes schema, and runs Vitest with `DATABASE_URL` pointed at the **local test DB**.
+- Forward Vitest args after `--`, e.g. `npm test -- src/test/blind-layout.test.ts` or `npm test -- -t "TDA example"`.
+
+**Do not:**
+
+- Run `npx vitest` / `npm run test:db` with the repo `.env` `DATABASE_URL` (that can hit shared/prod and is slower/riskier).
+- Apply one-off schema changes or seed data to the non-Docker database while “just running tests.”
+
+Schema for the test DB is applied by `test-with-db.sh` via `db:push` against the local URL; keep that path as the default for agent test runs.

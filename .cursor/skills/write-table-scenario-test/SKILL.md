@@ -62,24 +62,29 @@ Assert game, table, or seat state.
 { type: "validate", game: { state: "BETTING" } }
 { type: "validate", game: { state: "DEAL_FLOP", potTotal: 350 } }
 { type: "validate", dealerButtonFor: "player1" }
-{ type: "validate", firstToActFor: "player1" } // games.assignedSeatId
+{ type: "validate", smallBlindFor: "player2" } // or null when SB skipped
+{ type: "validate", bigBlindFor: "player3" }
+{ type: "validate", firstToActFor: "player1" } // games.assignedSeatId (after betting starts)
 ```
 
-**Chip conservation (integration):** If a validate step’s `game` subset includes `state: "SHOWDOWN"`, the harness also asserts `sum(seats.startingBalance) === sum(seats.buyIn)` (same as `validateMoneyConservation` in `src/server/api/hand-solver.ts`). No extra flag — use this after showdown, **before** `RESET_TABLE`. Pure edge cases (e.g. orphan bet layers) are additionally covered by `src/server/api/hand-solver.side-pots.test.ts`.
+
+**Chip conservation (integration):** If a validate step’s `game` subset includes `state: "SHOWDOWN"`, the harness also asserts `sum(seats.startingBalance) === sum(seats.buyIn)` (same as `validateMoneyConservation` in `src/server/api/game/hand-solver.ts`). No extra flag — use this after showdown, **before** `RESET_TABLE`. Pure edge cases (e.g. orphan bet layers) are additionally covered by `src/test/hand-solver.side-pots.test.ts`.
 
 ## Critical: Betting Order (Heads-Up vs Full Ring)
 
-**Heads-up (2 players):** Small blind acts first preflop.
+**Heads-up (2 players, TDA):** Small blind is the button and acts first preflop.
 
-- Dealer (button) = BB. Other player = SB.
-- First to act = SB (player2 if dealer is player1).
+- Button = SB. Other player = BB.
+- First to act = SB/button (player1 on the first hand).
 
 **Full ring (3+ players):** UTG (first player after BB) acts first preflop.
 
-If your scenario has the wrong first actor, you get `Not your turn`. When in doubt, check `src/server/api/game-logic.ts`:
+If your scenario has the wrong first actor, you get `Not your turn`. When in doubt, check `src/server/api/game/blind-layout.ts` / `dealing.ts`:
 
-- Preflop: `firstToActId = getNextActiveSeatId(orderedSeats, bigBlindSeatId)`
-- Postflop: first to act = next active after dealer button
+- Preflop: `getNextActiveSeatAfterNumber(orderedSeats, bigBlindSeatNumber)` (`helpers/seats.ts`)
+- Postflop: `getNextActiveSeatAfterNumber(orderedSeats, dealerButtonSeatNumber)`
+- Turn rotation (`assignedSeatId`): `getNextActiveSeatId(orderedSeats, actorSeatId)` in `betting-actions.ts`
+- Button/SB/BB placement: `resolveHandBlindLayout` in `blind-layout.ts`
 
 ## Template
 

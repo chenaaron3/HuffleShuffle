@@ -89,18 +89,17 @@ export async function handleDealHoleStep(
   const game = table.games[0];
   if (!game) throw new Error("No game found");
 
-  // Find the dealer button seat
-  const dealerButtonSeat = table.seats.find(
-    (s) => s.id === game.dealerButtonSeatId,
+  // Deal starting from SB (or BB when SB is skipped) by seat number.
+  const startSeatNumber =
+    game.smallBlindSeatNumber ?? game.bigBlindSeatNumber;
+  const firstDealSeat = table.seats.find(
+    (s) => s.seatNumber === startSeatNumber,
   );
-  if (!dealerButtonSeat) throw new Error("Dealer button seat not found");
+  if (!firstDealSeat) throw new Error("First deal seat not found");
 
-  // Deal starting from small blind (next seat after dealer button)
-  // Rotate through seats in order: small blind -> big blind -> ... -> dealer button
-  const dealerSeatNumber = dealerButtonSeat.seatNumber;
   const orderedSeatsForDealing = [
-    ...table.seats.filter((s) => s.seatNumber > dealerSeatNumber),
-    ...table.seats.filter((s) => s.seatNumber <= dealerSeatNumber),
+    ...table.seats.filter((s) => s.seatNumber >= startSeatNumber),
+    ...table.seats.filter((s) => s.seatNumber < startSeatNumber),
   ];
 
   const seatOrderKeys: PlayerKey[] = orderedSeatsForDealing.map((s) => {
@@ -110,8 +109,9 @@ export async function handleDealHoleStep(
   });
 
   // Deal in proper rotation: first a round of one card to each seat, then second round
+  console.log(`Dealer button at seat number ${game.dealerButtonSeatNumber}`);
   console.log(
-    `Dealer button at seat ${dealerSeatNumber} (${userIdToKey[dealerButtonSeat.playerId]})`,
+    `First deal seat ${startSeatNumber} (${userIdToKey[firstDealSeat.playerId]})`,
   );
   console.log("Seat order for dealing:", seatOrderKeys);
   for (let round = 0; round < 2; round++) {
@@ -180,8 +180,7 @@ export async function handleValidateStep(
     }
   }
 
-  // Validate dealer button position
-  if (step.dealerButtonFor) {
+  const loadSnapshot = async () => {
     const snapshot = await db.query.pokerTables.findFirst({
       where: eq(pokerTables.id, tableId),
       with: {
@@ -192,33 +191,54 @@ export async function handleValidateStep(
     expect(snapshot).toBeTruthy();
     const game = snapshot!.games[0] ?? null;
     expect(game).toBeTruthy();
-    const idMap = playerIds as Record<PlayerKey, string>;
-    const targetPlayerId = idMap[step.dealerButtonFor];
-    const targetSeat = snapshot!.seats.find(
-      (s) => s.playerId === targetPlayerId,
-    );
-    expect(targetSeat).toBeTruthy();
-    expect(game!.dealerButtonSeatId).toStrictEqual(targetSeat!.id);
-  }
+    return { snapshot: snapshot!, game: game! };
+  };
 
-  if (step.firstToActFor) {
-    const snapshot = await db.query.pokerTables.findFirst({
-      where: eq(pokerTables.id, tableId),
-      with: {
-        games: { orderBy: (g, { desc }) => [desc(g.createdAt)], limit: 1 },
-        seats: { orderBy: (s, { asc }) => [asc(s.seatNumber)] },
-      },
-    });
-    expect(snapshot).toBeTruthy();
-    const game = snapshot!.games[0] ?? null;
-    expect(game).toBeTruthy();
-    const idMap = playerIds as Record<PlayerKey, string>;
-    const targetPlayerId = idMap[step.firstToActFor];
-    const targetSeat = snapshot!.seats.find(
-      (s) => s.playerId === targetPlayerId,
-    );
-    expect(targetSeat).toBeTruthy();
-    expect(game!.assignedSeatId).toStrictEqual(targetSeat!.id);
+  const needsSeatLayoutSnapshot =
+    !!step.dealerButtonFor ||
+    step.smallBlindFor !== undefined ||
+    !!step.bigBlindFor ||
+    !!step.firstToActFor;
+
+  if (needsSeatLayoutSnapshot) {
+    const { snapshot, game } = await loadSnapshot();
+
+    const seatForPlayer = (playerKey: PlayerKey) => {
+      const targetPlayerId = (playerIds as Record<PlayerKey, string>)[playerKey];
+      const targetSeat = snapshot.seats.find(
+        (s) => s.playerId === targetPlayerId,
+      );
+      expect(targetSeat).toBeTruthy();
+      return targetSeat!;
+    };
+
+    if (step.dealerButtonFor) {
+      expect(game.dealerButtonSeatNumber).toStrictEqual(
+        seatForPlayer(step.dealerButtonFor).seatNumber,
+      );
+    }
+
+    if (step.smallBlindFor !== undefined) {
+      if (step.smallBlindFor === null) {
+        expect(game.smallBlindSeatNumber).toBeNull();
+      } else {
+        expect(game.smallBlindSeatNumber).toStrictEqual(
+          seatForPlayer(step.smallBlindFor).seatNumber,
+        );
+      }
+    }
+
+    if (step.bigBlindFor) {
+      expect(game.bigBlindSeatNumber).toStrictEqual(
+        seatForPlayer(step.bigBlindFor).seatNumber,
+      );
+    }
+
+    if (step.firstToActFor) {
+      expect(game.assignedSeatId).toStrictEqual(
+        seatForPlayer(step.firstToActFor).id,
+      );
+    }
   }
 
   // Validate table state

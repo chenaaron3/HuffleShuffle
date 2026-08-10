@@ -1,7 +1,7 @@
 import { and, asc, desc, eq, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { createTRPCRouter, protectedProcedure } from '~/server/api/trpc';
-import { withTableMutation } from '~/server/api/table-transaction';
+import { withTableMutation } from '~/server/api/lib/table-transaction';
 import { db } from '~/server/db';
 import { piDevices, pokerTables } from '~/server/db/schema';
 

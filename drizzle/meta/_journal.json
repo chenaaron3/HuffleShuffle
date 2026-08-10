@@ -134,6 +134,34 @@
       "when": 1760000000007,
       "tag": "0026_waitlist",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1760000000008,
+      "tag": "0027_add_skip_small_blind",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1760000000009,
+      "tag": "0028_dead_button_blind_seats",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1760000000010,
+      "tag": "0029_big_blind_seat_required",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1760000000011,
+      "tag": "0030_blind_seat_numbers",
+      "breakpoints": true
     }
   ]
 }

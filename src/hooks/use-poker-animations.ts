@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { getPotPosition, getSeatPosition } from '~/utils/dom-positions';
 
-import type { SeatWithPlayer } from "~/server/api/routers/table";
+import type { SeatWithPlayer } from "~/server/api/table/types";
 interface UsePokerAnimationsProps {
   seats: SeatWithPlayer[];
   gameState: string;

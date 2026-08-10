@@ -1,14 +1,12 @@
 import { eq, sql } from "drizzle-orm";
-import { logEndGame } from "~/server/api/game-event-logger";
+import { logEndGame } from "~/server/api/lib/game-event-logger";
+import { logMoneyConservationDiagnosticReport } from "~/server/api/lib/money-conservation-diagnostics";
+import { fetchAllSeatsInOrder } from "~/server/api/table/seating";
 import { gameEvents, games, seats } from "~/server/db/schema";
 
-import {
-  activeCountOf,
-  allActiveBetsEqual,
-  fetchAllSeatsInOrder,
-  mergeBetsIntoPotGeneric,
-} from "./game-utils";
-import { logMoneyConservationDiagnosticReport } from "./money-conservation-diagnostics";
+import { allActiveBetsEqual } from "./helpers/betting";
+import { activeCountOf } from "./helpers/seats";
+import { mergeBetsIntoPotGeneric } from "./pot";
 
 const { Hand: PokerHand } = require("pokersolver");
 
@@ -301,20 +299,25 @@ export function calculateSidePotsFromCumulativeBets(
  */
 function orderWinnersClockwiseFromButton(
   orderedSeats: SeatRow[],
-  dealerButtonSeatId: string | null,
+  dealerButtonSeatNumber: number,
   winnerSeatIds: string[],
 ): string[] {
   const winnerSet = new Set(winnerSeatIds);
   const result: string[] = [];
   const n = orderedSeats.length;
   if (n === 0) return [...winnerSeatIds];
-  const mapIndex: Record<string, number> = {};
-  orderedSeats.forEach((s, i) => {
-    mapIndex[s.id] = i;
-  });
-  const buttonIdx = dealerButtonSeatId
-    ? (mapIndex[dealerButtonSeatId] ?? 0)
-    : 0;
+  // Prefer the seat row at the button number; if empty (dead button / left),
+  // start from the last occupied seat at or before that number.
+  let buttonIdx = orderedSeats.findIndex(
+    (s) => s.seatNumber === dealerButtonSeatNumber,
+  );
+  if (buttonIdx < 0) {
+    buttonIdx = 0;
+    for (let i = 0; i < n; i++) {
+      if (orderedSeats[i]!.seatNumber <= dealerButtonSeatNumber) buttonIdx = i;
+      else break;
+    }
+  }
   for (let i = 0; i < n; i++) {
     const idx = (buttonIdx + 1 + i) % n;
     const sid = orderedSeats[idx]!.id;
@@ -338,7 +341,7 @@ export function distributePotAmountAmongTiedWinners(
   potAmount: number,
   winnerSeatIds: string[],
   orderedSeats: SeatRow[],
-  dealerButtonSeatId: string | null,
+  dealerButtonSeatNumber: number,
 ): Record<string, number> {
   const n = winnerSeatIds.length;
   if (n === 0) return {};
@@ -346,7 +349,7 @@ export function distributePotAmountAmongTiedWinners(
   const remainder = potAmount % n;
   const ordered = orderWinnersClockwiseFromButton(
     orderedSeats,
-    dealerButtonSeatId,
+    dealerButtonSeatNumber,
     winnerSeatIds,
   );
   const result: Record<string, number> = {};
@@ -369,7 +372,7 @@ function distributeSidePots(
   hands: EvaluatedHand[],
   seatWinnings: Record<string, number>,
   orderedSeats: SeatRow[],
-  dealerButtonSeatId: string | null,
+  dealerButtonSeatNumber: number,
 ): void {
   // Create a set of contender seat IDs for fast lookup (for error messages)
   const contenderSeatIds = new Set(hands.map((h) => h.seatId));
@@ -415,7 +418,7 @@ function distributeSidePots(
       pot.amount,
       potWinnerSeatIds,
       orderedSeats,
-      dealerButtonSeatId,
+      dealerButtonSeatNumber,
     );
     for (const winnerId of potWinnerSeatIds) {
       const amt = perSeat[winnerId] ?? 0;
@@ -579,7 +582,7 @@ async function completeShowdown(
     hands,
     seatWinnings,
     freshSeats,
-    updatedGame.dealerButtonSeatId,
+    updatedGame.dealerButtonSeatNumber,
   );
 
   // Store side pot details in database for UI display
