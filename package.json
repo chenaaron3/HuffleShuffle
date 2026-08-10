@@ -22,8 +22,7 @@
     "test:headless-bots": "VITEST_SOAK=1 bash scripts/test-with-db.sh src/test/headless-bot-game.runner.test.ts",
     "test:phh": "VITEST_SOAK=1 bash scripts/test-with-db.sh src/test/simulation/run-phh-tests.test.ts",
     "test": "bash scripts/test-with-db.sh",
-    "lambda:deploy": "npm run deploy --prefix lambda/consumer",
-    "lambda:deploy:prod": "npm run deploy:prod --prefix lambda/consumer"
+    "lambda:deploy": "npm run deploy --prefix lambda/consumer"
   },
   "dependencies": {
     "@auth/drizzle-adapter": "^1.7.2",

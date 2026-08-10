@@ -8,7 +8,6 @@
         "build": "esbuild consumer.ts --bundle --platform=node --target=node18 --outfile=dist/consumer.js --external:aws-sdk --format=esm --define:import.meta.url=__filename",
         "build:watch": "esbuild consumer.ts --bundle --platform=node --target=node18 --outfile=dist/consumer.js --external:aws-sdk --format=esm --define:import.meta.url=__filename --watch",
         "deploy": "npm run build && node -r dotenv/config ./node_modules/.bin/serverless deploy",
-        "deploy:prod": "npm run build && node -r dotenv/config ./node_modules/.bin/serverless deploy --stage production",
         "remove": "node -r dotenv/config ./node_modules/.bin/serverless remove",
         "logs": "node -r dotenv/config ./node_modules/.bin/serverless logs -f ingest",
         "invoke:local": "npm run build && node -r dotenv/config ./node_modules/.bin/serverless invoke local -f ingest --path test-event.json --config serverless.test.yml"

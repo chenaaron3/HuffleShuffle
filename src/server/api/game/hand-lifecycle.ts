@@ -1,7 +1,10 @@
 import { eq, sql } from "drizzle-orm";
 import process from "process";
 import { isBot } from "~/server/api/bots/constants";
-import { createBotGameState, makeBotDecision } from "~/server/api/bots/strategy";
+import {
+  createBotGameState,
+  makeBotDecision,
+} from "~/server/api/bots/strategy";
 import { computeBlindState } from "~/server/api/lib/blind-timer";
 import { logEndGame, logStartGame } from "~/server/api/lib/game-event-logger";
 import { withTableMutation } from "~/server/api/lib/table-transaction";
@@ -128,11 +131,8 @@ export async function createNewGame(
   const effectiveSmallBlind = blindState.effectiveSmallBlind;
   const effectiveBigBlind = blindState.effectiveBigBlind;
 
-  const {
-    dealerButtonSeatNumber,
-    smallBlindSeatNumber,
-    bigBlindSeatNumber,
-  } = resolveHandBlindLayout(orderedSeats, previousGame);
+  const { dealerButtonSeatNumber, smallBlindSeatNumber, bigBlindSeatNumber } =
+    resolveHandBlindLayout(orderedSeats, previousGame);
   const createdRows = await (tx as DB)
     .insert(games)
     .values({
@@ -207,12 +207,13 @@ export async function triggerBotActions(
   const defaultMax =
     process.env.NODE_ENV === "test" && !process.env.BOT_ACTION_MAX_ITERATIONS
       ? 200
-      : 20;
+      : 50;
   const MAX_ITERATIONS = Number(
     process.env.BOT_ACTION_MAX_ITERATIONS ?? defaultMax,
   );
   const defaultDelayMs =
-    process.env.NODE_ENV === "test" && process.env.BOT_ACTION_DELAY_MS === undefined
+    process.env.NODE_ENV === "test" &&
+    process.env.BOT_ACTION_DELAY_MS === undefined
       ? 0
       : 500;
   const delayMs = Number(process.env.BOT_ACTION_DELAY_MS ?? defaultDelayMs);
@@ -281,8 +282,7 @@ export async function triggerBotActions(
       hooks?.onBotAction?.({
         seatNumber: botSeat.seatNumber,
         action: decision.action,
-        raiseTo:
-          decision.action === "RAISE" ? decision.amount : undefined,
+        raiseTo: decision.action === "RAISE" ? decision.amount : undefined,
       });
     });
 

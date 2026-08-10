@@ -1,10 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { AccessToken } from "livekit-server-sdk";
 import { z } from "zod";
-import {
-  createTRPCRouter,
-  protectedProcedure,
-} from "~/server/api/trpc";
+import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { db } from "~/server/db";
 import {
   games,
@@ -36,7 +33,10 @@ import {
   resetGame,
   triggerBotActions,
 } from "~/server/api/game/hand-lifecycle";
-import { parseRankSuitToBarcode } from "~/server/api/game/helpers/cards";
+import {
+  parseBarcodeToRankSuit,
+  parseRankSuitToBarcode,
+} from "~/server/api/game/helpers/cards";
 import { getCurrentBetTarget } from "~/server/api/game/helpers/betting";
 import {
   createSeatTransaction,
@@ -960,28 +960,30 @@ export const tableRouter = createTRPCRouter({
 
         if (input.action === "DEAL_CARD" || input.action === "DEAL_RANDOM") {
           if (!isDealerCaller) throw new Error("Only dealer can DEAL_CARD");
-          let barcode = "";
-          // If dealing a specific card, read from input
+
+          let cardCode: string;
+          let barcode: string;
           if (input.action === "DEAL_CARD") {
             if (!input.params?.rank || !input.params?.suit)
               throw new Error("Rank and suit are required");
+            cardCode = `${input.params.rank}${input.params.suit}`;
             barcode = parseRankSuitToBarcode(
               input.params.rank,
               input.params.suit,
             );
-            // Use shared game logic instead of duplicating code
-            if (process.env.NODE_ENV === "test") {
-              await dealCard(
-                tx,
-                input.tableId,
-                game ?? null,
-                `${input.params.rank}${input.params.suit}`,
-              );
-              return { ok: true } as const;
-            }
           } else {
-            // Generate a random card
             barcode = await generateRandomCard(tx, input.tableId, game ?? null);
+            const { rank, suit } = parseBarcodeToRankSuit(barcode);
+            cardCode = `${rank}${suit}`;
+          }
+
+          const useInlineDeal =
+            (process.env.INLINE_DEAL === "true" &&
+              process.env.NODE_ENV === "development") ||
+            process.env.NODE_ENV === "test";
+          if (useInlineDeal) {
+            await dealCard(tx, input.tableId, game ?? null, cardCode);
+            return { ok: true } as const;
           }
 
           const scannerDevice = await tx.query.piDevices.findFirst({

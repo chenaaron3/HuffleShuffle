@@ -28,6 +28,8 @@ export const env = createEnv({
     AWS_ACCESS_KEY_ID: z.string(),
     AWS_SECRET_ACCESS_KEY: z.string(),
     SQS_QUEUE_URL: z.string(),
+    /** When "true", DEAL_CARD / DEAL_RANDOM call dealCard in-process (no SQS). */
+    INLINE_DEAL: z.enum(["true", "false"]).optional(),
   },
 
   /**
@@ -61,6 +63,7 @@ export const env = createEnv({
     AWS_ACCESS_KEY_ID: process.env.AWS_ACCESS_KEY_ID,
     AWS_SECRET_ACCESS_KEY: process.env.AWS_SECRET_ACCESS_KEY,
     SQS_QUEUE_URL: process.env.SQS_QUEUE_URL,
+    INLINE_DEAL: process.env.INLINE_DEAL,
     NEXT_PUBLIC_PUSHER_KEY: process.env.NEXT_PUBLIC_PUSHER_KEY,
     NEXT_PUBLIC_PUSHER_CLUSTER: process.env.NEXT_PUBLIC_PUSHER_CLUSTER,
   },
