@@ -1,9 +1,5 @@
 import { eq, sql } from "drizzle-orm";
-import {
-  logFlop,
-  logRiver,
-  logTurn,
-} from "~/server/api/lib/game-event-logger";
+import { logFlop, logRiver, logTurn } from "~/server/api/lib/game-event-logger";
 import { fetchAllSeatsInOrder } from "~/server/api/table/seating";
 import { db } from "~/server/db";
 import { games, pokerTables, seats } from "~/server/db/schema";
@@ -24,6 +20,7 @@ type Tx = {
   insert: typeof db.insert;
   query: typeof db.query;
   update: typeof db.update;
+  select: typeof db.select;
 };
 
 // Check if more players needs cards. If so, rotate to the next player
@@ -60,10 +57,8 @@ export async function ensureHoleCardsProgression(
     // Preflop: first active seat left of the big blind (HU: SB/button).
     // If everyone is already all-in (e.g. short stacks posting blinds), skip actor lookup.
     const firstToActId =
-      getNextActiveSeatAfterNumber(
-        orderedSeats,
-        gameObj.bigBlindSeatNumber,
-      )?.id ?? null;
+      getNextActiveSeatAfterNumber(orderedSeats, gameObj.bigBlindSeatNumber)
+        ?.id ?? null;
     await startBettingRound(tx, tableId, gameObj, orderedSeats, firstToActId);
   }
 }
@@ -79,10 +74,8 @@ export async function ensurePostflopProgression(
   // Postflop: first active seat left of dealer button. When all contenders are
   // all-in there is no actor — startBettingRound skips straight to runout/showdown.
   const firstToActId =
-    getNextActiveSeatAfterNumber(
-      orderedSeats,
-      gameObj.dealerButtonSeatNumber,
-    )?.id ?? null;
+    getNextActiveSeatAfterNumber(orderedSeats, gameObj.dealerButtonSeatNumber)
+      ?.id ?? null;
   await startBettingRound(tx, tableId, gameObj, orderedSeats, firstToActId);
 }
 

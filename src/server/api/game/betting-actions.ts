@@ -2,7 +2,12 @@ import { eq, sql } from "drizzle-orm";
 import { db } from "~/server/db";
 import { games, seats } from "~/server/db/schema";
 
-import { logCall, logCheck, logFold, logRaise } from "~/server/api/lib/game-event-logger";
+import {
+  logCall,
+  logCheck,
+  logFold,
+  logRaise,
+} from "~/server/api/lib/game-event-logger";
 import { fetchAllSeatsInOrder } from "~/server/api/table/seating";
 
 import { getCurrentBetTarget } from "./helpers/betting";
@@ -14,6 +19,7 @@ type Tx = {
   query: typeof db.query;
   update: typeof db.update;
   delete: typeof db.delete;
+  select: typeof db.select;
 };
 
 type SeatRow = typeof seats.$inferSelect;
@@ -60,7 +66,9 @@ export async function executeBettingAction(
 
   const effectiveBigBlind = game.effectiveBigBlind ?? 0;
   const lastRaiseIncrement =
-    (game.lastRaiseIncrement ?? 0) > 0 ? game.lastRaiseIncrement! : effectiveBigBlind;
+    (game.lastRaiseIncrement ?? 0) > 0
+      ? game.lastRaiseIncrement!
+      : effectiveBigBlind;
   const currentBetTarget = getCurrentBetTarget(game, orderedSeats);
 
   // Variables for all actions

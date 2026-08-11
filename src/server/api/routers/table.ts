@@ -37,6 +37,7 @@ import {
   parseBarcodeToRankSuit,
   parseRankSuitToBarcode,
 } from "~/server/api/game/helpers/cards";
+import { grantBotFunds } from "~/server/api/ledger";
 import {
   createSeatTransaction,
   removePlayerSeatTransaction,
@@ -321,9 +322,6 @@ export const tableRouter = createTRPCRouter({
         if (existingSeats.length >= snapshot.maxSeats)
           throw new Error("Table is full");
 
-        if (user.balance < input.buyIn)
-          throw new Error("Insufficient balance for buy-in");
-
         // Find the first available seat number
         const occupiedSeatNumbers = new Set(
           existingSeats.map((seat) => seat.seatNumber),
@@ -439,7 +437,6 @@ export const tableRouter = createTRPCRouter({
             displayName: botLabel,
             email: `bot-seat-${seatNumber}@huffle-shuffle.local`,
             role: "player",
-            balance: 2147483647, // Max 32-bit integer
             publicKey: botPublicKey,
           });
         } else {
@@ -448,6 +445,9 @@ export const tableRouter = createTRPCRouter({
             .set({ displayName: botLabel, name: botLabel })
             .where(eq(users.id, botUserId));
         }
+
+        // One-time huge wallet; thereafter bots buy in / cash out like humans
+        await grantBotFunds(tx, botUserId);
 
         // Default buy-in is 20x big blind
         const buyInAmount = input.buyIn ?? snapshot.bigBlind * 20;
@@ -495,30 +495,12 @@ export const tableRouter = createTRPCRouter({
           throw new Error("FORBIDDEN: only the dealer can remove bots");
         }
 
-        // Get bot user ID for this seat
         const botUserId = getBotIdForSeat(input.seatNumber);
 
-        // Find the bot's seat
-        const seat = await tx.query.seats.findFirst({
-          where: and(
-            eq(seats.tableId, input.tableId),
-            eq(seats.playerId, botUserId),
-          ),
+        return await removePlayerSeatTransaction(tx, {
+          tableId: input.tableId,
+          playerId: botUserId,
         });
-        if (!seat) throw new Error("Bot not found at this seat");
-
-        const latest = await tx.query.games.findFirst({
-          where: eq(games.tableId, input.tableId),
-          orderBy: (g, { desc }) => [desc(g.createdAt)],
-        });
-        if (latest && latest.isCompleted === false) {
-          throw new Error("Cannot remove bot during an active hand");
-        }
-
-        // Bots don't get refunded (they have infinite balance)
-        // Just remove the seat
-        await tx.delete(seats).where(eq(seats.id, seat.id));
-        return { ok: true } as const;
       });
 
       await notifyTableUpdate(input.tableId);

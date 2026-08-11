@@ -1,9 +1,10 @@
-import { asc, desc, eq, sql } from "drizzle-orm";
+import { and, asc, desc, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { createTRPCRouter, dealerProcedure } from "~/server/api/trpc";
 import {
   gameEvents,
   games,
+  ledgerAccounts,
   users,
   waitlist,
 } from "~/server/db/schema";
@@ -14,84 +15,100 @@ const paginationInput = z.object({
 });
 
 export const dashboardRouter = createTRPCRouter({
-  listWaitlist: dealerProcedure.input(paginationInput).query(async ({ ctx, input }) => {
-    const offset = (input.page - 1) * input.pageSize;
+  listWaitlist: dealerProcedure
+    .input(paginationInput)
+    .query(async ({ ctx, input }) => {
+      const offset = (input.page - 1) * input.pageSize;
 
-    const [rows, countRows] = await Promise.all([
-      ctx.db
-        .select({
-          id: waitlist.id,
-          name: waitlist.name,
-          email: waitlist.email,
-          phone: waitlist.phone,
-          instagram: waitlist.instagram,
-          createdAt: waitlist.createdAt,
-        })
-        .from(waitlist)
-        .orderBy(desc(waitlist.createdAt))
-        .limit(input.pageSize)
-        .offset(offset),
-      ctx.db.select({ count: sql<number>`count(*)::int` }).from(waitlist),
-    ]);
+      const [rows, countRows] = await Promise.all([
+        ctx.db
+          .select({
+            id: waitlist.id,
+            name: waitlist.name,
+            email: waitlist.email,
+            phone: waitlist.phone,
+            instagram: waitlist.instagram,
+            createdAt: waitlist.createdAt,
+          })
+          .from(waitlist)
+          .orderBy(desc(waitlist.createdAt))
+          .limit(input.pageSize)
+          .offset(offset),
+        ctx.db.select({ count: sql<number>`count(*)::int` }).from(waitlist),
+      ]);
 
-    return {
-      rows,
-      totalCount: countRows[0]?.count ?? 0,
-    };
-  }),
+      return {
+        rows,
+        totalCount: countRows[0]?.count ?? 0,
+      };
+    }),
 
-  listPlayers: dealerProcedure.input(paginationInput).query(async ({ ctx, input }) => {
-    const offset = (input.page - 1) * input.pageSize;
+  listPlayers: dealerProcedure
+    .input(paginationInput)
+    .query(async ({ ctx, input }) => {
+      const offset = (input.page - 1) * input.pageSize;
 
-    const [rows, countRows] = await Promise.all([
-      ctx.db
-        .select({
-          id: users.id,
-          displayName: users.displayName,
-          email: users.email,
-          balance: users.balance,
-        })
-        .from(users)
-        .where(eq(users.role, "player"))
-        .orderBy(asc(users.displayName))
-        .limit(input.pageSize)
-        .offset(offset),
-      ctx.db
-        .select({ count: sql<number>`count(*)::int` })
-        .from(users)
-        .where(eq(users.role, "player")),
-    ]);
+      const [rows, countRows] = await Promise.all([
+        ctx.db
+          .select({
+            id: users.id,
+            displayName: users.displayName,
+            email: users.email,
+            balance:
+              sql<number>`coalesce(${ledgerAccounts.balance}, 0)`.mapWith(
+                Number,
+              ),
+          })
+          .from(users)
+          .leftJoin(
+            ledgerAccounts,
+            and(
+              eq(ledgerAccounts.userId, users.id),
+              eq(ledgerAccounts.kind, "USER_WALLET"),
+            ),
+          )
+          .where(eq(users.role, "player"))
+          .orderBy(asc(users.displayName))
+          .limit(input.pageSize)
+          .offset(offset),
+        ctx.db
+          .select({ count: sql<number>`count(*)::int` })
+          .from(users)
+          .where(eq(users.role, "player")),
+      ]);
 
-    return {
-      rows,
-      totalCount: countRows[0]?.count ?? 0,
-    };
-  }),
+      return {
+        rows,
+        totalCount: countRows[0]?.count ?? 0,
+      };
+    }),
 
-  listGames: dealerProcedure.input(paginationInput).query(async ({ ctx, input }) => {
-    const offset = (input.page - 1) * input.pageSize;
+  listGames: dealerProcedure
+    .input(paginationInput)
+    .query(async ({ ctx, input }) => {
+      const offset = (input.page - 1) * input.pageSize;
 
-    const [rows, countRows] = await Promise.all([
-      ctx.db
-        .select({
-          id: games.id,
-          createdAt: games.createdAt,
-          state: games.state,
-          potTotal: games.potTotal,
-          communityCards: games.communityCards,
-        })
-        .from(games)
-        .orderBy(desc(games.createdAt))
-        .limit(input.pageSize)
-        .offset(offset),
-      ctx.db.select({ count: sql<number>`count(*)::int` }).from(games),
-    ]);
+      const [rows, countRows] = await Promise.all([
+        ctx.db
+          .select({
+            id: games.id,
+            createdAt: games.createdAt,
+            state: games.state,
+            potTotal: games.potTotal,
+            communityCards: games.communityCards,
+          })
+          .from(games)
+          .orderBy(desc(games.createdAt))
+          .limit(input.pageSize)
+          .offset(offset),
+        ctx.db.select({ count: sql<number>`count(*)::int` }).from(games),
+      ]);
 
-    return {
-      rows,
-      totalCount: countRows[0]?.count ?? 0,
-    };
-  }),
+      return {
+        rows,
+        totalCount: countRows[0]?.count ?? 0,
+      };
+    }),
 
   listGameEvents: dealerProcedure
     .input(z.object({ gameId: z.string().min(1) }))

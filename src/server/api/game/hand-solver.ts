@@ -1,4 +1,5 @@
 import { eq, sql } from "drizzle-orm";
+import { settleHand } from "~/server/api/ledger";
 import { logEndGame } from "~/server/api/lib/game-event-logger";
 import { logMoneyConservationDiagnosticReport } from "~/server/api/lib/money-conservation-diagnostics";
 import { fetchAllSeatsInOrder } from "~/server/api/table/seating";
@@ -19,6 +20,7 @@ type Tx = {
   insert: typeof db.insert;
   query: typeof db.query;
   update: typeof db.update;
+  select: typeof db.select;
 };
 
 // Type definitions for poker hand evaluation
@@ -611,6 +613,17 @@ async function completeShowdown(
     sidePots,
     seatWinnings,
   );
+
+  // Rebalance per-user table escrow to match final stacks
+  const settledSeats = await fetchAllSeatsInOrder(tx, tableId);
+  await settleHand(tx, {
+    tableId,
+    gameId,
+    positions: settledSeats.map((s) => ({
+      userId: s.playerId,
+      stack: s.buyIn,
+    })),
+  });
 
   // Emit End Game event with all winners
   const allWinners = Object.entries(seatWinnings)

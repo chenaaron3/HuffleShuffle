@@ -1,5 +1,5 @@
-import { and, desc, eq, sql } from "drizzle-orm";
-import { beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { eq, sql } from "drizzle-orm";
+import { beforeEach, describe, it } from "vitest";
 import { createCaller } from "~/server/api/root";
 import { db } from "~/server/db";
 import {
@@ -10,6 +10,10 @@ import {
   seats,
   users,
 } from "~/server/db/schema";
+import {
+  clearTestLedger,
+  ensureTestWalletBalance,
+} from "~/test/ledger-test-utils";
 import {
   handleActionStep,
   handleDealHoleStep,
@@ -71,6 +75,7 @@ describe("table scenario harness", () => {
       await db.delete(piDevices).where(eq(piDevices.tableId, t.id));
       await db.delete(pokerTables).where(eq(pokerTables.id, t.id));
     }
+    await clearTestLedger();
   };
 
   beforeEach(async () => {
@@ -82,7 +87,6 @@ describe("table scenario harness", () => {
           id: dealerId,
           email: "dealer@vitest.local",
           role: "dealer",
-          balance: 0,
           name: "Dealer",
           displayName: "Dealer",
         },
@@ -90,7 +94,6 @@ describe("table scenario harness", () => {
           id: playerIds[k],
           email: `${k}@vitest.local`,
           role: "player" as const,
-          balance: 1000,
           name: `${i + 1}`,
           displayName: `Player ${i + 1}`,
         })),
@@ -100,11 +103,14 @@ describe("table scenario harness", () => {
         set: {
           email: sql`EXCLUDED.email`,
           role: sql`EXCLUDED.role`,
-          balance: sql`EXCLUDED.balance`,
           name: sql`EXCLUDED.name`,
           displayName: sql`EXCLUDED."displayName"`,
         },
       });
+
+    for (const k of Object.keys(playerIds) as PlayerKey[]) {
+      await ensureTestWalletBalance(playerIds[k], 1000);
+    }
 
     const res = await dealerCaller.table.create({
       name: "Scenario Harness",

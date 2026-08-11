@@ -3,18 +3,28 @@
  * Loads all .phh files from the simulation directory and runs them as tests
  */
 
-import { eq, sql } from 'drizzle-orm';
-import { existsSync, readdirSync, readFileSync } from 'fs';
-import { join } from 'path';
-import { describe, expect, it } from 'vitest';
-import { createCaller } from '~/server/api/root';
-import { db } from '~/server/db';
-import { gameEvents, games, piDevices, pokerTables, seats, users } from '~/server/db/schema';
+import { eq, sql } from "drizzle-orm";
+import { existsSync, readdirSync, readFileSync } from "fs";
+import { join } from "path";
+import { describe, expect, it } from "vitest";
+import { createCaller } from "~/server/api/root";
+import { db } from "~/server/db";
 import {
-    handleActionStep, handleDealHoleStep, handleJoinStep, handleValidateStep
-} from '~/test/scenario-step-handlers';
+  gameEvents,
+  games,
+  piDevices,
+  pokerTables,
+  seats,
+  users,
+} from "~/server/db/schema";
+import {
+  handleActionStep,
+  handleDealHoleStep,
+  handleJoinStep,
+  handleValidateStep,
+} from "~/test/scenario-step-handlers";
 
-import { phhToScenario, validatePHH } from './utils/phh-to-scenario';
+import { phhToScenario, validatePHH } from "./utils/phh-to-scenario";
 
 import type { PlayerKey } from "~/test/scenario.types";
 // Directory containing .phh files
@@ -72,8 +82,7 @@ async function setupDealerButton(
 
   // Next button = previous SB, so set previous SB to the target seat number.
   const targetSeat = allSeats[targetSeatIndex]!;
-  const nextAfterTarget =
-    allSeats[(targetSeatIndex + 1) % allSeats.length]!;
+  const nextAfterTarget = allSeats[(targetSeatIndex + 1) % allSeats.length]!;
   await db.insert(games).values({
     tableId,
     isCompleted: true, // Mark as completed so it's treated as a previous game
@@ -202,7 +211,6 @@ describe("PHH Simulation Tests", () => {
               id: dealerId,
               email: `dealer-${uniqueId}@phh-test.local`,
               role: "dealer",
-              balance: 0,
               name: "PHH Dealer",
               displayName: "PHH Dealer",
             },
@@ -210,7 +218,6 @@ describe("PHH Simulation Tests", () => {
               id: playerIds[k],
               email: `${k}-${uniqueId}@phh-test.local`,
               role: "player" as const,
-              balance: 100000000, // 100M chips - enough for any tournament stack
               name: `Player ${i + 1}`,
               displayName: `Player ${i + 1}`,
             })),
@@ -220,11 +227,17 @@ describe("PHH Simulation Tests", () => {
             set: {
               email: sql`EXCLUDED.email`,
               role: sql`EXCLUDED.role`,
-              balance: sql`EXCLUDED.balance`,
               name: sql`EXCLUDED.name`,
               displayName: sql`EXCLUDED."displayName"`,
             },
           });
+
+        const { ensureTestWalletBalance } = await import(
+          "~/test/ledger-test-utils"
+        );
+        for (const k of playerKeys) {
+          await ensureTestWalletBalance(playerIds[k], 100_000_000);
+        }
 
         // Create callers for dealer and players
         const dealerCaller = createCaller({

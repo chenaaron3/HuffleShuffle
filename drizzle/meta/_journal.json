@@ -162,6 +162,13 @@
       "when": 1760000000011,
       "tag": "0030_blind_seat_numbers",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1760000000012,
+      "tag": "0031_ledger",
+      "breakpoints": true
     }
   ]
 }

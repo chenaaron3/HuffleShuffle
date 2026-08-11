@@ -44,10 +44,8 @@ export const users = createTable(
       .default(sql`CURRENT_TIMESTAMP`),
     image: d.varchar({ length: 255 }),
     role: userRoleEnum("role").notNull().default("player"),
-    balance: d.integer().notNull().default(100000),
     publicKey: d.text(),
   }),
-  (t) => [check("user_balance_non_negative", sql`${t.balance} >= 0`)],
 );
 
 export const usersRelations = relations(users, ({ many }) => ({
@@ -434,5 +432,145 @@ export const piDevicesRelations = relations(piDevices, ({ one }) => ({
   table: one(pokerTables, {
     fields: [piDevices.tableId],
     references: [pokerTables.id],
+  }),
+}));
+
+// --- Ledger (wallet / table escrow source of truth) ---
+
+export const ledgerAccountKindEnum = pgEnum("ledger_account_kind", [
+  "ISSUANCE",
+  "USER_WALLET",
+  "TABLE_USER_ESCROW",
+]);
+
+export const ledgerEntrySideEnum = pgEnum("ledger_entry_side", [
+  "debit",
+  "credit",
+]);
+
+export const ledgerTransactionTypeEnum = pgEnum("ledger_transaction_type", [
+  "MINT",
+  "BURN",
+  "TRANSFER",
+  "SETTLE_HAND",
+]);
+
+export const ledgerAccounts = createTable(
+  "ledger_account",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    /** Stable lookup key, e.g. `issuance`, `user:{id}`, `escrow:{tableId}:{userId}` */
+    code: d.varchar({ length: 255 }).notNull(),
+    kind: ledgerAccountKindEnum("kind").notNull(),
+    userId: d.varchar({ length: 255 }).references(() => users.id),
+    tableId: d
+      .varchar({ length: 255 })
+      .references(() => pokerTables.id, { onDelete: "set null" }),
+    balance: d.integer().notNull().default(0),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    updatedAt: d.timestamp({ withTimezone: true }).$onUpdate(() => new Date()),
+  }),
+  (t) => [
+    uniqueIndex("ledger_account_code_unique").on(t.code),
+    index("ledger_account_user_id_idx").on(t.userId),
+    index("ledger_account_table_id_idx").on(t.tableId),
+    check("ledger_account_balance_non_negative", sql`${t.balance} >= 0`),
+  ],
+);
+
+export const ledgerTransactions = createTable(
+  "ledger_transaction",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    type: ledgerTransactionTypeEnum("type").notNull(),
+    description: d.text().notNull().default(""),
+    idempotencyKey: d.varchar({ length: 255 }).notNull(),
+    gameId: d.varchar({ length: 255 }).references(() => games.id, {
+      onDelete: "set null",
+    }),
+    reason: d.varchar({ length: 64 }),
+    metadata: d.jsonb().$type<Record<string, unknown>>().default({}),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  }),
+  (t) => [
+    uniqueIndex("ledger_transaction_idempotency_unique").on(t.idempotencyKey),
+    index("ledger_transaction_game_id_idx").on(t.gameId),
+  ],
+);
+
+export const ledgerEntries = createTable(
+  "ledger_entry",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    transactionId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => ledgerTransactions.id, { onDelete: "cascade" }),
+    accountId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => ledgerAccounts.id),
+    side: ledgerEntrySideEnum("side").notNull(),
+    amount: d.integer().notNull(),
+  }),
+  (t) => [
+    index("ledger_entry_transaction_id_idx").on(t.transactionId),
+    index("ledger_entry_account_id_idx").on(t.accountId),
+    check("ledger_entry_amount_positive", sql`${t.amount} > 0`),
+  ],
+);
+
+export const ledgerAccountsRelations = relations(
+  ledgerAccounts,
+  ({ one, many }) => ({
+    user: one(users, {
+      fields: [ledgerAccounts.userId],
+      references: [users.id],
+    }),
+    table: one(pokerTables, {
+      fields: [ledgerAccounts.tableId],
+      references: [pokerTables.id],
+    }),
+    entries: many(ledgerEntries),
+  }),
+);
+
+export const ledgerTransactionsRelations = relations(
+  ledgerTransactions,
+  ({ one, many }) => ({
+    game: one(games, {
+      fields: [ledgerTransactions.gameId],
+      references: [games.id],
+    }),
+    entries: many(ledgerEntries),
+  }),
+);
+
+export const ledgerEntriesRelations = relations(ledgerEntries, ({ one }) => ({
+  transaction: one(ledgerTransactions, {
+    fields: [ledgerEntries.transactionId],
+    references: [ledgerTransactions.id],
+  }),
+  account: one(ledgerAccounts, {
+    fields: [ledgerEntries.accountId],
+    references: [ledgerAccounts.id],
   }),
 }));

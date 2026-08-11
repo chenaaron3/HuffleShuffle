@@ -1,9 +1,15 @@
 import type { DefaultSession, NextAuthConfig } from "next-auth";
-import GoogleProvider from 'next-auth/providers/google';
-import { db } from '~/server/db';
-import { accounts, sessions, users, verificationTokens } from '~/server/db/schema';
+import GoogleProvider from "next-auth/providers/google";
+import { grantSignupBonus } from "~/server/api/ledger";
+import { db } from "~/server/db";
+import {
+  accounts,
+  sessions,
+  users,
+  verificationTokens,
+} from "~/server/db/schema";
 
-import { DrizzleAdapter } from '@auth/drizzle-adapter';
+import { DrizzleAdapter } from "@auth/drizzle-adapter";
 
 /**
  * Module augmentation for `next-auth` types. Allows us to add custom properties to the `session`
@@ -67,6 +73,15 @@ export const authConfig = {
           displayName: u.displayName,
         },
       };
+    },
+  },
+  events: {
+    createUser: async ({ user }) => {
+      const userId = user.id;
+      if (!userId) return;
+      await db.transaction(async (tx) => {
+        await grantSignupBonus(tx, userId);
+      });
     },
   },
 } satisfies NextAuthConfig;

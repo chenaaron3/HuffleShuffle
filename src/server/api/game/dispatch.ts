@@ -4,10 +4,7 @@ import { games, pokerTables, seats } from "~/server/db/schema";
 
 import { executeBettingAction } from "~/server/api/game/betting-actions";
 import { dealCard } from "~/server/api/game/dealing";
-import {
-  createNewGame,
-  resetGame,
-} from "~/server/api/game/hand-lifecycle";
+import { createNewGame, resetGame } from "~/server/api/game/hand-lifecycle";
 import { getCurrentBetTarget } from "~/server/api/game/helpers/betting";
 
 type Tx = {
@@ -15,6 +12,7 @@ type Tx = {
   query: typeof db.query;
   update: typeof db.update;
   delete: typeof db.delete;
+  select: typeof db.select;
   execute: typeof db.execute;
 };
 
@@ -164,8 +162,7 @@ export async function dispatchGameEvent(
 
       if (game.state !== "BETTING")
         throw new Error("Player actions only allowed in BETTING");
-      if (!game.assignedSeatId)
-        throw new Error("No assigned seat for betting");
+      if (!game.assignedSeatId) throw new Error("No assigned seat for betting");
       if (game.assignedSeatId !== actorSeat.id) {
         const seat = orderedSeats.find((s) => s.id === game.assignedSeatId);
         if (seat) {

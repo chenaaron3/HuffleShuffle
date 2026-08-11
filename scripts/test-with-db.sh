@@ -14,7 +14,8 @@ done
 
 # Only run migrations if the DB hasn't been initialized
 # We check for presence of one of our tables
-SKIP_ENV_VALIDATION=1 DATABASE_URL="$DB_URL" npm run db:push
+# --force: auto-approve destructive schema diffs on the local test DB only
+SKIP_ENV_VALIDATION=1 DATABASE_URL="$DB_URL" npx drizzle-kit push --force
 
 # Run tests against the DB, forwarding any args (e.g., -- -t "pattern")
 SKIP_ENV_VALIDATION=1 DATABASE_URL="$DB_URL" npm run test:db -- "$@"

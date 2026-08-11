@@ -1,0 +1,52 @@
+name: Deploy Lambda Consumer
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "lambda/consumer/**"
+      - "src/server/api/game/**"
+      - "src/server/api/lib/table-transaction.ts"
+      - "src/server/db/schema.ts"
+      - ".github/workflows/deploy-lambda-consumer.yml"
+
+concurrency:
+  group: deploy-lambda-consumer
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: Production
+    defaults:
+      run:
+        working-directory: lambda/consumer
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: lambda/consumer/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Deploy
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: us-east-1
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          SQS_QUEUE_URL: ${{ secrets.SQS_QUEUE_URL }}
+          SQS_QUEUE_ARN: ${{ secrets.SQS_QUEUE_ARN }}
+          PUSHER_APP_ID: ${{ secrets.PUSHER_APP_ID }}
+          PUSHER_KEY: ${{ secrets.PUSHER_KEY }}
+          PUSHER_SECRET: ${{ secrets.PUSHER_SECRET }}
+          PUSHER_CLUSTER: ${{ secrets.PUSHER_CLUSTER }}
+          NODE_ENV: production
+        run: npm run deploy
