@@ -1,4 +1,129 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap');
 @import "tailwindcss";
+@import "tw-animate-css";
+
+:root {
+  --landing-midnight: #080b11;
+  --landing-midnight-soft: #0e141d;
+  --landing-surface: #111821;
+  --landing-panel: #0a0f16;
+  --landing-gold: #f4c95d;
+  --landing-gold-bright: #ffe39a;
+  --landing-ink: #241705;
+  --landing-muted: #8993a7;
+  --landing-line: rgba(255, 227, 154, 0.16);
+}
+
+@theme inline {
+  --color-landing-midnight: var(--landing-midnight);
+  --color-landing-midnight-soft: var(--landing-midnight-soft);
+  --color-landing-surface: var(--landing-surface);
+  --color-landing-panel: var(--landing-panel);
+  --color-landing-gold: var(--landing-gold);
+  --color-landing-gold-bright: var(--landing-gold-bright);
+  --color-landing-ink: var(--landing-ink);
+  --color-landing-muted: var(--landing-muted);
+  --color-landing-line: var(--landing-line);
+  --font-display: 'Space Grotesk', sans-serif;
+  --font-sans: 'DM Sans', sans-serif;
+}
+
+@keyframes landingTicker {
+  from { transform: translateY(0); }
+  to { transform: translateY(-50%); }
+}
+
+@utility landing-ticker {
+  animation: landingTicker 12s linear infinite;
+  will-change: transform;
+}
+
+@keyframes landing-chip-breathe {
+  0%, 100% {
+    box-shadow:
+      0 0 0 5px rgba(245, 201, 93, 0.08),
+      0 0 30px rgba(245, 201, 93, 0.3),
+      inset 0 0 10px rgba(255, 255, 255, 0.36);
+  }
+  50% {
+    box-shadow:
+      0 0 0 5px rgba(245, 201, 93, 0.14),
+      0 0 42px rgba(245, 201, 93, 0.42),
+      inset 0 0 12px rgba(255, 255, 255, 0.42);
+  }
+}
+
+@layer components {
+  .landing-section-band {
+    pointer-events: none;
+    position: absolute;
+    inset-block: 0;
+    left: 50%;
+    z-index: 0;
+    width: 100vw;
+    transform: translateX(-50%);
+    -webkit-mask-image: linear-gradient(
+      to bottom,
+      transparent 0%,
+      black 18%,
+      black 82%,
+      transparent 100%
+    );
+    mask-image: linear-gradient(
+      to bottom,
+      transparent 0%,
+      black 18%,
+      black 82%,
+      transparent 100%
+    );
+  }
+
+  .landing-ticker-shell:hover .landing-ticker,
+  .landing-ticker-shell:focus-within .landing-ticker {
+    animation-play-state: paused;
+  }
+
+  .landing-dealer-token {
+    position: relative;
+    display: grid;
+    height: 48px;
+    width: 48px;
+    place-items: center;
+    border: 2px solid rgba(255, 239, 183, 0.75);
+    border-radius: 9999px;
+    background: radial-gradient(circle at 32% 26%, #fff4bf 0 8%, #f9d879 22%, #b7791f 67%, #6e4313 100%);
+    color: #3b250b;
+    box-shadow:
+      0 0 0 4px rgba(245, 201, 93, 0.06),
+      0 0 22px rgba(245, 201, 93, 0.22),
+      inset 0 0 10px rgba(255, 255, 255, 0.36);
+    animation: landing-chip-breathe 3.4s ease-in-out infinite;
+    will-change: transform;
+  }
+
+  .landing-dealer-token::before {
+    content: '';
+    position: absolute;
+    inset: 5px;
+    border: 1px dashed rgba(70, 40, 9, 0.54);
+    border-radius: inherit;
+  }
+
+  .landing-dealer-token::after {
+    content: 'D';
+    position: relative;
+    z-index: 1;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-ticker { animation: none; }
+  .landing-dealer-token { animation: none; }
+}
 
 @keyframes subtle-bounce {
   0%, 100% { transform: translateY(-8%); }

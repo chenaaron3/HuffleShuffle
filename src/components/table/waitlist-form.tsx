@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { Check, X } from 'lucide-react';
+import { Check, Mail, X } from 'lucide-react';
 import { type FormEvent, type ReactNode, useId, useState } from 'react';
 import {
   Dialog,
@@ -15,6 +15,7 @@ import { api } from '~/utils/api';
 
 type WaitlistFormProps = {
   className?: string;
+  variant?: 'button' | 'inline';
 };
 
 const inputClassName =
@@ -40,7 +41,7 @@ function FieldLabel({
   );
 }
 
-function WaitlistSuccessMessage() {
+export function WaitlistSuccessMessage() {
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.94, y: 10 }}
@@ -70,7 +71,7 @@ function WaitlistSuccessMessage() {
   );
 }
 
-export function WaitlistForm({ className = '' }: WaitlistFormProps) {
+export function WaitlistForm({ className = '', variant = 'button' }: WaitlistFormProps) {
   const [open, setOpen] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [name, setName] = useState('');
@@ -78,17 +79,18 @@ export function WaitlistForm({ className = '' }: WaitlistFormProps) {
   const [phone, setPhone] = useState('');
   const [instagram, setInstagram] = useState('');
   const fieldId = useId();
+  const inlineEmailId = useId();
 
-  const resetForm = () => {
+  const resetOptionalFields = () => {
     setName('');
-    setEmail('');
     setPhone('');
     setInstagram('');
   };
 
   const joinMutation = api.waitlist.join.useMutation({
     onSuccess: () => {
-      resetForm();
+      resetOptionalFields();
+      setEmail('');
       setOpen(false);
       setSubmitted(true);
     },
@@ -96,8 +98,13 @@ export function WaitlistForm({ className = '' }: WaitlistFormProps) {
 
   const handleOpenChange = (nextOpen: boolean) => {
     setOpen(nextOpen);
-    if (!nextOpen) resetForm();
+    if (!nextOpen) {
+      resetOptionalFields();
+      if (variant === 'button') setEmail('');
+    }
   };
+
+  const openModal = () => setOpen(true);
 
   const canSubmit =
     name.trim().length > 0 &&
@@ -116,10 +123,141 @@ export function WaitlistForm({ className = '' }: WaitlistFormProps) {
   };
 
   if (submitted) {
+    return <WaitlistSuccessMessage />;
+  }
+
+  const dialog = (
+    <DialogContent className="gap-0 border-[#FFD700]/10 bg-zinc-950 p-0 shadow-[0_0_60px_rgba(212,175,55,0.12)] data-[state=open]:slide-in-from-bottom-2">
+      <DialogClose className="absolute right-4 top-4 rounded-md p-1 text-zinc-400 transition hover:bg-white/10 hover:text-white">
+        <X className="size-4" />
+        <span className="sr-only">Close</span>
+      </DialogClose>
+
+      <motion.div
+        animate={{ opacity: 1, y: 0 }}
+        className="px-6 py-6"
+        initial={{ opacity: 0, y: 10 }}
+        transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1], delay: 0.04 }}
+      >
+        <DialogHeader className="mb-5 pr-8 text-left">
+          <DialogTitle className="text-xl font-semibold text-white">Join the waitlist</DialogTitle>
+          <DialogDescription>
+            Get early access when live tables open up.
+          </DialogDescription>
+        </DialogHeader>
+
+        <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
+          <div className="flex flex-col gap-1.5">
+            <FieldLabel htmlFor={`${fieldId}-name`}>Name</FieldLabel>
+            <input
+              id={`${fieldId}-name`}
+              type="text"
+              required
+              autoComplete="name"
+              placeholder="Your name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              disabled={joinMutation.isPending}
+              className={inputClassName}
+            />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <FieldLabel htmlFor={`${fieldId}-email`}>Email</FieldLabel>
+            <input
+              id={`${fieldId}-email`}
+              type="email"
+              required
+              autoComplete="email"
+              placeholder="your@email.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              disabled={joinMutation.isPending}
+              className={inputClassName}
+            />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <FieldLabel htmlFor={`${fieldId}-phone`} optional>
+              Phone number
+            </FieldLabel>
+            <input
+              id={`${fieldId}-phone`}
+              type="tel"
+              autoComplete="tel"
+              inputMode="tel"
+              placeholder="(555) 555-5555"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              disabled={joinMutation.isPending}
+              className={inputClassName}
+            />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <FieldLabel htmlFor={`${fieldId}-instagram`} optional>
+              Instagram
+            </FieldLabel>
+            <input
+              id={`${fieldId}-instagram`}
+              type="text"
+              autoComplete="off"
+              placeholder="@username"
+              value={instagram}
+              onChange={(e) => setInstagram(e.target.value)}
+              disabled={joinMutation.isPending}
+              className={inputClassName}
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={!canSubmit}
+            className={`mt-2 w-full ${joinButtonClassName}`}
+          >
+            {joinMutation.isPending ? 'Joining…' : 'Join waitlist'}
+          </button>
+        </form>
+      </motion.div>
+    </DialogContent>
+  );
+
+  if (variant === 'inline') {
     return (
-      <div className={className}>
-        <WaitlistSuccessMessage />
-      </div>
+      <Dialog open={open} onOpenChange={handleOpenChange}>
+        <form
+          aria-label="Join the HuffleShuffle waitlist"
+          className={`flex min-w-0 flex-1 flex-col gap-2 sm:max-w-[365px] ${className}`}
+          onSubmit={(e) => {
+            e.preventDefault();
+            openModal();
+          }}
+        >
+          <label className="sr-only" htmlFor={inlineEmailId}>
+            Email address
+          </label>
+          <div className="flex items-center gap-2 rounded-2xl border border-white/12 bg-white/[0.045] p-1.5 pl-4 shadow-[0_12px_45px_rgba(0,0,0,0.22)] focus-within:border-landing-gold/70 focus-within:ring-2 focus-within:ring-landing-gold/15">
+            <Mail aria-hidden="true" className="size-[17px] shrink-0 text-slate-500" />
+            <input
+              autoComplete="email"
+              className="min-w-0 flex-1 bg-transparent py-2 text-sm text-white outline-none placeholder:text-slate-600"
+              id={inlineEmailId}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@example.com"
+              type="email"
+              value={email}
+            />
+            <button
+              className="rounded-xl bg-landing-gold px-4 py-2.5 text-sm font-semibold text-landing-ink shadow-[0_0_28px_rgba(244,201,93,0.18)] hover:bg-landing-gold-bright focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-landing-gold-bright"
+              type="submit"
+            >
+              Join waitlist
+            </button>
+          </div>
+          <p className="text-[11px] text-slate-500">No spam. Just a seat when tables open.</p>
+        </form>
+        {dialog}
+      </Dialog>
     );
   }
 
@@ -127,100 +265,12 @@ export function WaitlistForm({ className = '' }: WaitlistFormProps) {
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <button
         type="button"
-        onClick={() => setOpen(true)}
+        onClick={openModal}
         className={`${joinButtonClassName} ${className}`}
       >
         Join waitlist
       </button>
-
-      <DialogContent className="gap-0 border-[#FFD700]/10 bg-zinc-950 p-0 shadow-[0_0_60px_rgba(212,175,55,0.12)]">
-        <DialogClose className="absolute right-4 top-4 rounded-md p-1 text-zinc-400 transition hover:bg-white/10 hover:text-white">
-          <X className="size-4" />
-          <span className="sr-only">Close</span>
-        </DialogClose>
-
-        <div className="px-6 py-6">
-          <DialogHeader className="mb-5 pr-8 text-left">
-            <DialogTitle className="text-xl font-semibold text-white">Join the waitlist</DialogTitle>
-            <DialogDescription>
-              Get early access when live tables open up.
-            </DialogDescription>
-          </DialogHeader>
-
-          <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
-            <div className="flex flex-col gap-1.5">
-              <FieldLabel htmlFor={`${fieldId}-name`}>Name</FieldLabel>
-              <input
-                id={`${fieldId}-name`}
-                type="text"
-                required
-                autoComplete="name"
-                placeholder="Your name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                disabled={joinMutation.isPending}
-                className={inputClassName}
-              />
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <FieldLabel htmlFor={`${fieldId}-email`}>Email</FieldLabel>
-              <input
-                id={`${fieldId}-email`}
-                type="email"
-                required
-                autoComplete="email"
-                placeholder="your@email.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                disabled={joinMutation.isPending}
-                className={inputClassName}
-              />
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <FieldLabel htmlFor={`${fieldId}-phone`} optional>
-                Phone number
-              </FieldLabel>
-              <input
-                id={`${fieldId}-phone`}
-                type="tel"
-                autoComplete="tel"
-                inputMode="tel"
-                placeholder="(555) 555-5555"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                disabled={joinMutation.isPending}
-                className={inputClassName}
-              />
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <FieldLabel htmlFor={`${fieldId}-instagram`} optional>
-                Instagram
-              </FieldLabel>
-              <input
-                id={`${fieldId}-instagram`}
-                type="text"
-                autoComplete="off"
-                placeholder="@username"
-                value={instagram}
-                onChange={(e) => setInstagram(e.target.value)}
-                disabled={joinMutation.isPending}
-                className={inputClassName}
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={!canSubmit}
-              className={`mt-2 w-full ${joinButtonClassName}`}
-            >
-              {joinMutation.isPending ? 'Joining…' : 'Join waitlist'}
-            </button>
-          </form>
-        </div>
-      </DialogContent>
+      {dialog}
     </Dialog>
   );
 }
