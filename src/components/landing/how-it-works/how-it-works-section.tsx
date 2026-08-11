@@ -1,6 +1,7 @@
 'use client';
 
 import { motion, useScroll, useTransform, type MotionValue } from 'framer-motion';
+import Image from 'next/image';
 import { useRef, useState } from 'react';
 import {
   goldChipImage,
@@ -36,19 +37,21 @@ function ChipLayer({
       style={reduceMotion ? undefined : { y }}
     >
       {chips.map((chip) => (
-        <img
+        <Image
           key={chip.id}
           alt=""
           className="absolute select-none"
+          height={chip.size}
+          loading="lazy"
           src={goldChipImage}
           style={{
             top: chip.top,
             left: chip.left,
-            width: chip.size,
-            height: chip.size,
             opacity: chip.opacity,
             transform: `rotate(${chip.rotate}deg)`,
           }}
+          unoptimized
+          width={chip.size}
         />
       ))}
     </motion.div>

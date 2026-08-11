@@ -1,6 +1,7 @@
 'use client';
 
 import { motion, useInView } from 'framer-motion';
+import Image from 'next/image';
 import { useRef } from 'react';
 import { mayaDealerImage } from '../landing-data';
 
@@ -19,9 +20,12 @@ export function LivePanel({ reduceMotion }: { reduceMotion: boolean }) {
         initial={reduceMotion ? false : { opacity: 0, scale: 1.08 }}
         transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
       >
-        <img
+        <Image
           alt="Maya, a live poker dealer dealing cards at a green-felt table"
           className="absolute inset-0 h-full w-full object-cover object-center saturate-[0.88] contrast-[1.06]"
+          fill
+          loading="lazy"
+          sizes="(min-width: 768px) 360px, 90vw"
           src={mayaDealerImage}
         />
         <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(8,11,17,0.08),rgba(8,11,17,0.18)_52%,rgba(8,11,17,0.92))]" />

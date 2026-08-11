@@ -1,17 +1,29 @@
 'use client';
 
 import { motion, useReducedMotion } from 'framer-motion';
+import dynamic from 'next/dynamic';
 import Head from 'next/head';
+import Image from 'next/image';
 import { useEffect, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import { useDealerButtonJourney } from '~/hooks/use-dealer-button-journey';
-import { DemoSection } from './demo-section';
-import { FeaturesSection } from './features-section';
 import { FinalCtaSection } from './final-cta-section';
 import { HeroSection } from './hero-section';
-import { HowItWorksSection } from './how-it-works/how-it-works-section';
+import { shuffle1Image, shuffle2Image } from './landing-data';
 import { LandingHeader } from './landing-header';
 import { SiteFooter } from './site-footer';
+
+const FeaturesSection = dynamic(
+  () => import('./features-section').then((mod) => mod.FeaturesSection),
+  { ssr: false },
+);
+const DemoSection = dynamic(() => import('./demo-section').then((mod) => mod.DemoSection), {
+  ssr: false,
+});
+const HowItWorksSection = dynamic(
+  () => import('./how-it-works/how-it-works-section').then((mod) => mod.HowItWorksSection),
+  { ssr: false },
+);
 
 export function LandingPage() {
   const { data: session } = useSession();
@@ -60,17 +72,25 @@ export function LandingPage() {
       >
         <div className="pointer-events-none absolute inset-0 z-0 bg-[radial-gradient(circle_at_64%_8%,rgba(244,201,93,0.12),transparent_27%),radial-gradient(circle_at_8%_72%,rgba(58,74,101,0.16),transparent_31%),linear-gradient(180deg,#0d131d_0%,#080b11_38%,#06080c_100%)]" />
         <div className="pointer-events-none absolute inset-0 z-0 opacity-40 [background-image:linear-gradient(rgba(255,255,255,0.025)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.025)_1px,transparent_1px)] [background-size:64px_64px] [mask-image:linear-gradient(to_bottom,black,transparent_75%)]" />
-        <img
+        <Image
           alt=""
           aria-hidden="true"
           className="pointer-events-none absolute right-0 top-0 z-0 h-[520px] w-auto opacity-80 sm:h-[680px] md:h-[760px]"
-          src="/shuffle1.png"
+          height={611}
+          priority
+          sizes="(min-width: 768px) 480px, 320px"
+          src={shuffle1Image}
+          width={480}
         />
-        <img
+        <Image
           alt=""
           aria-hidden="true"
           className="pointer-events-none absolute -bottom-24 -left-16 z-0 h-[520px] w-auto opacity-80 sm:h-[680px] md:h-[760px]"
-          src="/shuffle2.png"
+          height={640}
+          loading="lazy"
+          sizes="(min-width: 768px) 400px, 280px"
+          src={shuffle2Image}
+          width={400}
         />
 
         <LandingHeader />

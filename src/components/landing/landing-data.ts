@@ -124,12 +124,17 @@ export const chipStack: ChipValue[] = [
 
 export const BUY_IN_MAX = 150;
 
-export const mayaDealerImage = '/landing/maya-dealer.png';
+export const mayaDealerImage = '/landing/optimized/maya-dealer.webp';
 
-export const demoVideo = '/landing/demo.mp4';
-export const demoPoster = '/landing/demo-poster.jpg';
+export const demoVideo = '/landing/optimized/demo.mp4';
+export const demoPoster = '/landing/optimized/demo-poster.webp';
 
-export const goldChipImage = '/landing/gold-chip.png';
+export const goldChipImage = '/landing/optimized/gold-chip.webp';
+
+export const aceHeartImage = '/landing/optimized/ace-heart.webp';
+export const aceSpadeImage = '/landing/optimized/ace-spade.webp';
+export const shuffle1Image = '/landing/optimized/shuffle1.webp';
+export const shuffle2Image = '/landing/optimized/shuffle2.webp';
 
 /** 0 = farthest/slowest, 2 = nearest/fastest */
 export type ChipParallaxLayer = 0 | 1 | 2;

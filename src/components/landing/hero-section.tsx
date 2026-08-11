@@ -1,10 +1,12 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import Image from 'next/image';
 import { useSession } from 'next-auth/react';
 import { type RefObject } from 'react';
 import { CometCard } from '~/components/effects/comet-card';
 import { HeroParticles } from './hero-particles';
+import { aceHeartImage, aceSpadeImage } from './landing-data';
 import {
   heroContainerVariants,
   heroItemVariants,
@@ -30,10 +32,14 @@ function HeroCardStage({ reduceMotion }: { reduceMotion: boolean }) {
             rotateDepth={24}
             translateDepth={18}
           >
-            <img
+            <Image
               alt="Gold Ace of Hearts card"
               className="h-full w-full object-cover object-center"
-              src="/AceHeart.png"
+              height={1080}
+              priority
+              sizes="(min-width: 1024px) 280px, 0px"
+              src={aceHeartImage}
+              width={720}
             />
           </CometCard>
         </motion.div>
@@ -48,10 +54,14 @@ function HeroCardStage({ reduceMotion }: { reduceMotion: boolean }) {
             rotateDepth={24}
             translateDepth={18}
           >
-            <img
+            <Image
               alt="Gold Ace of Spades card"
               className="h-full w-full object-cover object-center"
-              src="/AceSpade.png"
+              height={1080}
+              priority
+              sizes="(min-width: 1024px) 280px, 0px"
+              src={aceSpadeImage}
+              width={720}
             />
           </CometCard>
         </motion.div>

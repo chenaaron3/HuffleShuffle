@@ -86,7 +86,7 @@ export function DemoSection({ reduceMotion }: { reduceMotion: boolean }) {
             onEnded={() => setPlaying(false)}
             playsInline
             poster={demoPoster}
-            preload="metadata"
+            preload="none"
             ref={videoRef}
             src={demoVideo}
           />
