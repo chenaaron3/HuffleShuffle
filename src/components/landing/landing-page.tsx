@@ -85,7 +85,7 @@ export function LandingPage() {
         <Image
           alt=""
           aria-hidden="true"
-          className="pointer-events-none absolute -bottom-24 -left-16 z-0 hidden h-[520px] w-auto max-w-none opacity-80 sm:block sm:h-[680px] md:h-[760px]"
+          className="pointer-events-none absolute bottom-0 -left-16 z-0 hidden h-[520px] w-auto max-w-none opacity-80 sm:block sm:h-[680px] md:h-[760px]"
           height={640}
           loading="lazy"
           sizes="(min-width: 768px) 400px, 280px"
