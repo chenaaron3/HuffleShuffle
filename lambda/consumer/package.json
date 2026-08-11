@@ -5,8 +5,8 @@
     "main": "dist/consumer.js",
     "type": "module",
     "scripts": {
-        "build": "esbuild consumer.ts --bundle --platform=node --target=node18 --outfile=dist/consumer.js --external:aws-sdk --format=esm --define:import.meta.url=__filename",
-        "build:watch": "esbuild consumer.ts --bundle --platform=node --target=node18 --outfile=dist/consumer.js --external:aws-sdk --format=esm --define:import.meta.url=__filename --watch",
+        "build": "node build.mjs",
+        "build:watch": "node build.mjs --watch",
         "deploy": "npm run build && node -r dotenv/config ./node_modules/.bin/serverless deploy",
         "remove": "node -r dotenv/config ./node_modules/.bin/serverless remove",
         "logs": "node -r dotenv/config ./node_modules/.bin/serverless logs -f ingest",
@@ -24,11 +24,14 @@
         "node": ">=18.0.0"
     },
     "dependencies": {
+        "@aws-sdk/client-sqs": "^3.875.0",
         "dotenv": "^17.2.1",
         "drizzle-orm": "^0.41.0",
         "poker-hand-evaluator": "^1.0.1",
+        "pokersolver": "2.1.4",
         "postgres": "^3.4.7",
         "pusher": "^5.2.0",
-        "serverless-dotenv-plugin": "^3.12.2"
+        "serverless-dotenv-plugin": "^3.12.2",
+        "zod": "^3.24.2"
     }
 }
