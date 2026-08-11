@@ -88,17 +88,17 @@ export function SignInPanel({ reduceMotion }: { reduceMotion: boolean }) {
       className="w-full rounded-[24px] border border-white/10 bg-landing-panel p-5 shadow-[0_24px_65px_rgba(0,0,0,0.36)] sm:p-7"
       ref={ref}
     >
-      <div className="mb-6 flex items-center justify-between border-b border-white/10 pb-4">
-        <div className="flex items-center gap-3">
-          <span className="grid size-9 place-items-center rounded-xl bg-landing-gold/10 text-landing-gold-bright">
+      <div className="mb-6 flex items-start justify-between gap-3 border-b border-white/10 pb-4">
+        <div className="flex min-w-0 items-center gap-3">
+          <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-landing-gold/10 text-landing-gold-bright">
             <Wallet aria-hidden="true" className="size-[18px]" />
           </span>
-          <div>
+          <div className="min-w-0">
             <div className="text-sm font-semibold text-white">HuffleShuffle wallet</div>
             <div className="text-[10px] uppercase tracking-[0.15em] text-slate-500">One-time setup</div>
           </div>
         </div>
-        <span className="text-[10px] uppercase tracking-[0.16em] text-slate-600">step 1 of 4</span>
+        <span className="shrink-0 text-[10px] uppercase tracking-[0.16em] text-slate-600">step 1 of 4</span>
       </div>
       <div className="grid gap-4 sm:grid-cols-2 sm:items-stretch">
         <div className="flex flex-col gap-3">

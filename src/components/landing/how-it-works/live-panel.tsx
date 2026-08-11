@@ -36,7 +36,7 @@ export function LivePanel({ reduceMotion }: { reduceMotion: boolean }) {
             live
           </span>
         </div>
-        <div className="absolute bottom-4 left-4 right-4 flex items-end justify-between gap-4">
+        <div className="absolute bottom-4 left-4 right-4 flex flex-col items-start gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
           <div>
             <div className="text-lg font-semibold text-white">Maya</div>
             <div className="mt-1 text-[10px] uppercase tracking-[0.18em] text-landing-gold-bright">your dealer</div>

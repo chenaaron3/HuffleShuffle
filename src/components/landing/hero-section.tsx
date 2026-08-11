@@ -36,7 +36,6 @@ function HeroCardStage({ reduceMotion }: { reduceMotion: boolean }) {
               alt="Gold Ace of Hearts card"
               className="h-full w-full object-cover object-center"
               height={1080}
-              priority
               sizes="(min-width: 1024px) 280px, 0px"
               src={aceHeartImage}
               width={720}
@@ -58,7 +57,6 @@ function HeroCardStage({ reduceMotion }: { reduceMotion: boolean }) {
               alt="Gold Ace of Spades card"
               className="h-full w-full object-cover object-center"
               height={1080}
-              priority
               sizes="(min-width: 1024px) 280px, 0px"
               src={aceSpadeImage}
               width={720}
@@ -87,7 +85,7 @@ export function HeroSection({
   dealerChipStartRef: RefObject<HTMLSpanElement | null>;
 }) {
   return (
-    <section className="relative mx-auto grid h-dvh max-h-dvh max-w-7xl items-center gap-8 px-6 pt-20 pb-8 sm:px-8 lg:grid-cols-[1fr_0.92fr] lg:gap-10 lg:px-12 lg:pb-10">
+    <section className="relative mx-auto grid min-h-dvh max-w-7xl items-center gap-8 px-6 pt-20 pb-10 sm:px-8 lg:h-dvh lg:max-h-dvh lg:grid-cols-[1fr_0.92fr] lg:gap-10 lg:px-12 lg:pb-10">
       <motion.div
         animate={reduceMotion ? undefined : { opacity: 1 }}
         aria-hidden="true"
@@ -116,7 +114,7 @@ export function HeroSection({
           Live tables, real people
         </motion.div>
         <motion.h1
-          className="max-w-2xl font-display text-5xl font-semibold leading-[0.97] tracking-[-0.06em] text-[#f8e6af] sm:text-6xl lg:text-7xl xl:text-8xl"
+          className="max-w-2xl font-display text-[2.75rem] font-semibold leading-[0.97] tracking-[-0.06em] text-[#f8e6af] sm:text-6xl lg:text-7xl xl:text-8xl"
           variants={heroItemVariants}
         >
           Live-
@@ -124,7 +122,7 @@ export function HeroSection({
             Dealer
             <span
               aria-hidden="true"
-              className="ml-2.5 inline-block size-12 shrink-0 align-middle sm:ml-3"
+              className="ml-2 inline-block size-9 shrink-0 align-middle sm:ml-3 sm:size-12"
               ref={dealerChipStartRef}
             />
           </span>

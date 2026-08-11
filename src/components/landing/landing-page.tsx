@@ -66,7 +66,7 @@ export function LandingPage() {
         <meta name="description" content="Play online poker with a live dealer" />
       </Head>
       <main
-        className="relative min-h-dvh overflow-x-clip bg-landing-midnight font-sans text-white [background-attachment:fixed]"
+        className="relative min-h-dvh overflow-x-clip bg-landing-midnight font-sans text-white [background-attachment:scroll] md:[background-attachment:fixed]"
         id="hero"
         ref={pageRef}
       >
@@ -75,17 +75,17 @@ export function LandingPage() {
         <Image
           alt=""
           aria-hidden="true"
-          className="pointer-events-none absolute right-0 top-0 z-0 h-[520px] w-auto opacity-80 sm:h-[680px] md:h-[760px]"
+          className="pointer-events-none absolute right-0 top-0 z-0 h-[360px] w-auto max-w-none opacity-70 sm:h-[680px] sm:opacity-80 md:h-[760px]"
           height={611}
           priority
-          sizes="(min-width: 768px) 480px, 320px"
+          sizes="(min-width: 768px) 480px, 240px"
           src={shuffle1Image}
           width={480}
         />
         <Image
           alt=""
           aria-hidden="true"
-          className="pointer-events-none absolute -bottom-24 -left-16 z-0 h-[520px] w-auto opacity-80 sm:h-[680px] md:h-[760px]"
+          className="pointer-events-none absolute -bottom-24 -left-16 z-0 hidden h-[520px] w-auto max-w-none opacity-80 sm:block sm:h-[680px] md:h-[760px]"
           height={640}
           loading="lazy"
           sizes="(min-width: 768px) 400px, 280px"

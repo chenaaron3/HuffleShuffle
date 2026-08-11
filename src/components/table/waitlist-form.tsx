@@ -236,19 +236,21 @@ export function WaitlistForm({ className = '', variant = 'button' }: WaitlistFor
           <label className="sr-only" htmlFor={inlineEmailId}>
             Email address
           </label>
-          <div className="flex items-center gap-2 rounded-2xl border border-white/12 bg-white/[0.045] p-1.5 pl-4 shadow-[0_12px_45px_rgba(0,0,0,0.22)] focus-within:border-landing-gold/70 focus-within:ring-2 focus-within:ring-landing-gold/15">
-            <Mail aria-hidden="true" className="size-[17px] shrink-0 text-slate-500" />
-            <input
-              autoComplete="email"
-              className="min-w-0 flex-1 bg-transparent py-2 text-sm text-white outline-none placeholder:text-slate-600"
-              id={inlineEmailId}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com"
-              type="email"
-              value={email}
-            />
+          <div className="flex flex-col gap-2 rounded-2xl border border-white/12 bg-white/[0.045] p-1.5 shadow-[0_12px_45px_rgba(0,0,0,0.22)] focus-within:border-landing-gold/70 focus-within:ring-2 focus-within:ring-landing-gold/15 sm:flex-row sm:items-center sm:gap-2 sm:pl-4">
+            <div className="flex min-w-0 flex-1 items-center gap-2 px-2.5 sm:contents sm:px-0">
+              <Mail aria-hidden="true" className="size-[17px] shrink-0 text-slate-500" />
+              <input
+                autoComplete="email"
+                className="min-w-0 flex-1 bg-transparent py-2 text-sm text-white outline-none placeholder:text-slate-600"
+                id={inlineEmailId}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@example.com"
+                type="email"
+                value={email}
+              />
+            </div>
             <button
-              className="rounded-xl bg-landing-gold px-4 py-2.5 text-sm font-semibold text-landing-ink shadow-[0_0_28px_rgba(244,201,93,0.18)] hover:bg-landing-gold-bright focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-landing-gold-bright"
+              className="w-full rounded-xl bg-landing-gold px-4 py-2.5 text-sm font-semibold text-landing-ink shadow-[0_0_28px_rgba(244,201,93,0.18)] hover:bg-landing-gold-bright focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-landing-gold-bright sm:w-auto"
               type="submit"
             >
               Join waitlist

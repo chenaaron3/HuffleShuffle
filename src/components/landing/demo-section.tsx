@@ -33,13 +33,13 @@ export function DemoSection({ reduceMotion }: { reduceMotion: boolean }) {
 
   return (
     <section
-      className="relative mx-auto max-w-7xl px-6 py-28 sm:px-8 lg:px-12"
+      className="relative mx-auto max-w-7xl px-6 py-14 sm:px-8 sm:py-28 lg:px-12"
       id="demo"
       ref={sectionRef}
     >
       <SectionBand tone="deep" />
       <motion.div
-        className="relative z-10 mb-10 max-w-2xl"
+        className="relative z-10 mb-6 max-w-2xl sm:mb-10"
         initial={reduceMotion ? false : 'hidden'}
         variants={{ visible: {}, hidden: {} }}
         viewport={{ amount: 0.35, once: true }}
@@ -62,7 +62,7 @@ export function DemoSection({ reduceMotion }: { reduceMotion: boolean }) {
         </motion.p>
       </motion.div>
 
-      <div className="relative z-10 flex justify-center py-10 sm:py-16">
+      <div className="relative z-10 flex justify-center overflow-x-clip py-4 sm:py-16">
         <DemoBeams
           pathLengths={[
             pathLengthFirst,
@@ -74,14 +74,14 @@ export function DemoSection({ reduceMotion }: { reduceMotion: boolean }) {
           reduceMotion={reduceMotion}
         />
         <motion.div
-          className="relative z-10 mx-auto w-fit max-w-full overflow-hidden rounded-[28px] border border-white/10 bg-landing-panel shadow-[0_30px_100px_rgba(0,0,0,0.45)]"
+          className="relative z-10 mx-auto w-full max-w-full overflow-hidden rounded-[28px] border border-white/10 bg-landing-panel shadow-[0_30px_100px_rgba(0,0,0,0.45)] sm:w-fit"
           initial={reduceMotion ? false : 'hidden'}
           variants={revealVariants}
           viewport={{ amount: 0.2, once: true }}
           whileInView="visible"
         >
           <video
-            className="block h-auto max-h-[min(70dvh,720px)] w-auto max-w-full bg-black"
+            className="block h-auto max-h-[min(70dvh,720px)] w-full bg-black sm:w-auto sm:max-w-full"
             controls={playing}
             onEnded={() => setPlaying(false)}
             playsInline

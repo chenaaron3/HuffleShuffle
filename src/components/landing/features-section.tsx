@@ -52,9 +52,9 @@ function ValuePropCard({
 
 export function FeaturesSection({ reduceMotion }: { reduceMotion: boolean }) {
   return (
-    <section className="relative mx-auto max-w-7xl px-6 py-28 sm:px-8 lg:px-12" id="value-props">
+    <section className="relative mx-auto max-w-7xl px-6 py-14 sm:px-8 sm:py-28 lg:px-12" id="value-props">
       <SectionBand tone="lift" />
-      <div className="relative z-10 mb-8">
+      <div className="relative z-10 mb-5 sm:mb-8">
         <p className="mb-3 text-xs uppercase tracking-[0.28em] text-landing-gold">The table, simplified</p>
         <h2 className="font-display text-3xl tracking-[-0.04em] text-[#f8e6af] sm:text-5xl">
           Everything you need to sit down.

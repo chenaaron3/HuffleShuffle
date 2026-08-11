@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowUpRight, CircleDashed } from 'lucide-react';
+import { CircleDashed } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import { type RefObject } from 'react';
 import { SessionCta } from './session-cta';
@@ -13,7 +13,7 @@ export function FinalCtaSection({
   slotRef: RefObject<HTMLDivElement | null>;
 }) {
   return (
-    <section className="relative mx-auto mb-16 max-w-7xl px-6 sm:px-8 lg:px-12" id="final-cta">
+    <section className="relative mx-auto mb-10 max-w-7xl px-6 sm:mb-16 sm:px-8 lg:px-12" id="final-cta">
       <div className="relative">
         {/* Panel chrome under the route (z-15) so the line + chip pass over it */}
         <div
@@ -22,13 +22,13 @@ export function FinalCtaSection({
         />
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute -right-16 -top-24 z-[15] size-80 rounded-full bg-landing-gold/10 blur-3xl"
+          className="pointer-events-none absolute -right-16 -top-24 z-[15] hidden size-80 rounded-full bg-landing-gold/10 blur-3xl sm:block"
         />
 
-        <div className="relative z-[30] grid items-center gap-12 px-8 py-16 text-white sm:px-16 sm:py-20 lg:grid-cols-[1fr_250px]">
+        <div className="relative z-[30] grid items-center gap-10 px-6 py-14 text-white sm:gap-12 sm:px-16 sm:py-20 lg:grid-cols-[1fr_250px]">
           <div>
             <p className="mb-4 text-xs uppercase tracking-[0.28em] text-landing-gold">Your seat is waiting</p>
-            <h2 className="font-display text-5xl leading-[0.98] tracking-[-0.06em] text-[#f8e6af] sm:text-7xl">
+            <h2 className="font-display text-4xl leading-[0.98] tracking-[-0.06em] text-[#f8e6af] sm:text-7xl">
               Ready to take
               <br />
               a seat?
@@ -38,14 +38,8 @@ export function FinalCtaSection({
                 ? 'Pick a table and play with real people and real dealers in minutes. The next hand starts when you do.'
                 : 'Join the waitlist for updates and early access when tables open up.'}
             </p>
-            <div className="mt-8 flex flex-wrap items-center gap-5">
+            <div className="mt-8">
               <SessionCta session={session} />
-              <a
-                className="text-sm font-semibold text-landing-gold-bright hover:text-white focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-landing-gold-bright"
-                href="#hero"
-              >
-                Back to the top <ArrowUpRight aria-hidden="true" className="ml-1 inline size-4" />
-              </a>
             </div>
           </div>
           <div
