@@ -38,7 +38,7 @@ export function DemoBeams({
       aria-hidden="true"
       className="pointer-events-none absolute left-1/2 top-1/2 z-0 hidden h-auto w-[min(160vw,1440px)] max-w-none -translate-x-1/2 -translate-y-1/2 opacity-80 sm:block"
       fill="none"
-      viewBox="0 0 1440 890"
+      viewBox="0 70 1440 890"
       xmlns="http://www.w3.org/2000/svg"
     >
       {BEAM_PATHS.map((beam, index) => (

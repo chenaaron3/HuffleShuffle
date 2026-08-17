@@ -63,46 +63,48 @@ export function DemoSection({ reduceMotion }: { reduceMotion: boolean }) {
       </motion.div>
 
       <div className="relative z-10 flex justify-center overflow-x-clip py-4 sm:py-16">
-        <DemoBeams
-          pathLengths={[
-            pathLengthFirst,
-            pathLengthSecond,
-            pathLengthThird,
-            pathLengthFourth,
-            pathLengthFifth,
-          ]}
-          reduceMotion={reduceMotion}
-        />
-        <motion.div
-          className="relative z-10 mx-auto w-full max-w-full overflow-hidden rounded-[28px] border border-white/10 bg-landing-panel shadow-[0_30px_100px_rgba(0,0,0,0.45)] sm:w-fit"
-          initial={reduceMotion ? false : 'hidden'}
-          variants={revealVariants}
-          viewport={{ amount: 0.2, once: true }}
-          whileInView="visible"
-        >
-          <video
-            className="block h-auto max-h-[min(70dvh,720px)] w-full bg-black sm:w-auto sm:max-w-full"
-            controls={playing}
-            onEnded={() => setPlaying(false)}
-            playsInline
-            poster={demoPoster}
-            preload="none"
-            ref={videoRef}
-            src={demoVideo}
+        <div className="relative w-full sm:w-fit">
+          <DemoBeams
+            pathLengths={[
+              pathLengthFirst,
+              pathLengthSecond,
+              pathLengthThird,
+              pathLengthFourth,
+              pathLengthFifth,
+            ]}
+            reduceMotion={reduceMotion}
           />
-          {!playing && (
-            <button
-              aria-label="Play demo video"
-              className="absolute inset-0 grid place-items-center bg-black/25 transition hover:bg-black/35 focus-visible:outline-2 focus-visible:outline-offset-[-4px] focus-visible:outline-landing-gold-bright"
-              onClick={startPlayback}
-              type="button"
-            >
-              <span className="grid size-16 place-items-center rounded-full border border-landing-gold/40 bg-landing-ink/80 text-landing-gold-bright shadow-[0_0_40px_rgba(244,201,93,0.35)] backdrop-blur-sm sm:size-[4.5rem]">
-                <Play aria-hidden="true" className="ml-1 size-7 fill-current sm:size-8" />
-              </span>
-            </button>
-          )}
-        </motion.div>
+          <motion.div
+            className="relative z-10 w-full overflow-hidden rounded-[28px] border border-white/10 bg-landing-panel shadow-[0_30px_100px_rgba(0,0,0,0.45)]"
+            initial={reduceMotion ? false : 'hidden'}
+            variants={revealVariants}
+            viewport={{ amount: 0.2, once: true }}
+            whileInView="visible"
+          >
+            <video
+              className="block h-auto max-h-[min(70dvh,720px)] w-full bg-black sm:w-auto sm:max-w-full"
+              controls={playing}
+              onEnded={() => setPlaying(false)}
+              playsInline
+              poster={demoPoster}
+              preload="none"
+              ref={videoRef}
+              src={demoVideo}
+            />
+            {!playing && (
+              <button
+                aria-label="Play demo video"
+                className="absolute inset-0 grid place-items-center bg-black/25 transition hover:bg-black/35 focus-visible:outline-2 focus-visible:outline-offset-[-4px] focus-visible:outline-landing-gold-bright"
+                onClick={startPlayback}
+                type="button"
+              >
+                <span className="grid size-16 place-items-center rounded-full border border-landing-gold/40 bg-landing-ink/80 text-landing-gold-bright shadow-[0_0_40px_rgba(244,201,93,0.35)] backdrop-blur-sm sm:size-[4.5rem]">
+                  <Play aria-hidden="true" className="ml-1 size-7 fill-current sm:size-8" />
+                </span>
+              </button>
+            )}
+          </motion.div>
+        </div>
       </div>
     </section>
   );
