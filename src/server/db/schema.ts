@@ -403,6 +403,36 @@ export const piDevices = createTable(
   (t) => [index("pi_device_table_id_idx").on(t.tableId)],
 );
 
+export const scannerTelemetry = createTable(
+  "scanner_telemetry",
+  (d) => ({
+    id: d.bigserial({ mode: "number" }).primaryKey(),
+    serial: d
+      .varchar({ length: 128 })
+      .notNull()
+      .references(() => piDevices.serial, { onDelete: "cascade" }),
+    tableId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => pokerTables.id, { onDelete: "cascade" }),
+    event: d.varchar({ length: 32 }).notNull(),
+    details: d
+      .jsonb()
+      .$type<Record<string, string | number | boolean | null>>()
+      .notNull()
+      .default(sql`'{}'::jsonb`),
+    occurredAt: d.timestamp({ withTimezone: true }).notNull(),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP`),
+  }),
+  (t) => [
+    index("scanner_telemetry_serial_created_idx").on(t.serial, t.createdAt),
+    index("scanner_telemetry_created_idx").on(t.createdAt),
+  ],
+);
+
 // Relations (now that all tables are declared)
 export const protectedPokerTablesRelations = relations(
   protectedPokerTables,

@@ -169,6 +169,13 @@
       "when": 1760000000012,
       "tag": "0031_ledger",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1787520523652,
+      "tag": "0032_scanner_telemetry",
+      "breakpoints": true
     }
   ]
 }

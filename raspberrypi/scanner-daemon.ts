@@ -1,139 +1,45 @@
-import console from 'node:console';
-import { createReadStream } from 'node:fs';
-import { pathToFileURL } from 'node:url';
+import console from "node:console";
+import { pathToFileURL } from "node:url";
 
-import { SendMessageCommand, SQSClient } from '@aws-sdk/client-sqs';
+import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
 
-import { ensurePiKeys, getSerialNumber, loadEnv, resolveTable } from './daemon-util';
+import {
+  API_BASE,
+  getSerialNumber,
+  loadEnv,
+  resolveTable,
+} from "./daemon-util";
+import { startScannerHidReader } from "./scanner-hid-reader";
+import { ScannerTelemetryLogger } from "./scanner-telemetry";
 
 // Minimal .env loader
 loadEnv();
 
-// Read from a HID device (SCANNER_DEVICE, defaults to /dev/hidraw0)
-type ScanHandler = (code: string) => Promise<void>;
-
-async function startHidReader(
-  devicePath: string,
-  onScan: ScanHandler,
-): Promise<void> {
-  const HID_BREAK_LINE_CODE = 0x28;
-  const HidToCharMap: Record<number, string> = {
-    0x4: "a",
-    0x5: "b",
-    0x6: "c",
-    0x7: "d",
-    0x8: "e",
-    0x9: "f",
-    0xa: "g",
-    0xb: "h",
-    0xc: "i",
-    0xd: "j",
-    0xe: "k",
-    0xf: "l",
-    0x10: "m",
-    0x11: "n",
-    0x12: "o",
-    0x13: "p",
-    0x14: "q",
-    0x15: "r",
-    0x16: "s",
-    0x17: "t",
-    0x18: "u",
-    0x19: "v",
-    0x1a: "w",
-    0x1b: "x",
-    0x1c: "y",
-    0x1d: "z",
-    0x1e: "1",
-    0x1f: "2",
-    0x20: "3",
-    0x21: "4",
-    0x22: "5",
-    0x23: "6",
-    0x24: "7",
-    0x25: "8",
-    0x26: "9",
-    0x27: "0",
-    0x2c: " ",
-    0x2d: "-",
-    0x2e: "=",
-    0x2f: "[",
-    0x30: "]",
-    0x32: "\\",
-    0x33: ";",
-    0x34: '"',
-    0x35: "~",
-    0x36: ",",
-    0x37: ".",
-    0x38: "/",
-  };
-
-  let acc = "";
-  let stream: ReturnType<typeof createReadStream> | null = null;
-
-  const clearAcc = () => {
-    if (acc.length > 0) {
-      acc = "";
-    }
-  };
-
-  const openStream = () => {
-    try {
-      stream = createReadStream(devicePath, { flags: "r", highWaterMark: 8 });
-    } catch (e) {
-      console.error(
-        `[scanner-daemon] failed to open HID device ${devicePath}`,
-        e,
-      );
-      setTimeout(openStream, 1000);
-      return;
-    }
-
-    const s = stream;
-
-    s.on("data", (chunk: Buffer | string) => {
-      const buf =
-        typeof chunk === "string" ? Buffer.from(chunk, "binary") : chunk;
-      for (let i = 0; i < buf.length; i++) {
-        const b = buf[i]!;
-        if (b === HID_BREAK_LINE_CODE) {
-          const code = acc.trim();
-          acc = "";
-          void onScan(code);
-          continue;
-        }
-        const ch = HidToCharMap[b];
-        if (ch) acc += ch;
-      }
-    });
-
-    s.on("error", (e) => {
-      console.error("[scanner-daemon] HID read error:", e);
-      clearAcc();
-      try {
-        s.close();
-      } catch {}
-      if (stream === s) stream = null;
-      setTimeout(openStream, 100);
-    });
-
-    s.on("close", () => {
-      if (stream === s) stream = null;
-      setTimeout(openStream, 100);
-    });
-  };
-
-  openStream();
-
-  process.on("exit", () => {
-    try {
-      if (stream) stream.close();
-    } catch {}
-  });
+/** Same rules as `parseBarcodeToRankSuit` in helpers/cards (Pi stays standalone). */
+export function isValidCardBarcode(digits: string): boolean {
+  if (!/^[0-9]{4}$/.test(digits)) return false;
+  const suitCode = digits[0]!;
+  const rankCode = digits.slice(1);
+  if (!["1", "2", "3", "4"].includes(suitCode)) return false;
+  return [
+    "010",
+    "020",
+    "030",
+    "040",
+    "050",
+    "060",
+    "070",
+    "080",
+    "090",
+    "100",
+    "110",
+    "120",
+    "130",
+  ].includes(rankCode);
 }
 
 // Test mode: manually send fake card scans
-function startTestMode(onScan: ScanHandler): void {
+function startTestMode(onScan: (code: string) => Promise<void>): void {
   console.log("[scanner-daemon] TEST MODE ENABLED");
   console.log("[scanner-daemon] Available commands:");
   console.log("  ace-spades, ace-hearts, ace-clubs, ace-diamonds");
@@ -233,19 +139,23 @@ function startTestMode(onScan: ScanHandler): void {
         console.log("[scanner-daemon] exiting...");
         process.exit(0);
       } else if (command === "random") {
-        const randomCard = cards[Math.floor(Math.random() * cards.length)];
-        const barcode = cardMap[randomCard];
+        const randomCard = cards[Math.floor(Math.random() * cards.length)]!;
+        const barcode = cardMap[randomCard]!;
         console.log(
           `[scanner-daemon] sending random card: ${randomCard} (${barcode})`,
         );
         onScan(barcode);
-      } else if (cardMap[command]) {
+      } else {
         const barcode = cardMap[command];
-        console.log(`[scanner-daemon] sending card: ${command} (${barcode})`);
-        onScan(barcode);
-      } else if (command) {
-        console.log(`[scanner-daemon] unknown command: ${command}`);
-        console.log('[scanner-daemon] type a card name or "random" or "quit"');
+        if (barcode) {
+          console.log(`[scanner-daemon] sending card: ${command} (${barcode})`);
+          onScan(barcode);
+        } else if (command) {
+          console.log(`[scanner-daemon] unknown command: ${command}`);
+          console.log(
+            '[scanner-daemon] type a card name or "random" or "quit"',
+          );
+        }
       }
 
       process.stdout.write("\n> ");
@@ -285,52 +195,42 @@ export async function runScannerDaemon(): Promise<void> {
   console.log("[scanner-daemon] using SQS FIFO queue");
 
   const sqs = new SQSClient({ region });
+  const sendToSqs = (command: SendMessageCommand) =>
+    sqs.send(command, { abortSignal: AbortSignal.timeout(5000) });
+  const telemetry = new ScannerTelemetryLogger({
+    apiBaseUrl: API_BASE(),
+    serial,
+  });
+
   let lastDealtAt = 0;
 
-  /** Same rules as `parseBarcodeToRankSuit` in helpers/cards (Pi stays standalone). */
-  const isValidCardBarcode = (digits: string): boolean => {
-    if (!/^[0-9]{4}$/.test(digits)) return false;
-    const suitCode = digits[0]!;
-    const rankCode = digits.slice(1);
-    if (!["1", "2", "3", "4"].includes(suitCode)) return false;
-    return [
-      "010",
-      "020",
-      "030",
-      "040",
-      "050",
-      "060",
-      "070",
-      "080",
-      "090",
-      "100",
-      "110",
-      "120",
-      "130",
-    ].includes(rankCode);
-  };
-
-  const handleScan = async (rawCode: string) => {
-    console.log(`[scanner-daemon] received scan: ${rawCode}`);
-    const now = Date.now();
-    if (now - lastDealtAt < 500) return; // throttle 500ms
-
+  const handleScan = async (rawCode: string, devicePath: string) => {
     const barcode = rawCode.trim();
+    console.log(
+      `[scanner-daemon] received scan from ${devicePath}: ${barcode}`,
+    );
     // Strict: exactly one valid four-digit card code from the scanner line — no salvage/extraction.
     if (!isValidCardBarcode(barcode)) {
       console.warn(
         `[scanner-daemon] drop scan (need exact valid 4-digit card code): raw=${rawCode.slice(0, 64)}`,
       );
+      telemetry.event("scan_rejected", {
+        devicePath,
+        raw: rawCode.slice(0, 64),
+      });
       return;
     }
 
-    const ts = Math.floor(Date.now() / 1000);
+    const now = Date.now();
+    if (now - lastDealtAt < 500) return; // throttle 500ms
+
+    const ts = Date.now();
     try {
       const started = Date.now();
       console.log(`[scanner-daemon] publishing scan: ${barcode}`);
 
       // Send message to SQS FIFO queue
-      sqs.send(
+      await sendToSqs(
         new SendMessageCommand({
           QueueUrl: queueUrl,
           MessageBody: JSON.stringify({
@@ -341,39 +241,66 @@ export async function runScannerDaemon(): Promise<void> {
           MessageGroupId: info.tableId, // Ensures FIFO ordering per table
           MessageDeduplicationId: `${info.tableId}-${barcode}-${ts}`, // Prevents duplicates
         }),
-        () => {
-          lastDealtAt = now;
-          console.log(
-            `[scanner-daemon] published ${barcode} to SQS (${Date.now() - started}ms)`,
-          );
-        },
       );
-    } catch (e) {
-      console.error("[scanner-daemon] publish failed", e);
+      lastDealtAt = now;
+      console.log(
+        `[scanner-daemon] published ${barcode} to SQS (${Date.now() - started}ms)`,
+      );
+    } catch (error) {
+      console.error("[scanner-daemon] publish failed", error);
+      telemetry.error("sqs_error", error, { barcode, devicePath });
       try {
         process.stdout.write("\u0007");
       } catch {}
     }
   };
 
+  let scanChain = Promise.resolve();
+  const enqueueScan = (code: string, devicePath: string) => {
+    scanChain = scanChain
+      .then(() => handleScan(code, devicePath))
+      .catch((error) => {
+        console.error("[scanner-daemon] scan pipeline failed", error);
+      });
+    return scanChain;
+  };
+
+  telemetry.event("daemon_started", { tableId: info.tableId, region });
+  telemetry.startHeartbeat({ tableId: info.tableId });
+
   // Check if test mode is enabled
   const isTestMode =
     process.argv.includes("--test") || process.argv.includes("-t");
 
+  let stopHidReader: (() => void) | undefined;
   if (isTestMode) {
     startTestMode(async (code) => {
-      await handleScan(code);
+      await enqueueScan(code, "test");
     });
   } else {
     const device = process.env.SCANNER_DEVICE || "/dev/hidraw0";
-    console.log(`[scanner-daemon] reading from HID device ${device}`);
+    console.log(
+      `[scanner-daemon] discovering HID devices (preferred ${device})`,
+    );
 
-    startHidReader(device, async (code) => {
-      console.log(`[scanner-daemon] HID received scan: ${code}`);
-      await handleScan(code);
-      console.log(`[scanner-daemon] HID processed scan: ${code}`);
+    stopHidReader = startScannerHidReader({
+      preferredPath: device,
+      isValidScan: isValidCardBarcode,
+      onScan: async (code, devicePath) => {
+        console.log(`[scanner-daemon] HID received scan: ${code}`);
+        await enqueueScan(code, devicePath);
+        console.log(`[scanner-daemon] HID processed scan: ${code}`);
+      },
+      onStatus: (event, details) => {
+        telemetry.event(event, details);
+      },
     });
   }
+
+  process.on("exit", () => {
+    telemetry.close();
+    stopHidReader?.();
+  });
 
   // Keep process alive
   // eslint-disable-next-line @typescript-eslint/no-empty-function

@@ -16,6 +16,8 @@
     "dealer-daemon.ts",
     "hand-daemon.ts",
     "scanner-daemon.ts",
+    "scanner-hid-reader.ts",
+    "scanner-telemetry.ts",
     "daemon-util.ts",
     "daemon-info.ts",
     "types/**/*.d.ts"
