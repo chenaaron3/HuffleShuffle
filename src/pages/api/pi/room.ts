@@ -17,7 +17,12 @@ export default async function handler(
   const device = await db.query.piDevices.findFirst({
     where: eq(piDevices.serial, serial),
   });
-  if (!device) return res.status(404).json({ error: "Device not registered" });
+  console.info(
+    `[pi-room] device lookup serialSuffix=${serial.slice(-6)} serialLength=${serial.length} registered=${Boolean(device)} type=${device?.type ?? "unknown"}`,
+  );
+  if (!device) {
+    return res.status(404).json({ error: "Device not registered" });
+  }
   await db
     .update(piDevices)
     .set({ lastSeenAt: sql`CURRENT_TIMESTAMP` })
