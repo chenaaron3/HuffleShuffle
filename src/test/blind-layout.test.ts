@@ -296,6 +296,52 @@ describe("TDA dead-button blind layout examples", () => {
     });
   });
 
+  it("wasReset recomputes blinds from the same button when the BB leaves", () => {
+    const seatsAfter = [
+      makeSeat("s1", 0),
+      makeSeat("s2", 1),
+      makeSeat("s4", 3),
+      makeSeat("s5", 4),
+    ];
+    const layout = resolveHandBlindLayout(
+      seatsAfter,
+      makePreviousGame({
+        dealerButtonSeatNumber: 0,
+        smallBlindSeatNumber: 1,
+        bigBlindSeatNumber: 2,
+        wasReset: true,
+      }),
+    );
+    expect(layout).toEqual({
+      dealerButtonSeatNumber: 0,
+      smallBlindSeatNumber: 1,
+      bigBlindSeatNumber: 3,
+    });
+  });
+
+  it("wasReset recomputes both blinds when the SB leaves", () => {
+    const seatsAfter = [
+      makeSeat("s1", 0),
+      makeSeat("s3", 2),
+      makeSeat("s4", 3),
+      makeSeat("s5", 4),
+    ];
+    const layout = resolveHandBlindLayout(
+      seatsAfter,
+      makePreviousGame({
+        dealerButtonSeatNumber: 0,
+        smallBlindSeatNumber: 1,
+        bigBlindSeatNumber: 2,
+        wasReset: true,
+      }),
+    );
+    expect(layout).toEqual({
+      dealerButtonSeatNumber: 0,
+      smallBlindSeatNumber: 2,
+      bigBlindSeatNumber: 3,
+    });
+  });
+
   it("layoutFromDealerButton multiway skips eliminated/missing seats for blinds", () => {
     const seatsWithGap = [
       makeSeat("s1", 0),

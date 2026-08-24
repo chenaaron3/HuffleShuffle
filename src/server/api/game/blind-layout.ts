@@ -104,6 +104,24 @@ export function resolveHandBlindLayout(
   }
 
   if (previousGame.wasReset) {
+    const resetSmallBlindIsValid =
+      previousGame.smallBlindSeatNumber == null ||
+      !isAbsentOrEliminated(
+        orderedSeats,
+        previousGame.smallBlindSeatNumber,
+      );
+    const resetBigBlindIsValid = !isAbsentOrEliminated(
+      orderedSeats,
+      previousGame.bigBlindSeatNumber,
+    );
+
+    if (!resetSmallBlindIsValid || !resetBigBlindIsValid) {
+      return layoutFromDealerButton(
+        orderedSeats,
+        previousGame.dealerButtonSeatNumber,
+      );
+    }
+
     return {
       dealerButtonSeatNumber: previousGame.dealerButtonSeatNumber,
       smallBlindSeatNumber: previousGame.smallBlindSeatNumber,
