@@ -1,12 +1,19 @@
-import { RoomServiceClient } from 'livekit-server-sdk';
-import { ChildProcess, spawn } from 'node:child_process';
-import { webcrypto as crypto } from 'node:crypto';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
-import { pathToFileURL } from 'node:url';
-import Pusher from 'pusher-js/node';
+import { RoomServiceClient } from "livekit-server-sdk";
+import { ChildProcess, spawn } from "node:child_process";
+import { webcrypto as crypto } from "node:crypto";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { pathToFileURL } from "node:url";
+import Pusher from "pusher-js/node";
 
-import { decryptBase64, ensurePiKeys, getSerialNumber, loadEnv, resolveTable } from './daemon-util';
+import {
+  decryptBase64,
+  ensurePiKeys,
+  getSerialNumber,
+  loadEnv,
+  requireEnv,
+  resolveTable,
+} from "./daemon-util";
 
 // Minimal .env loader
 loadEnv();
@@ -43,6 +50,17 @@ function importPkcs8Pem(privatePemPath: string): Promise<CryptoKey> {
 }
 
 export async function runHandDaemon(): Promise<void> {
+  requireEnv(
+    [
+      "API_BASE_URL",
+      "LIVEKIT_URL",
+      "LIVEKIT_API_KEY",
+      "LIVEKIT_API_SECRET",
+      "PUSHER_KEY",
+      "PUSHER_CLUSTER",
+    ],
+    "hand-daemon",
+  );
   const serial = getSerialNumber();
   const { publicPem, privatePemPath } = await ensurePiKeys(serial);
   console.log(

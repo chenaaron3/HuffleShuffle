@@ -7,6 +7,7 @@ import {
   API_BASE,
   getSerialNumber,
   loadEnv,
+  requireEnv,
   resolveTable,
 } from "./daemon-util";
 import { startScannerHidReader } from "./scanner-hid-reader";
@@ -176,6 +177,7 @@ function startTestMode(onScan: (code: string) => Promise<void>): void {
 }
 
 export async function runScannerDaemon(): Promise<void> {
+  requireEnv(["API_BASE_URL", "SQS_QUEUE_URL"], "scanner-daemon");
   const serial = getSerialNumber() || "10000000672a9ed2";
   // Resolve table (also verifies device registration and returns type)
   const info = await resolveTable(serial);

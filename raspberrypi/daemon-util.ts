@@ -1,7 +1,7 @@
-import { execSync } from 'node:child_process';
-import { createSign, webcrypto as crypto } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { execSync } from "node:child_process";
+import { createSign, webcrypto as crypto } from "node:crypto";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 
 export function loadEnv(): void {
   try {
@@ -23,15 +23,13 @@ export function loadEnv(): void {
       if (!(k in process.env)) (process.env as any)[k] = v;
     });
   } catch {}
+}
 
-  const API_BASE = process.env.API_BASE_URL ?? "http://localhost:3000";
-  const LIVEKIT_URL = process.env.LIVEKIT_URL; // e.g. wss://your.livekit.server
-  const LIVEKIT_API_KEY = process.env.LIVEKIT_API_KEY;
-  const LIVEKIT_API_SECRET = process.env.LIVEKIT_API_SECRET;
-
-  if (!LIVEKIT_API_KEY || !LIVEKIT_API_SECRET || !LIVEKIT_URL || !API_BASE) {
+export function requireEnv(keys: string[], context: string): void {
+  const missing = keys.filter((key) => !process.env[key]);
+  if (missing.length > 0) {
     throw new Error(
-      "Missing LIVEKIT_API_KEY or LIVEKIT_API_SECRET or LIVEKIT_URL or API_BASE",
+      `[${context}] missing required environment variables: ${missing.join(", ")}`,
     );
   }
 }

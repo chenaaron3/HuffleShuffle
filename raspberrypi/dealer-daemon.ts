@@ -1,9 +1,14 @@
-import { execSync, spawn } from 'node:child_process';
-import { join } from 'node:path';
-import { pathToFileURL } from 'node:url';
-import Pusher from 'pusher-js/node';
+import { execSync, spawn } from "node:child_process";
+import { join } from "node:path";
+import { pathToFileURL } from "node:url";
+import Pusher from "pusher-js/node";
 
-import { getSerialNumber, loadEnv, resolveTable } from './daemon-util';
+import {
+  getSerialNumber,
+  loadEnv,
+  requireEnv,
+  resolveTable,
+} from "./daemon-util";
 
 // Minimal .env loader for standalone usage on the Pi (no external deps)
 loadEnv();
@@ -19,6 +24,17 @@ function ensureLivekitCLI(): void {
 }
 
 export async function runDealerDaemon(): Promise<void> {
+  requireEnv(
+    [
+      "API_BASE_URL",
+      "LIVEKIT_URL",
+      "LIVEKIT_API_KEY",
+      "LIVEKIT_API_SECRET",
+      "PUSHER_KEY",
+      "PUSHER_CLUSTER",
+    ],
+    "dealer-daemon",
+  );
   ensureLivekitCLI();
   const serial = getSerialNumber();
   const { tableId } = await resolveTable(serial);

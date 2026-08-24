@@ -8,6 +8,8 @@ REPO_URL="https://github.com/chenaaron3/HuffleShuffle.git"
 REPO_DIR="/home/pi/huffle-shuffle"
 RASPBERRYPI_DIR="$REPO_DIR/raspberrypi"
 LOG_FILE="$RASPBERRYPI_DIR/startup.log"
+PREVIOUS_COMMIT=""
+REPOSITORY_UPDATED=0
 
 # Function to log with timestamp
 log() {
@@ -45,11 +47,16 @@ setup_repository() {
         
         # Check if we're in a git repository
         if [ -d ".git" ]; then
-            # Fetch latest changes and reset to main branch
+            PREVIOUS_COMMIT="$(git rev-parse HEAD)"
             git fetch origin
+            local target_commit
+            target_commit="$(git rev-parse origin/main)"
+            if [ "$PREVIOUS_COMMIT" != "$target_commit" ]; then
+                REPOSITORY_UPDATED=1
+            fi
             git reset --hard origin/main
             git clean -fd
-            log "Repository updated to latest main branch"
+            log "Repository updated to latest main branch ($target_commit)"
         else
             log "ERROR: Directory exists but is not a git repository"
             exit 1
@@ -61,32 +68,50 @@ setup_repository() {
     fi
 }
 
-# Function to install dependencies
-install_dependencies() {
-    log "Installing Node.js dependencies..."
+# Install exactly the reviewed dependency graph and type-check before launch.
+validate_release() {
     cd "$RASPBERRYPI_DIR"
-    
-    # Install dependencies if package.json exists
-    if [ -f "package.json" ]; then
-        # Ensure devDependencies are installed even if NODE_ENV=production
-        # Prefer ci, but fall back to install if lockfile is out of date
-        if ! npm ci --no-audit --no-fund --include=dev; then
-            log "npm ci failed (likely lockfile mismatch); running npm install..."
-            npm_config_production=false npm install --no-audit --no-fund
-        fi
-        # Ensure tsx is present locally for runtime
-        if [ ! -x "$RASPBERRYPI_DIR/node_modules/.bin/tsx" ]; then
-            log "tsx not found; installing as devDependency..."
-            npm_config_production=false npm install --no-audit --no-fund --save-dev tsx@^4
-        fi
-        log "Dependencies installed successfully"
-    else
-        log "ERROR: package.json not found in raspberrypi directory"
-        exit 1
-    fi
+    npm ci --no-audit --no-fund --include=dev &&
+        npm run build &&
+        [ -x "$RASPBERRYPI_DIR/node_modules/.bin/tsx" ]
 }
 
-# (no build step required when using tsx)
+rollback_repository() {
+    if [ -z "$PREVIOUS_COMMIT" ]; then
+        return 1
+    fi
+    log "Rolling back to last known commit $PREVIOUS_COMMIT"
+    cd "$REPO_DIR"
+    git reset --hard "$PREVIOUS_COMMIT"
+    git clean -fd
+}
+
+# Function to install dependencies
+install_dependencies() {
+    log "Installing and validating locked Node.js dependencies..."
+
+    if [ ! -f "$RASPBERRYPI_DIR/package.json" ] || [ ! -f "$RASPBERRYPI_DIR/package-lock.json" ]; then
+        log "ERROR: package.json or package-lock.json not found"
+        exit 1
+    fi
+
+    if validate_release; then
+        log "Dependencies and TypeScript validation succeeded"
+        return 0
+    fi
+
+    log "ERROR: dependency installation or TypeScript validation failed"
+    if [ "$REPOSITORY_UPDATED" -eq 1 ] && rollback_repository; then
+        log "Validating rolled-back release..."
+        if validate_release; then
+            log "Rollback succeeded; starting last known release"
+            return 0
+        fi
+        log "ERROR: rolled-back release also failed validation"
+    fi
+
+    exit 1
+}
 
 # Function to check environment file
 check_environment() {
@@ -136,13 +161,8 @@ run_daemon() {
     if [ -x "$tsx_bin" ]; then
         exec "$tsx_bin" "$RASPBERRYPI_DIR/generic-daemon.ts"
     else
-        # Fallback: try npx (shouldn't normally be needed)
-        if command -v npx >/dev/null 2>&1; then
-            exec npx tsx "$RASPBERRYPI_DIR/generic-daemon.ts"
-        else
-            log "ERROR: tsx not found. Ensure devDependencies are installed."
-            exit 1
-        fi
+        log "ERROR: validated tsx runtime is missing"
+        exit 1
     fi
 }
 
