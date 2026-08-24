@@ -197,8 +197,6 @@ export async function runScannerDaemon(): Promise<void> {
   console.log("[scanner-daemon] using SQS FIFO queue");
 
   const sqs = new SQSClient({ region });
-  const sendToSqs = (command: SendMessageCommand) =>
-    sqs.send(command, { abortSignal: AbortSignal.timeout(5000) });
   const telemetry = new ScannerTelemetryLogger({
     apiBaseUrl: API_BASE(),
     serial,
@@ -232,7 +230,7 @@ export async function runScannerDaemon(): Promise<void> {
       console.log(`[scanner-daemon] publishing scan: ${barcode}`);
 
       // Send message to SQS FIFO queue
-      await sendToSqs(
+      sqs.send(
         new SendMessageCommand({
           QueueUrl: queueUrl,
           MessageBody: JSON.stringify({
@@ -243,10 +241,12 @@ export async function runScannerDaemon(): Promise<void> {
           MessageGroupId: info.tableId, // Ensures FIFO ordering per table
           MessageDeduplicationId: `${info.tableId}-${barcode}-${ts}`, // Prevents duplicates
         }),
-      );
-      lastDealtAt = now;
-      console.log(
-        `[scanner-daemon] published ${barcode} to SQS (${Date.now() - started}ms)`,
+        () => {
+          lastDealtAt = now;
+          console.log(
+            `[scanner-daemon] published ${barcode} to SQS (${Date.now() - started}ms)`,
+          );
+        },
       );
     } catch (error) {
       console.error("[scanner-daemon] publish failed", error);
