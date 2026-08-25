@@ -6,8 +6,7 @@ export type ScannerTelemetryEvent =
   | "hid_selected"
   | "hid_error"
   | "scan_rejected"
-  | "sqs_error"
-  | "heartbeat";
+  | "sqs_error";
 
 export type ScannerTelemetryDetails = Record<
   string,
@@ -38,7 +37,6 @@ export class ScannerTelemetryLogger {
   private readonly serial: string;
   private readonly timeoutMs: number;
   private deliveryChain = Promise.resolve();
-  private heartbeat: NodeJS.Timeout | undefined;
 
   constructor(options: ScannerTelemetryLoggerOptions) {
     this.endpoint = `${options.apiBaseUrl.replace(/\/$/, "")}/api/pi/scanner-diagnostic`;
@@ -87,19 +85,4 @@ export class ScannerTelemetryLogger {
     });
   }
 
-  startHeartbeat(
-    details: ScannerTelemetryDetails = {},
-    intervalMs = 300_000,
-  ): void {
-    if (this.heartbeat) return;
-    this.heartbeat = setInterval(
-      () => this.event("heartbeat", details),
-      intervalMs,
-    );
-  }
-
-  close(): void {
-    if (this.heartbeat) clearInterval(this.heartbeat);
-    this.heartbeat = undefined;
-  }
 }

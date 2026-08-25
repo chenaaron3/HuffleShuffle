@@ -268,7 +268,6 @@ export async function runScannerDaemon(): Promise<void> {
   };
 
   telemetry.event("daemon_started", { tableId: info.tableId, region });
-  telemetry.startHeartbeat({ tableId: info.tableId });
 
   // Check if test mode is enabled
   const isTestMode =
@@ -300,7 +299,6 @@ export async function runScannerDaemon(): Promise<void> {
   }
 
   process.on("exit", () => {
-    telemetry.close();
     stopHidReader?.();
   });
 

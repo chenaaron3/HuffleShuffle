@@ -7,7 +7,6 @@ export const scannerTelemetryEvents = [
   "hid_error",
   "scan_rejected",
   "sqs_error",
-  "heartbeat",
 ] as const;
 
 export const scannerTelemetryEventSchema = z.enum(scannerTelemetryEvents);

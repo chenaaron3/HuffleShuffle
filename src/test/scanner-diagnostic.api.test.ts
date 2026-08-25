@@ -41,7 +41,7 @@ describe("scanner diagnostic API", () => {
     await db.insert(scannerTelemetry).values({
       serial: scannerSerial,
       tableId,
-      event: "heartbeat",
+      event: "daemon_started",
       details: {},
       occurredAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000),
       createdAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000),
