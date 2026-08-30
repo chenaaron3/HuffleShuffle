@@ -249,6 +249,38 @@ export const gameStateEnum = pgEnum("game_state", [
   "RESET_TABLE",
 ]);
 
+export const tournaments = createTable(
+  "tournament",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    tableId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => pokerTables.id, { onDelete: "cascade" }),
+    startedAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    endedAt: d.timestamp({ withTimezone: true }),
+    winnerPlayerId: d.varchar({ length: 255 }).references(() => users.id, {
+      onDelete: "set null",
+    }),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    updatedAt: d.timestamp({ withTimezone: true }).$onUpdate(() => new Date()),
+  }),
+  (t) => [
+    index("tournament_table_id_idx").on(t.tableId),
+    index("tournament_table_ended_idx").on(t.tableId, t.endedAt),
+  ],
+);
+
 export const games = createTable(
   "game",
   (d) => ({
@@ -261,6 +293,9 @@ export const games = createTable(
       .varchar({ length: 255 })
       .notNull()
       .references(() => pokerTables.id, { onDelete: "cascade" }),
+    tournamentId: d.varchar({ length: 255 }).references(() => tournaments.id, {
+      onDelete: "set null",
+    }),
     isCompleted: d.boolean().notNull().default(false),
     state: gameStateEnum("state").notNull().default("DEAL_HOLE_CARDS"),
     // Ring positions (survive seat row deletion when a player leaves).
@@ -314,6 +349,7 @@ export const games = createTable(
   }),
   (t) => [
     index("game_table_id_idx").on(t.tableId),
+    index("game_tournament_id_idx").on(t.tournamentId),
     index("game_assigned_seat_id_idx").on(t.assignedSeatId),
   ],
 );
@@ -368,10 +404,26 @@ export const seatsRelations = relations(seats, ({ one }) => ({
   player: one(users, { fields: [seats.playerId], references: [users.id] }),
 }));
 
+export const tournamentsRelations = relations(tournaments, ({ one, many }) => ({
+  table: one(pokerTables, {
+    fields: [tournaments.tableId],
+    references: [pokerTables.id],
+  }),
+  winner: one(users, {
+    fields: [tournaments.winnerPlayerId],
+    references: [users.id],
+  }),
+  games: many(games),
+}));
+
 export const gamesRelations = relations(games, ({ one }) => ({
   table: one(pokerTables, {
     fields: [games.tableId],
     references: [pokerTables.id],
+  }),
+  tournament: one(tournaments, {
+    fields: [games.tournamentId],
+    references: [tournaments.id],
   }),
 }));
 
@@ -455,6 +507,7 @@ export const pokerTablesRelations = relations(pokerTables, ({ one, many }) => ({
   }),
   seats: many(seats),
   games: many(games),
+  tournaments: many(tournaments),
   piDevices: many(piDevices),
 }));
 

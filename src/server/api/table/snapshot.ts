@@ -17,6 +17,19 @@ export async function summarizeTable(
         orderBy: (g, { desc }) => [desc(g.createdAt)],
         limit: 1,
       },
+      tournaments: {
+        orderBy: (t, { desc }) => [desc(t.startedAt)],
+        limit: 1,
+        with: {
+          winner: {
+            columns: {
+              id: true,
+              name: true,
+              displayName: true,
+            },
+          },
+        },
+      },
       seats: {
         orderBy: (s, { asc }) => [asc(s.seatNumber)],
         with: {
@@ -33,6 +46,7 @@ export async function summarizeTable(
   });
   if (!snapshot) throw new Error("Table not found");
   const latestGame = snapshot.games[0] ?? null;
+  const latestTournament = snapshot.tournaments[0] ?? null;
   const tableSeats = snapshot.seats;
   const isJoinable = !latestGame || latestGame.isCompleted;
   const availableSeats = snapshot.maxSeats - tableSeats.length;
@@ -41,6 +55,7 @@ export async function summarizeTable(
     table: snapshot,
     seats: tableSeats,
     game: latestGame,
+    tournament: latestTournament,
     isJoinable,
     availableSeats,
     blinds: computeBlindState(snapshot),

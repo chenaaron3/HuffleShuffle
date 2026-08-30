@@ -9,6 +9,10 @@ import { withTableMutation } from "~/server/api/lib/table-transaction";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { db } from "~/server/db";
 import { pokerTables } from "~/server/db/schema";
+import {
+  endOpenTournament,
+  startTournamentIfNeeded,
+} from "~/server/api/table/tournaments";
 
 const ensureDealerRole = (role: string | undefined) => {
   if (role !== "dealer") throw new Error("FORBIDDEN: dealer role required");
@@ -20,6 +24,7 @@ export const blindsRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       ensureDealerRole(ctx.session.user.role);
       const table = await withTableMutation(db, input.tableId, async (tx) => {
+        await startTournamentIfNeeded(tx, input.tableId);
         const startedAt = new Date();
         const rows = await tx
           .update(pokerTables)
@@ -53,6 +58,7 @@ export const blindsRouter = createTRPCRouter({
       ensureDealerRole(ctx.session.user.role);
 
       const table = await withTableMutation(db, input.tableId, async (tx) => {
+        await endOpenTournament(tx, input.tableId);
         const rows = await tx
           .update(pokerTables)
           .set({

@@ -28,6 +28,18 @@ export const activeCountOf = (orderedSeats: Array<SeatRow>): number =>
 export const nonEliminatedCountOf = (orderedSeats: Array<SeatRow>): number =>
   orderedSeats.filter((s) => s.seatStatus !== "eliminated").length;
 
+/**
+ * Last remaining player: at least two seated, exactly one not eliminated.
+ * Used when ending a tournament after showdown settlement.
+ */
+export function findSoleRemainingSeat(
+  seated: Array<SeatRow>,
+): SeatRow | null {
+  if (seated.length < 2) return null;
+  const remaining = seated.filter((s) => s.seatStatus !== "eliminated");
+  return remaining.length === 1 ? (remaining[0] ?? null) : null;
+}
+
 /** Next dealable seat clockwise after a seat number (wraps). Seat at afterNumber need not exist. */
 export function getNextDealableSeatAfterNumber(
   orderedSeats: Array<SeatRow>,

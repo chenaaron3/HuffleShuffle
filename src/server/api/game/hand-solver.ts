@@ -3,10 +3,11 @@ import { settleHand } from "~/server/api/ledger";
 import { logEndGame } from "~/server/api/lib/game-event-logger";
 import { logMoneyConservationDiagnosticReport } from "~/server/api/lib/money-conservation-diagnostics";
 import { fetchAllSeatsInOrder } from "~/server/api/table/seating";
-import { gameEvents, games, seats } from "~/server/db/schema";
+import { endOpenTournament } from "~/server/api/table/tournaments";
+import { gameEvents, games, pokerTables, seats } from "~/server/db/schema";
 
 import { allActiveBetsEqual } from "./helpers/betting";
-import { activeCountOf } from "./helpers/seats";
+import { activeCountOf, findSoleRemainingSeat } from "./helpers/seats";
 import { mergeBetsIntoPotGeneric } from "./pot";
 
 const { Hand: PokerHand } = require("pokersolver");
@@ -624,6 +625,21 @@ async function completeShowdown(
       stack: s.buyIn,
     })),
   });
+
+  const winnerPlayerId = findSoleRemainingSeat(settledSeats)?.playerId;
+  if (winnerPlayerId) {
+    const ended = await endOpenTournament(tx, tableId, winnerPlayerId);
+    if (ended) {
+      await tx
+        .update(pokerTables)
+        .set({
+          blindTimerStartedAt: null,
+          blindTimerIsPaused: false,
+          blindTimerFrozenElapsedSeconds: null,
+        })
+        .where(eq(pokerTables.id, tableId));
+    }
+  }
 
   // Emit End Game event with all winners
   const allWinners = Object.entries(seatWinnings)

@@ -48,6 +48,7 @@ function makePreviousGame(partial: {
     tableId: "table-1",
     isCompleted: true,
     state: "SHOWDOWN",
+    tournamentId: null,
     dealerButtonSeatNumber: partial.dealerButtonSeatNumber,
     smallBlindSeatNumber: partial.smallBlindSeatNumber,
     bigBlindSeatNumber: partial.bigBlindSeatNumber,

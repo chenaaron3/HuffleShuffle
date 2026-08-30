@@ -8,6 +8,7 @@ import {
   piDevices,
   pokerTables,
   seats,
+  tournaments,
   users,
 } from "~/server/db/schema";
 import {
@@ -71,6 +72,7 @@ describe("table scenario harness", () => {
     for (const t of tables) {
       await db.delete(gameEvents).where(eq(gameEvents.tableId, t.id));
       await db.delete(games).where(eq(games.tableId, t.id));
+      await db.delete(tournaments).where(eq(tournaments.tableId, t.id));
       await db.delete(seats).where(eq(seats.tableId, t.id));
       await db.delete(piDevices).where(eq(piDevices.tableId, t.id));
       await db.delete(pokerTables).where(eq(pokerTables.id, t.id));

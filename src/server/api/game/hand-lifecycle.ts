@@ -10,6 +10,10 @@ import { logEndGame, logStartGame } from "~/server/api/lib/game-event-logger";
 import { withTableMutation } from "~/server/api/lib/table-transaction";
 import { db } from "~/server/db";
 import { games, pokerTables, seats } from "~/server/db/schema";
+import {
+  findLayoutPreviousGame,
+  findOpenTournament,
+} from "~/server/api/table/tournaments";
 import { updateTable } from "~/server/signal";
 
 import { executeBettingAction } from "~/server/api/game/betting-actions";
@@ -106,6 +110,8 @@ export async function createNewGame(
   orderedSeats: Array<SeatRow>,
   previousGame: GameRow | null,
 ): Promise<GameRow> {
+  const tournamentId = (await findOpenTournament(tx, table.id))?.id ?? null;
+
   // Reset all seats and mark current game as completed (if exists)
   await resetGame(tx, previousGame, orderedSeats);
 
@@ -131,12 +137,18 @@ export async function createNewGame(
   const effectiveSmallBlind = blindState.effectiveSmallBlind;
   const effectiveBigBlind = blindState.effectiveBigBlind;
 
+  const layoutPreviousGame = await findLayoutPreviousGame(
+    tx,
+    table.id,
+    tournamentId,
+  );
   const { dealerButtonSeatNumber, smallBlindSeatNumber, bigBlindSeatNumber } =
-    resolveHandBlindLayout(orderedSeats, previousGame);
+    resolveHandBlindLayout(orderedSeats, layoutPreviousGame);
   const createdRows = await (tx as DB)
     .insert(games)
     .values({
       tableId: table.id,
+      tournamentId,
       isCompleted: false,
       state: "DEAL_HOLE_CARDS",
       dealerButtonSeatNumber,

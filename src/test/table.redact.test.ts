@@ -35,6 +35,7 @@ function createMockGame(overrides: Partial<any> = {}) {
   return {
     id: "game-1",
     tableId: "table-1",
+    tournamentId: null,
     state: "BETTING",
     dealerButtonSeatNumber: 0,
     smallBlindSeatNumber: 1,
@@ -86,6 +87,7 @@ function createMockSnapshot(
     },
     seats,
     game: createMockGame({ state: gameState, ...gameOverrides }) as any,
+    tournament: null,
     isJoinable: false,
     availableSeats: 6,
     blinds: {
