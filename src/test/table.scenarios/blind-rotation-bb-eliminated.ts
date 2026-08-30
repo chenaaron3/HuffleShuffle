@@ -111,7 +111,7 @@ const scenarios: Scenario[] = [
     ],
   },
   {
-    name: "BB eliminated catch-up then normal SB+BB on following hand",
+    name: "BB eliminated then single dead button on following hand",
     steps: [
       {
         type: "join",
@@ -197,17 +197,19 @@ const scenarios: Scenario[] = [
       { type: "action", action: "FOLD", by: "player2" },
       { type: "validate", game: { state: "SHOWDOWN" } },
 
-      // Hand 3: normal SB + BB resume
+      // Hand 3: BB advances one to P5; SB on P4; dead button on empty P3
       { type: "action", action: "RESET_TABLE", by: "dealer" },
       { type: "action", action: "START_GAME", by: "dealer" },
-      { type: "validate", dealerButtonFor: "player4" },
       {
         type: "validate",
+        dealerButtonFor: "player3",
+        smallBlindFor: "player4",
+        bigBlindFor: "player5",
         seats: {
-          player5: { currentBet: 5 },
-          player1: { currentBet: 10 },
+          player4: { currentBet: 5 },
+          player5: { currentBet: 10 },
+          player1: { currentBet: 0 },
           player2: { currentBet: 0 },
-          player4: { currentBet: 0 },
         },
       },
     ],

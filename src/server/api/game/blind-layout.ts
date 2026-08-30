@@ -87,6 +87,24 @@ function resolveHeadsUpFromPreviousBigBlind(
   };
 }
 
+/** Previous seat number on a 0..ringMax ring (empty seats still occupy a number). */
+function previousSeatNumber(seatNumber: number, ringMax: number): number {
+  return seatNumber > 0 ? seatNumber - 1 : ringMax;
+}
+
+function seatRingMax(
+  orderedSeats: Array<SeatRow>,
+  previousGame: GameRow,
+): number {
+  return Math.max(
+    0,
+    ...orderedSeats.map((s) => s.seatNumber),
+    previousGame.dealerButtonSeatNumber,
+    previousGame.bigBlindSeatNumber,
+    previousGame.smallBlindSeatNumber ?? 0,
+  );
+}
+
 /**
  * TDA dead-button blind/button placement for a new hand.
  * Uses durable seat numbers so layout survives players leaving (seat rows deleted).
@@ -129,34 +147,29 @@ export function resolveHandBlindLayout(
     };
   }
 
-  const prevBtnNum = previousGame.dealerButtonSeatNumber;
-  const prevSbNum = previousGame.smallBlindSeatNumber;
   const prevBbNum = previousGame.bigBlindSeatNumber;
 
   if (liveCount === 2) {
     return resolveHeadsUpFromPreviousBigBlind(orderedSeats, prevBbNum);
   }
 
+  // BB always moves to the next live player. SB and button follow the
+  // previous BB — even onto empty seats — so a gap the BB skipped does
+  // not become the small blind. The player who just posted BB posts SB
+  // next if they are still live.
   const nextBigBlind = getNextDealableSeatAfterNumber(orderedSeats, prevBbNum);
+  const dealerButtonSeatNumber = previousSeatNumber(
+    prevBbNum,
+    seatRingMax(orderedSeats, previousGame),
+  );
 
-  if (isAbsentOrEliminated(orderedSeats, prevBbNum)) {
-    return {
-      dealerButtonSeatNumber: prevSbNum ?? prevBtnNum,
-      smallBlindSeatNumber: null,
-      bigBlindSeatNumber: nextBigBlind.seatNumber,
-    };
-  }
-
-  if (prevSbNum != null) {
-    return {
-      dealerButtonSeatNumber: prevSbNum,
-      smallBlindSeatNumber: prevBbNum,
-      bigBlindSeatNumber: nextBigBlind.seatNumber,
-    };
-  }
-
-  // Previous hand had no SB (BB-only catch-up): button moves to previous BB
-  return layoutFromDealerButton(orderedSeats, prevBbNum);
+  return {
+    dealerButtonSeatNumber,
+    smallBlindSeatNumber: isAbsentOrEliminated(orderedSeats, prevBbNum)
+      ? null
+      : prevBbNum,
+    bigBlindSeatNumber: nextBigBlind.seatNumber,
+  };
 }
 
 export function getBigAndSmallBlindSeats(

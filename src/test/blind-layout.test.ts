@@ -162,7 +162,7 @@ describe("TDA dead-button blind layout examples", () => {
     });
   });
 
-  it("5. old eliminated seat between button and blinds does not false-trigger skip SB", () => {
+  it("5. leftover empty seat behind the button does not skip SB", () => {
     const seatsAfter = [
       makeSeat("s1", 0),
       makeSeat("s2", 1, "eliminated"),
@@ -185,13 +185,14 @@ describe("TDA dead-button blind layout examples", () => {
     });
   });
 
-  it("5b. after BB-only catch-up, next hand resumes normal SB+BB", () => {
+  it("6. after a no-SB hand, SB returns to the previous BB (dead button behind)", () => {
     const seatsAfter = [
       makeSeat("s1", 0),
-      makeSeat("s2", 1),
+      makeSeat("s2", 1, "eliminated"),
       makeSeat("s3", 2, "eliminated"),
       makeSeat("s4", 3),
       makeSeat("s5", 4),
+      makeSeat("s6", 5),
     ];
     const layout = resolveHandBlindLayout(
       seatsAfter,
@@ -202,13 +203,76 @@ describe("TDA dead-button blind layout examples", () => {
       }),
     );
     expect(layout).toEqual({
-      dealerButtonSeatNumber: 3,
-      smallBlindSeatNumber: 4,
+      dealerButtonSeatNumber: 2,
+      smallBlindSeatNumber: 3,
+      bigBlindSeatNumber: 4,
+    });
+  });
+
+  it("7. BB skips empty seats: SB stays on previous BB, not on the gap", () => {
+    // Seats 1–8 = 0–7. P2, P3, P8 elim. Btn P4 / SB P5 / BB P6, then P6 busts.
+    const seatsAfter = [
+      makeSeat("s1", 0),
+      makeSeat("s2", 1, "eliminated"),
+      makeSeat("s3", 2, "eliminated"),
+      makeSeat("s4", 3),
+      makeSeat("s5", 4),
+      makeSeat("s6", 5, "eliminated"),
+      makeSeat("s7", 6),
+      makeSeat("s8", 7, "eliminated"),
+    ];
+    const afterSixBusts = resolveHandBlindLayout(
+      seatsAfter,
+      makePreviousGame({
+        dealerButtonSeatNumber: 3,
+        smallBlindSeatNumber: 4,
+        bigBlindSeatNumber: 5,
+      }),
+    );
+    expect(afterSixBusts).toEqual({
+      dealerButtonSeatNumber: 4, // P5
+      smallBlindSeatNumber: null, // dead SB on P6
+      bigBlindSeatNumber: 6, // P7
+    });
+
+    // Next: BB skips empty P8 and wraps to P1; SB stays on P7; dead button on P6
+    expect(
+      resolveHandBlindLayout(seatsAfter, makePreviousGame(afterSixBusts)),
+    ).toEqual({
+      dealerButtonSeatNumber: 5,
+      smallBlindSeatNumber: 6,
       bigBlindSeatNumber: 0,
     });
   });
 
-  it("5c. eliminated SB left the table (seat row gone) → dead button number kept", () => {
+  it("7b. BB skips two empty seats around the wrap", () => {
+    const seatsAfter = [
+      makeSeat("s1", 0, "eliminated"),
+      makeSeat("s2", 1),
+      makeSeat("s3", 2),
+      makeSeat("s4", 3),
+      makeSeat("s5", 4),
+      makeSeat("s6", 5),
+      makeSeat("s7", 6),
+      makeSeat("s8", 7, "eliminated"),
+    ];
+    expect(
+      resolveHandBlindLayout(
+        seatsAfter,
+        makePreviousGame({
+          dealerButtonSeatNumber: 4,
+          smallBlindSeatNumber: 5,
+          bigBlindSeatNumber: 6,
+        }),
+      ),
+    ).toEqual({
+      dealerButtonSeatNumber: 5,
+      smallBlindSeatNumber: 6,
+      bigBlindSeatNumber: 1,
+    });
+  });
+
+  it("8. eliminated SB left the table (seat row gone) → dead button number kept", () => {
     // Seat number 1 is gone entirely (player left after bust)
     const seatsAfter = [
       makeSeat("s1", 0),
@@ -231,7 +295,7 @@ describe("TDA dead-button blind layout examples", () => {
     });
   });
 
-  it("6. heads-up first hand: button posts SB", () => {
+  it("9. heads-up first hand: button posts SB", () => {
     const hu = [makeSeat("s1", 0), makeSeat("s2", 1)];
     const layout = resolveHandBlindLayout(hu, null);
     expect(layout).toEqual({
@@ -241,7 +305,7 @@ describe("TDA dead-button blind layout examples", () => {
     });
   });
 
-  it("6b. heads-up continues: blinds swap", () => {
+  it("10. heads-up continues: blinds swap", () => {
     const hu = [makeSeat("s1", 0), makeSeat("s2", 1)];
     const layout = resolveHandBlindLayout(
       hu,
@@ -258,7 +322,7 @@ describe("TDA dead-button blind layout examples", () => {
     });
   });
 
-  it("6c. 3-to-2: next BB after previous BB; other is SB/button", () => {
+  it("11. 3-to-2: next BB after previous BB; other is SB/button", () => {
     const seatsAfter = [
       makeSeat("s1", 0),
       makeSeat("s2", 1),

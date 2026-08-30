@@ -524,7 +524,7 @@ const scenarios: Scenario[] = [
         },
       },
 
-      // HAND 5: after BB-only hand, button moves to prior BB (p6); SB=p8, BB=p2; UTG=p3
+      // HAND 5: P6 still live so they post SB; BB skips empty P7 to P8; dead button on P5
       { type: "action", action: "RESET_TABLE", by: "dealer" },
       { type: "action", action: "START_GAME", by: "dealer" },
       {
@@ -537,6 +537,14 @@ const scenarios: Scenario[] = [
           player8: ["5s", "6s"],
         },
       },
+      {
+        type: "validate",
+        dealerButtonFor: "player5",
+        smallBlindFor: "player6",
+        bigBlindFor: "player8",
+        firstToActFor: "player2",
+      },
+      { type: "action", action: "CHECK", by: "player2" },
       {
         type: "action",
         action: "RAISE",
@@ -551,12 +559,7 @@ const scenarios: Scenario[] = [
       },
       { type: "action", action: "FOLD", by: "player6" },
       { type: "action", action: "FOLD", by: "player8" },
-      {
-        type: "action",
-        action: "RAISE",
-        by: "player2",
-        params: { amount: 320 },
-      },
+      { type: "action", action: "CHECK", by: "player2" },
       { type: "action", action: "FOLD", by: "player3" },
       {
         type: "action",
@@ -593,17 +596,17 @@ const scenarios: Scenario[] = [
         type: "validate",
         seats: {
           player1: { buyIn: 0, seatStatus: "eliminated" },
-          player2: { buyIn: 1060 },
+          player2: { buyIn: 1070 },
           player3: { buyIn: 150 },
           player4: { buyIn: 0, seatStatus: "eliminated" },
           player5: { buyIn: 0, seatStatus: "eliminated" },
-          player6: { buyIn: 190 },
+          player6: { buyIn: 185 },
           player7: { buyIn: 0, seatStatus: "eliminated" },
-          player8: { buyIn: 195 },
+          player8: { buyIn: 190 },
         },
       },
 
-      // HAND 6: p3 eliminated (Button: p8, SB: p2, BB: p3, First to act: p6)
+      // HAND 6: P8 posts SB after BB; BB wraps to P2; dead button on P7
       { type: "action", action: "RESET_TABLE", by: "dealer" },
       { type: "action", action: "START_GAME", by: "dealer" },
       {
@@ -616,13 +619,12 @@ const scenarios: Scenario[] = [
         },
       },
       {
-        type: "action",
-        action: "RAISE",
-        by: "player6",
-        params: { amount: 100 },
+        type: "validate",
+        dealerButtonFor: "player7",
+        smallBlindFor: "player8",
+        bigBlindFor: "player2",
+        firstToActFor: "player3",
       },
-      { type: "action", action: "FOLD", by: "player8" },
-      { type: "action", action: "FOLD", by: "player2" },
       {
         type: "action",
         action: "RAISE",
@@ -630,6 +632,8 @@ const scenarios: Scenario[] = [
         params: { amount: 150 },
       },
       { type: "action", action: "CHECK", by: "player6" },
+      { type: "action", action: "FOLD", by: "player8" },
+      { type: "action", action: "FOLD", by: "player2" },
       {
         type: "action",
         action: "DEAL_CARD",
@@ -665,17 +669,17 @@ const scenarios: Scenario[] = [
         type: "validate",
         seats: {
           player1: { buyIn: 0, seatStatus: "eliminated" },
-          player2: { buyIn: 1055 },
+          player2: { buyIn: 1060 },
           player3: { buyIn: 0, seatStatus: "eliminated" },
           player4: { buyIn: 0, seatStatus: "eliminated" },
           player5: { buyIn: 0, seatStatus: "eliminated" },
-          player6: { buyIn: 345 },
+          player6: { buyIn: 350 },
           player7: { buyIn: 0, seatStatus: "eliminated" },
-          player8: { buyIn: 195 },
+          player8: { buyIn: 185 },
         },
       },
 
-      // HAND 7: prior BB (p3) eliminated → dead button on p2, no SB, BB=p6; UTG=p8
+      // HAND 7: P2 posts SB after BB; BB skips empty seats to P6; dead button on P1
       { type: "action", action: "RESET_TABLE", by: "dealer" },
       { type: "action", action: "START_GAME", by: "dealer" },
       {
@@ -688,8 +692,8 @@ const scenarios: Scenario[] = [
       },
       {
         type: "validate",
-        dealerButtonFor: "player2",
-        smallBlindFor: null,
+        dealerButtonFor: "player1",
+        smallBlindFor: "player2",
         bigBlindFor: "player6",
         firstToActFor: "player8",
       },
@@ -697,7 +701,7 @@ const scenarios: Scenario[] = [
         type: "action",
         action: "RAISE",
         by: "player8",
-        params: { amount: 195 },
+        params: { amount: 185 },
       },
       { type: "action", action: "CHECK", by: "player2" },
       { type: "action", action: "FOLD", by: "player6" },
@@ -736,11 +740,11 @@ const scenarios: Scenario[] = [
         type: "validate",
         seats: {
           player1: { buyIn: 0, seatStatus: "eliminated" },
-          player2: { buyIn: 1260 },
+          player2: { buyIn: 1255 },
           player3: { buyIn: 0, seatStatus: "eliminated" },
           player4: { buyIn: 0, seatStatus: "eliminated" },
           player5: { buyIn: 0, seatStatus: "eliminated" },
-          player6: { buyIn: 335 },
+          player6: { buyIn: 340 },
           player7: { buyIn: 0, seatStatus: "eliminated" },
           player8: { buyIn: 0, seatStatus: "eliminated" },
         },
@@ -767,7 +771,7 @@ const scenarios: Scenario[] = [
         type: "action",
         action: "RAISE",
         by: "player6",
-        params: { amount: 335 },
+        params: { amount: 340 },
       },
       { type: "action", action: "CHECK", by: "player2" },
       {
