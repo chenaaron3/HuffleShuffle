@@ -16,7 +16,13 @@ import { ActionButtons } from '~/components/table/betting/action-buttons';
 import { PotAndBlindsDisplay } from '~/components/table/pot/pot-blinds-display';
 import { SidePotDetails } from '~/components/table/pot/side-pot-details';
 
-export function DealerFeed({ children }: { children?: ReactNode }) {
+export function DealerFeed({
+    children,
+    compactDealerActions = false,
+}: {
+    children?: ReactNode;
+    compactDealerActions?: boolean;
+}) {
     const communityCards = useCommunityCards();
     const gameStatus = useGameState();
     const winningCards = useWinningCards();
@@ -83,8 +89,11 @@ export function DealerFeed({ children }: { children?: ReactNode }) {
 
             <AnimatePresence mode="wait">
                 {isDealer && (
-                    <div className="absolute bottom-4 right-4 flex items-end justify-end">
-                        <ActionButtons />
+                    <div className={compactDealerActions
+                        ? 'absolute bottom-2 right-2 flex items-end justify-end'
+                        : 'absolute bottom-4 right-4 flex items-end justify-end'
+                    }>
+                        <ActionButtons compact={compactDealerActions} />
                     </div>
                 )}
             </AnimatePresence>

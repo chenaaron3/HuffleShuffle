@@ -41,12 +41,12 @@ export function MobileTableView({
 
     return (
         <div className="relative h-full w-full">
-            <DealerFeed>
+            <DealerFeed compactDealerActions>
                 <AnimatePresence mode="wait">
                     {!isDealer && currentSeat && (
                         <motion.div
                             key="quick-actions"
-                            className="absolute right-4 bottom-3 z-30"
+                            className="absolute right-2 bottom-2 z-30"
                             initial={{ opacity: 0, scale: 0.9 }}
                             animate={{ opacity: 1, scale: 1 }}
                             exit={{ opacity: 0, scale: 0.9 }}
@@ -69,7 +69,7 @@ export function MobileTableView({
                         <motion.div
                             key="controls"
                             layoutId="mobile-raise-controls"
-                            className="absolute right-4 bottom-3"
+                            className="absolute right-2 bottom-2"
                             initial={{ opacity: 0, scale: 0.9 }}
                             animate={{ opacity: 1, scale: 1 }}
                             exit={{ opacity: 0, scale: 0.9 }}
@@ -85,13 +85,13 @@ export function MobileTableView({
                         <motion.div
                             key="show-hand"
                             layoutId="mobile-show-hand-controls"
-                            className="absolute right-4 bottom-3"
+                            className="absolute right-2 bottom-2"
                             initial={{ opacity: 0, scale: 0.9 }}
                             animate={{ opacity: 1, scale: 1 }}
                             exit={{ opacity: 0, scale: 0.9 }}
                             transition={{ duration: 0.2 }}
                         >
-                            <ShowHandControl />
+                            <ShowHandControl compact />
                         </motion.div>
                     )}
                 </AnimatePresence>
