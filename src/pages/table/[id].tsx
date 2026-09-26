@@ -153,7 +153,7 @@ export default function TableView() {
                 <Head>
                     <title>Table Not Found - HuffleShuffle</title>
                 </Head>
-                <main className="flex min-h-screen items-center justify-center bg-black text-white">
+                <main className="flex h-dvh items-center justify-center bg-black text-white">
                     <div className="text-zinc-400">Table not found</div>
                 </main>
             </>
@@ -168,7 +168,7 @@ export default function TableView() {
                 <Head>
                     <title>Loading Table - HuffleShuffle</title>
                 </Head>
-                <main className="flex min-h-screen items-center justify-center bg-black text-white">
+                <main className="flex h-dvh items-center justify-center bg-black text-white">
                     <div className="text-zinc-400">Loading table...</div>
                 </main>
             </>
@@ -180,7 +180,7 @@ export default function TableView() {
             <Head>
                 <title>Table - HuffleShuffle</title>
             </Head>
-            <main className="h-screen bg-black text-white overflow-hidden">
+            <main className="h-dvh w-full overflow-hidden bg-black text-white">
                 {/* Table Status Indicator */}
                 {canRenderLivekit ? (
                     <LiveKitRoom
@@ -280,7 +280,7 @@ export default function TableView() {
                         />
                     </LiveKitRoom>
                 ) : (
-                    <div className="flex min-h-screen items-center justify-center">
+                    <div className="flex h-dvh items-center justify-center">
                         <div className="text-zinc-400">Connecting to table audio/video…</div>
                     </div>
                 )}

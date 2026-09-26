@@ -8,8 +8,8 @@ export function getSeatSizeClasses(fullHeight: boolean, overlay = false, fill = 
     }
     if (overlay) {
         return {
-            heightClass: 'h-32',
-            widthClass: 'w-52',
+            heightClass: 'h-32 min-h-32',
+            widthClass: 'w-52 min-w-52 shrink-0',
             aspectStyle: undefined,
         };
     }

@@ -149,7 +149,7 @@ export function SeatCard({
     return (
         <motion.div
             id={`seat-${seat.id}`}
-            className={`relative isolate flex ${heightClass} ${widthClass} flex-col rounded-xl bg-zinc-900/60 backdrop-blur-sm ${overlay ? 'overflow-hidden' : 'overflow-visible'}`}
+            className={`relative isolate flex ${heightClass} ${widthClass} flex-col rounded-xl bg-zinc-900 ${overlay ? 'hs-overlay-seat overflow-hidden border border-white/20 shadow-xl' : 'overflow-visible bg-zinc-900/60 backdrop-blur-sm'}`}
             style={fullHeight ? { ...borderStyle, ...aspectStyle } : borderStyle}
         >
             {showGlow && <SeatTurnGlow seatId={seat.id} glowRgb={glowRgb} />}
@@ -157,7 +157,12 @@ export function SeatCard({
             <div className="relative z-10 flex h-full w-full min-h-0 flex-col">
                 <div className="group relative h-full w-full overflow-hidden rounded-xl bg-black">
                     {videoTrackRef ? (
-                        isSelf ? (
+                        overlay ? (
+                            <VideoTrack
+                                trackRef={videoTrackRef}
+                                className="absolute inset-0 h-full w-full object-cover"
+                            />
+                        ) : isSelf ? (
                             <>
                                 <div className="absolute inset-0">
                                     <VideoTrack trackRef={videoTrackRef} className="h-full w-full object-cover" />

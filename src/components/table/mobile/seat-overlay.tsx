@@ -70,7 +70,9 @@ export function MobileSeatOverlay({ handRoomName }: { handRoomName: string | nul
     const tableId = useTableId();
 
     const occupiedSeats = useMemo(
-        () => [...originalSeats].sort((a, b) => a.seatNumber - b.seatNumber),
+        () => originalSeats
+            .filter((seat) => !!seat.player)
+            .sort((a, b) => a.seatNumber - b.seatNumber),
         [originalSeats],
     );
     const occupiedSeatIds = useMemo(
@@ -153,7 +155,13 @@ export function MobileSeatOverlay({ handRoomName }: { handRoomName: string | nul
                 </div>
             )}
 
-            <div className="absolute bottom-3 left-10 z-50">
+            <div
+                className="absolute z-50"
+                style={{
+                    bottom: 'max(0.75rem, env(safe-area-inset-bottom))',
+                    left: 'max(0.75rem, env(safe-area-inset-left))',
+                }}
+            >
                 <div className="absolute -top-9 left-0 z-50">
                     <LeaveTableButton compact />
                 </div>

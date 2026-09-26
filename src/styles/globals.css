@@ -2,6 +2,12 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+html,
+body {
+  background: #000;
+  min-height: 100%;
+}
+
 :root {
   --landing-midnight: #080b11;
   --landing-midnight-soft: #0e141d;
@@ -170,4 +176,10 @@
   }
   .no-scrollbar::-webkit-scrollbar { display: none; }
   .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  .hs-overlay-seat .lk-participant-metadata,
+  .hs-overlay-seat .lk-focus-toggle-button,
+  .hs-overlay-seat .lk-connection-quality,
+  .hs-overlay-seat .lk-button {
+    display: none !important;
+  }
 }
