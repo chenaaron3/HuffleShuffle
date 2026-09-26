@@ -156,10 +156,10 @@ export function MobileSeatOverlay({ handRoomName }: { handRoomName: string | nul
             )}
 
             <div
-                className="absolute z-50 pr-6"
+                className="absolute z-50 pr-5"
                 style={{
-                    bottom: 'max(0.75rem, env(safe-area-inset-bottom))',
-                    left: 'max(0.75rem, env(safe-area-inset-left))',
+                    bottom: 'max(0.5rem, env(safe-area-inset-bottom))',
+                    left: 'max(0.5rem, env(safe-area-inset-left))',
                 }}
             >
                 <div className="absolute -top-9 left-0 z-50">
@@ -183,14 +183,17 @@ export function MobileSeatOverlay({ handRoomName }: { handRoomName: string | nul
                         <MobileOverlaySeat seat={displayedSeat} />
                     </div>
                 ) : (
-                    <div className="flex h-40 w-64 items-center justify-center rounded-xl border border-dashed border-zinc-500/50 bg-zinc-900/30 text-sm text-zinc-400">
+                    <div className="flex h-20 w-40 items-center justify-center rounded-lg border border-dashed border-zinc-500/50 bg-zinc-900/30 text-xs text-zinc-400">
                         No players
                     </div>
                 )}
             </div>
 
             {mySeatId && (
-                <div className="absolute bottom-3 left-1/2 z-[60] -translate-x-1/2">
+                <div
+                    className="absolute left-1/2 z-[60] -translate-x-1/2"
+                    style={{ bottom: 'max(0.5rem, env(safe-area-inset-bottom))' }}
+                >
                     <HandCamera compact tableId={tableId} roomName={handRoomName} />
                 </div>
             )}

@@ -41,12 +41,16 @@ export function MobileTableView({
 
     return (
         <div className="relative h-full w-full">
-            <DealerFeed compactDealerActions>
+            <DealerFeed compact>
                 <AnimatePresence mode="wait">
                     {!isDealer && currentSeat && (
                         <motion.div
                             key="quick-actions"
-                            className="absolute right-2 bottom-2 z-30"
+                            className="absolute z-30"
+                            style={{
+                                right: 'max(0.5rem, env(safe-area-inset-right))',
+                                bottom: 'max(0.5rem, env(safe-area-inset-bottom))',
+                            }}
                             initial={{ opacity: 0, scale: 0.9 }}
                             animate={{ opacity: 1, scale: 1 }}
                             exit={{ opacity: 0, scale: 0.9 }}
@@ -69,7 +73,11 @@ export function MobileTableView({
                         <motion.div
                             key="controls"
                             layoutId="mobile-raise-controls"
-                            className="absolute right-2 bottom-2"
+                            className="absolute"
+                            style={{
+                                right: 'max(0.5rem, env(safe-area-inset-right))',
+                                bottom: 'max(0.5rem, env(safe-area-inset-bottom))',
+                            }}
                             initial={{ opacity: 0, scale: 0.9 }}
                             animate={{ opacity: 1, scale: 1 }}
                             exit={{ opacity: 0, scale: 0.9 }}
@@ -85,7 +93,11 @@ export function MobileTableView({
                         <motion.div
                             key="show-hand"
                             layoutId="mobile-show-hand-controls"
-                            className="absolute right-2 bottom-2"
+                            className="absolute"
+                            style={{
+                                right: 'max(0.5rem, env(safe-area-inset-right))',
+                                bottom: 'max(0.5rem, env(safe-area-inset-bottom))',
+                            }}
                             initial={{ opacity: 0, scale: 0.9 }}
                             animate={{ opacity: 1, scale: 1 }}
                             exit={{ opacity: 0, scale: 0.9 }}

@@ -13,7 +13,7 @@ interface HandCameraProps {
 
 export function HandCamera({ tableId, roomName, compact = false }: HandCameraProps) {
     const frameClass = compact
-        ? 'flex h-[4.75rem] w-[8.5rem] items-center justify-center overflow-hidden rounded-lg border border-zinc-500/50 bg-zinc-900/80 shadow-xl'
+        ? 'flex h-20 w-44 items-center justify-center overflow-hidden rounded-lg border border-zinc-500/50 bg-zinc-900/80 shadow-xl'
         : 'flex w-64 h-40 items-center justify-center shadow-2xl rounded-xl border border-zinc-600/50 bg-zinc-900/50 backdrop-blur';
 
     if (!roomName) {
@@ -29,7 +29,7 @@ export function HandCamera({ tableId, roomName, compact = false }: HandCameraPro
 
     return (
         <div className={compact
-            ? 'h-[4.75rem] w-[8.5rem] overflow-hidden rounded-lg border border-zinc-500/50 bg-zinc-900/80 shadow-xl'
+            ? 'h-20 w-44 overflow-hidden rounded-lg border border-zinc-500/50 bg-zinc-900/80 shadow-xl'
             : 'rounded-xl overflow-hidden shadow-2xl w-64 h-auto border border-zinc-500/50 bg-zinc-900/50 backdrop-blur'
         }>
             <HandCameraView tableId={tableId} roomName={roomName} compact={compact} />

@@ -319,7 +319,7 @@ export function SeatCard({
                         >
                             <div className="relative">
                                 <div className="absolute inset-0 rounded-full bg-black/30 blur-sm scale-95" />
-                                <div className={`relative rounded-full border-2 shadow-lg flex items-center justify-center bg-gradient-to-br from-yellow-400 via-yellow-500 to-yellow-600 border-yellow-300 ${overlay ? 'h-8 w-8' : 'h-14 w-14'}`}>
+                                <div className={`relative rounded-full border-2 shadow-lg flex items-center justify-center bg-gradient-to-br from-yellow-400 via-yellow-500 to-yellow-600 border-yellow-300 ${overlay ? 'h-6 w-6' : 'h-14 w-14'}`}>
                                     <div className="absolute inset-1 rounded-full border border-yellow-200/50" />
                                     <RollingNumber value={seat.currentBet} className={`relative font-bold ${overlay ? 'text-[10px]' : 'text-sm'}`} prefix="$" />
                                 </div>

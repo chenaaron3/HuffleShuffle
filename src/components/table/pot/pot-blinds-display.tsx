@@ -8,6 +8,7 @@ import { RollingNumber } from '~/components/table/chips/chip-animations';
 
 interface PotAndBlindsDisplayProps {
     className?: string;
+    compact?: boolean;
 }
 
 function formatTimeRemaining(seconds: number): string {
@@ -16,7 +17,7 @@ function formatTimeRemaining(seconds: number): string {
     return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
-export function PotAndBlindsDisplay({ className }: PotAndBlindsDisplayProps) {
+export function PotAndBlindsDisplay({ className, compact = false }: PotAndBlindsDisplayProps) {
     // Get data from Zustand store using selectors
     const potTotal = useTotalPot() ?? 0;
     const blinds = useBlinds();
@@ -33,20 +34,21 @@ export function PotAndBlindsDisplay({ className }: PotAndBlindsDisplayProps) {
     return (
         <motion.div
             className={cn(
-                "relative flex flex-col bg-zinc-900/95 backdrop-blur-sm rounded-xl shadow-2xl border border-zinc-500/50 overflow-hidden transition-all duration-300 ease-in-out",
+                "relative flex flex-col bg-zinc-900/95 backdrop-blur-sm shadow-2xl border border-zinc-500/50 overflow-hidden transition-all duration-300 ease-in-out",
+                compact ? "rounded-lg" : "rounded-xl",
                 className
             )}
             layout
         >
-            <div className="relative z-10 flex flex-col items-end min-w-[140px]">
+            <div className={cn('relative z-10 flex flex-col items-end', compact ? 'min-w-[88px]' : 'min-w-[140px]')}>
                 {/* Pot Section */}
-                <div className="flex flex-col items-center w-full px-5 pt-2 pb-1">
+                <div className={cn('flex w-full flex-col items-center', compact ? 'px-2.5 pt-1 pb-0.5' : 'px-5 pt-2 pb-1')}>
                     <RollingNumber
                         value={potTotal}
-                        className="text-xl font-bold text-zinc-100"
+                        className={cn('font-bold text-zinc-100', compact ? 'text-sm' : 'text-xl')}
                         prefix="$"
                     />
-                    <div className="text-[10px] uppercase tracking-wider text-zinc-400 font-medium">
+                    <div className={cn('uppercase tracking-wider text-zinc-400 font-medium', compact ? 'text-[8px]' : 'text-[10px]')}>
                         Pot Total
                     </div>
                 </div>
@@ -58,7 +60,7 @@ export function PotAndBlindsDisplay({ className }: PotAndBlindsDisplayProps) {
 
                 {/* Blinds Section */}
                 {blinds && (
-                    <div className="relative w-full flex flex-col items-center px-5 py-1.5">
+                    <div className={cn('relative w-full flex flex-col items-center', compact ? 'px-2.5 py-1' : 'px-5 py-1.5')}>
                         {/* Background Progress Timer Gradient - Only in Blinds Section */}
                         {blindTimerVisible && (
                             <div
@@ -70,8 +72,8 @@ export function PotAndBlindsDisplay({ className }: PotAndBlindsDisplayProps) {
                             />
                         )}
 
-                        <div className="relative z-10 flex items-center gap-1.5 text-sm font-bold text-zinc-200">
-                            <span className="text-emerald-500/80 text-[10px] uppercase font-bold tracking-wider">Blinds</span>
+                        <div className={cn('relative z-10 flex items-center font-bold text-zinc-200', compact ? 'gap-1 text-[11px]' : 'gap-1.5 text-sm')}>
+                            <span className={cn('uppercase font-bold tracking-wider text-emerald-500/80', compact ? 'text-[8px]' : 'text-[10px]')}>Blinds</span>
                             <span>{displaySmallBlind}/{displayBigBlind}</span>
                         </div>
 
@@ -84,7 +86,7 @@ export function PotAndBlindsDisplay({ className }: PotAndBlindsDisplayProps) {
                                     exit={{ opacity: 0, height: 0, marginTop: 0 }}
                                     className="relative z-10 overflow-hidden flex flex-col items-center"
                                 >
-                                    <div className="text-emerald-400 font-mono text-xs font-medium bg-black/40 px-2 py-0.5 rounded-md">
+                                    <div className={cn('text-emerald-400 font-mono font-medium bg-black/40 rounded-md', compact ? 'px-1.5 py-px text-[9px]' : 'px-2 py-0.5 text-xs')}>
                                         {blinds?.isPaused
                                             ? 'Paused'
                                             : isAtMaxMultiplier

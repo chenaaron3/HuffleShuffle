@@ -18,10 +18,10 @@ import { SidePotDetails } from '~/components/table/pot/side-pot-details';
 
 export function DealerFeed({
     children,
-    compactDealerActions = false,
+    compact = false,
 }: {
     children?: ReactNode;
-    compactDealerActions?: boolean;
+    compact?: boolean;
 }) {
     const communityCards = useCommunityCards();
     const gameStatus = useGameState();
@@ -49,7 +49,10 @@ export function DealerFeed({
             )}
 
             {communityCards.length > 0 && (
-                <div className="absolute top-2 left-2 z-30 flex items-center gap-1 sm:top-4 sm:left-4">
+                <div className={compact
+                    ? 'absolute top-1.5 left-1.5 z-30 flex items-center gap-0.5'
+                    : 'absolute top-2 left-2 z-30 flex items-center gap-1 sm:top-4 sm:left-4'
+                }>
                     <AnimatePresence mode="popLayout">
                         {communityCards.map((card: string, index: number) => {
                             const normalizedCard = card.toUpperCase();
@@ -72,7 +75,7 @@ export function DealerFeed({
                                 >
                                     <CardImage
                                         code={card}
-                                        size={65}
+                                        size={compact ? 40 : 65}
                                         highlighted={isWinningCard}
                                     />
                                 </motion.div>
@@ -82,18 +85,21 @@ export function DealerFeed({
                 </div>
             )}
 
-            <div id="pot-display" className="absolute inset-0 z-40 flex w-full transform flex-col items-end gap-2 p-4 pointer-events-none">
-                <PotAndBlindsDisplay className="shrink-0" />
+            <div id="pot-display" className={compact
+                ? 'absolute inset-0 z-40 flex w-full transform flex-col items-end gap-1 p-1.5 pointer-events-none'
+                : 'absolute inset-0 z-40 flex w-full transform flex-col items-end gap-2 p-4 pointer-events-none'
+            }>
+                <PotAndBlindsDisplay compact={compact} className="shrink-0" />
                 <SidePotDetails className="pointer-events-auto" />
             </div>
 
             <AnimatePresence mode="wait">
                 {isDealer && (
-                    <div className={compactDealerActions
+                    <div className={compact
                         ? 'absolute bottom-2 right-2 flex items-end justify-end'
                         : 'absolute bottom-4 right-4 flex items-end justify-end'
                     }>
-                        <ActionButtons compact={compactDealerActions} />
+                        <ActionButtons compact={compact} />
                     </div>
                 )}
             </AnimatePresence>

@@ -185,7 +185,7 @@ export function VerticalRaiseControls({ compact = false }: VerticalRaiseControls
             }}
             className={cn(
                 'relative flex flex-col border border-white/10 bg-zinc-900/95 shadow-2xl backdrop-blur',
-                compact ? 'w-72 gap-1.5 rounded-lg p-1.5' : 'w-80 gap-3 rounded-xl p-3',
+                compact ? 'w-52 gap-1 rounded-lg p-1' : 'w-80 gap-3 rounded-xl p-3',
             )}
         >
             {!compact && (
@@ -200,45 +200,7 @@ export function VerticalRaiseControls({ compact = false }: VerticalRaiseControls
                 />
             )}
             {compact && !isForcedAllIn && (
-                <div className="flex w-full items-center gap-1">
-                    <Button
-                        onClick={handleQuarterPot}
-                        disabled={isQuarterPotDisabled}
-                        variant="outline"
-                        size="sm"
-                        className="h-7 w-8 shrink-0 px-0 text-[11px] bg-yellow-500/20 text-white hover:bg-yellow-500/30 border-yellow-500/50"
-                    >
-                        ¼
-                    </Button>
-                    <Button
-                        onClick={handleHalfPot}
-                        disabled={isHalfPotDisabled}
-                        variant="outline"
-                        size="sm"
-                        className="h-7 w-8 shrink-0 px-0 text-[11px] bg-orange-500/20 text-white hover:bg-orange-500/30 border-orange-500/50"
-                    >
-                        ½
-                    </Button>
-                    <Button
-                        onClick={handleFullPot}
-                        disabled={isFullPotDisabled}
-                        variant="outline"
-                        size="sm"
-                        className="h-7 shrink-0 px-1.5 text-[11px] bg-red-500/20 text-white hover:bg-red-500/30 border-red-500/50"
-                    >
-                        Pot
-                    </Button>
-                    <input
-                        type="text"
-                        value={inputValue}
-                        onChange={handleInputChange}
-                        onBlur={handleInputBlur}
-                        onFocus={handleInputFocus}
-                        onKeyDown={handleInputKeyDown}
-                        className="h-7 w-12 shrink-0 rounded-md border border-white/10 bg-zinc-800/80 px-1 text-center text-[11px] text-white outline-none focus:ring-1 focus:ring-orange-400/50"
-                        inputMode="numeric"
-                        pattern="[0-9]*"
-                    />
+                <div className="flex w-full flex-col gap-1">
                     <Slider
                         value={[validatedAmount]}
                         onValueChange={(value) => handleAmountChange(value[0] ?? 0)}
@@ -247,8 +209,48 @@ export function VerticalRaiseControls({ compact = false }: VerticalRaiseControls
                         step={bigBlind || 1}
                         orientation="horizontal"
                         disabled={playerBalance <= 0}
-                        className="min-w-0 flex-1 [&_[data-slot=slider-track]]:bg-zinc-800/70 [&_[data-slot=slider-range]]:bg-orange-500/90 [&_[data-slot=slider-thumb]]:size-4 [&_[data-slot=slider-thumb]]:bg-orange-400 [&_[data-slot=slider-thumb]]:border-orange-300"
+                        className="w-full [&_[data-slot=slider-track]]:bg-zinc-800/70 [&_[data-slot=slider-range]]:bg-orange-500/90 [&_[data-slot=slider-thumb]]:size-3.5 [&_[data-slot=slider-thumb]]:bg-orange-400 [&_[data-slot=slider-thumb]]:border-orange-300"
                     />
+                    <div className="flex w-full items-center gap-0.5">
+                        <Button
+                            onClick={handleQuarterPot}
+                            disabled={isQuarterPotDisabled}
+                            variant="outline"
+                            size="sm"
+                            className="h-6 flex-1 px-0 text-[10px] bg-yellow-500/20 text-white hover:bg-yellow-500/30 border-yellow-500/50"
+                        >
+                            ¼
+                        </Button>
+                        <Button
+                            onClick={handleHalfPot}
+                            disabled={isHalfPotDisabled}
+                            variant="outline"
+                            size="sm"
+                            className="h-6 flex-1 px-0 text-[10px] bg-orange-500/20 text-white hover:bg-orange-500/30 border-orange-500/50"
+                        >
+                            ½
+                        </Button>
+                        <Button
+                            onClick={handleFullPot}
+                            disabled={isFullPotDisabled}
+                            variant="outline"
+                            size="sm"
+                            className="h-6 flex-1 px-0 text-[10px] bg-red-500/20 text-white hover:bg-red-500/30 border-red-500/50"
+                        >
+                            Pot
+                        </Button>
+                        <input
+                            type="text"
+                            value={inputValue}
+                            onChange={handleInputChange}
+                            onBlur={handleInputBlur}
+                            onFocus={handleInputFocus}
+                            onKeyDown={handleInputKeyDown}
+                            className="h-6 w-11 shrink-0 rounded-md border border-white/10 bg-zinc-800/80 px-1 text-center text-[10px] text-white outline-none focus:ring-1 focus:ring-orange-400/50"
+                            inputMode="numeric"
+                            pattern="[0-9]*"
+                        />
+                    </div>
                 </div>
             )}
             {!compact && !isForcedAllIn && (
@@ -353,14 +355,14 @@ export function VerticalRaiseControls({ compact = false }: VerticalRaiseControls
             )}
 
             {/* Main Action Buttons - Fold, Check/Call, Raise */}
-            <div className={cn('flex w-full', compact ? 'gap-1' : 'gap-2')}>
+            <div className={cn('flex w-full', compact ? 'gap-0.5' : 'gap-2')}>
                 <Button
                     onClick={handleFold}
                     variant="default"
                     size="sm"
                     className={cn(
                         'flex-1 bg-red-600 text-white hover:bg-red-700',
-                        compact && 'h-7 px-1.5 text-[11px]',
+                        compact && 'h-6 px-1 text-[10px]',
                     )}
                 >
                     Fold
@@ -371,7 +373,7 @@ export function VerticalRaiseControls({ compact = false }: VerticalRaiseControls
                     size="sm"
                     className={cn(
                         'flex-1 bg-green-600 text-white hover:bg-green-700',
-                        compact && 'h-7 px-1.5 text-[11px]',
+                        compact && 'h-6 px-1 text-[10px]',
                     )}
                 >
                     {isCall ? (
@@ -389,7 +391,7 @@ export function VerticalRaiseControls({ compact = false }: VerticalRaiseControls
                     disabled={playerBalance <= 0}
                     className={cn(
                         'flex-1 bg-orange-500 text-white hover:bg-orange-600',
-                        compact && 'h-7 px-1.5 text-[11px]',
+                        compact && 'h-6 px-1 text-[10px]',
                     )}
                 >
                     {isForcedAllIn ? (
