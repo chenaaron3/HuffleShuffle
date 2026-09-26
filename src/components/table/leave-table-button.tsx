@@ -1,5 +1,5 @@
 import { useRouter } from 'next/router';
-import { useIsDealerRole, useIsJoinable, useTableId } from '~/hooks/use-table-selectors';
+import { useIsDealerRole, useIsHandInProgress, useIsJoinable, useTableId } from '~/hooks/use-table-selectors';
 import { api } from '~/utils/api';
 
 export function LeaveTableButton() {
@@ -7,6 +7,7 @@ export function LeaveTableButton() {
     const isDealerRole = useIsDealerRole();
     const tableId = useTableId();
     const isJoinable = useIsJoinable();
+    const isHandInProgress = useIsHandInProgress();
 
     const leaveMutation = api.table.leave.useMutation({
         onSuccess: () => {
@@ -30,7 +31,7 @@ export function LeaveTableButton() {
         }
     };
 
-    if (!isJoinable) {
+    if (isDealerRole ? isHandInProgress : !isJoinable) {
         return null;
     }
 

@@ -11,6 +11,28 @@ type Tx = {
   update: typeof db.update;
 };
 
+export const SEATS_LOCKED_ERROR =
+  "Seats are locked while the tournament is active";
+
+export function isTournamentActive(
+  tournament: { endedAt: Date | null } | null | undefined,
+): boolean {
+  return tournament != null && tournament.endedAt == null;
+}
+
+export function tableAvailability(
+  game: { isCompleted: boolean } | null | undefined,
+  tournament: { endedAt: Date | null } | null | undefined,
+) {
+  const isHandInProgress = !!game && !game.isCompleted;
+  const tournamentActive = isTournamentActive(tournament);
+  return {
+    isHandInProgress,
+    isTournamentActive: tournamentActive,
+    isJoinable: !isHandInProgress && !tournamentActive,
+  };
+}
+
 export async function findOpenTournament(
   tx: Tx,
   tableId: string,
@@ -20,6 +42,14 @@ export async function findOpenTournament(
     orderBy: [desc(tournaments.startedAt)],
   });
   return row ?? null;
+}
+
+export async function assertSeatsUnlocked(
+  tx: Tx,
+  tableId: string,
+): Promise<void> {
+  const open = await findOpenTournament(tx, tableId);
+  if (open) throw new Error(SEATS_LOCKED_ERROR);
 }
 
 export async function startTournamentIfNeeded(

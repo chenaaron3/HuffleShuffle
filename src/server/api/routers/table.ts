@@ -46,6 +46,10 @@ import {
   redactSnapshotForUser,
   summarizeTable,
 } from "~/server/api/table/snapshot";
+import {
+  assertSeatsUnlocked,
+  tableAvailability,
+} from "~/server/api/table/tournaments";
 import { withTableMutation } from "~/server/api/lib/table-transaction";
 import type { VideoGrant } from "livekit-server-sdk";
 
@@ -112,6 +116,11 @@ export const tableRouter = createTRPCRouter({
       orderBy: (t, { asc }) => [asc(t.createdAt)],
       with: {
         games: { orderBy: (g, { desc }) => [desc(g.createdAt)], limit: 1 },
+        tournaments: {
+          orderBy: (tourney, { desc }) => [desc(tourney.startedAt)],
+          limit: 1,
+          columns: { endedAt: true },
+        },
         seats: { columns: { id: true } },
         protection: true,
       },
@@ -119,7 +128,6 @@ export const tableRouter = createTRPCRouter({
 
     return rows.map((t) => {
       const latestGame = t.games[0] ?? null;
-      const isJoinable = !latestGame || latestGame.isCompleted;
       const playerCount = t.seats.length;
       const availableSeats = t.maxSeats - playerCount;
 
@@ -132,7 +140,7 @@ export const tableRouter = createTRPCRouter({
         dealerId: t.dealerId,
         /** DB row exists in `protected_poker_table` — blocks deleting the poker_table row. */
         isLocked: !!t.protection,
-        isJoinable,
+        ...tableAvailability(latestGame, t.tournaments[0] ?? null),
         availableSeats,
         playerCount,
       };
@@ -629,6 +637,7 @@ export const tableRouter = createTRPCRouter({
 
         // Validate seat is valid and timing is correct
         if (!table) throw new Error("Table not found");
+        await assertSeatsUnlocked(tx, input.tableId);
         const latestGame = table.games[0] ?? null;
         if (latestGame && !latestGame.isCompleted)
           throw new Error("Cannot change seats during an active hand");

@@ -89,6 +89,8 @@ function createMockSnapshot(
     game: createMockGame({ state: gameState, ...gameOverrides }) as any,
     tournament: null,
     isJoinable: false,
+    isHandInProgress: true,
+    isTournamentActive: false,
     availableSeats: 6,
     blinds: {
       multiplier: 1,

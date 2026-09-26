@@ -230,6 +230,16 @@ export function useIsJoinable() {
   return snapshot?.isJoinable ?? false;
 }
 
+export function useIsHandInProgress() {
+  const snapshot = useTableStore(selectTableSnapshot);
+  return snapshot?.isHandInProgress ?? false;
+}
+
+export function useIsTournamentActive() {
+  const snapshot = useTableStore(selectTableSnapshot);
+  return snapshot?.isTournamentActive ?? false;
+}
+
 export function useBlinds() {
   const snapshot = useTableStore(selectTableSnapshot);
   return snapshot?.blinds;

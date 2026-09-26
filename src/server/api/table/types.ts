@@ -27,6 +27,8 @@ export type TableSnapshot = {
   game: GameRow | null;
   tournament: TournamentSnapshot | null;
   isJoinable: boolean;
+  isHandInProgress: boolean;
+  isTournamentActive: boolean;
   availableSeats: number;
   blinds: BlindState;
 };

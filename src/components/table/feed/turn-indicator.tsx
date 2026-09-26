@@ -2,7 +2,7 @@ import { useSession } from 'next-auth/react';
 import { useEffect, useRef } from 'react';
 import { useSoundEffects } from '~/components/providers/SoundProvider';
 import {
-    useActivePlayerName, useGameState, useIsDealerRole, useIsJoinable, useIsPlayerTurn
+    useActivePlayerName, useGameState, useIsDealerRole, useIsHandInProgress, useIsPlayerTurn
 } from '~/hooks/use-table-selectors';
 
 interface TurnIndicatorProps {
@@ -15,7 +15,7 @@ export function TurnIndicator({ }: TurnIndicatorProps) {
 
     // Get data from Zustand store using selectors
     const gameStatus = useGameState();
-    const isJoinable = useIsJoinable();
+    const isHandInProgress = useIsHandInProgress();
     const isDealer = useIsDealerRole();
     const activePlayerName = useActivePlayerName();
     const isPlayerTurn = useIsPlayerTurn(userId);
@@ -25,7 +25,7 @@ export function TurnIndicator({ }: TurnIndicatorProps) {
     const previousViewerTurn = useRef(isViewerTurn);
 
     useEffect(() => {
-        if (!gameStatus || isJoinable) {
+        if (!gameStatus || !isHandInProgress) {
             previousViewerTurn.current = isViewerTurn;
             return;
         }
@@ -36,10 +36,10 @@ export function TurnIndicator({ }: TurnIndicatorProps) {
         }
 
         previousViewerTurn.current = isViewerTurn;
-    }, [gameStatus, isJoinable, isViewerTurn, play]);
+    }, [gameStatus, isHandInProgress, isViewerTurn, play]);
 
-    // Only show when a game is in progress and the table isn't joinable
-    if (!gameStatus || isJoinable) {
+    // Only show when a hand is in progress
+    if (!gameStatus || !isHandInProgress) {
         return null;
     }
 

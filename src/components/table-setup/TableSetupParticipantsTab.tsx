@@ -69,6 +69,7 @@ export function TableSetupParticipantsTab({ tableId, isOpen, isActive }: TableSe
     }, [tableQuery.data?.seats]);
 
     const isJoinable = tableQuery.data?.isJoinable ?? false;
+    const isTournamentActive = tableQuery.data?.isTournamentActive ?? false;
     const participantMutationsBusy =
         addBotMut.isPending || removeBotMut.isPending || removePlayerMut.isPending;
 
@@ -108,7 +109,12 @@ export function TableSetupParticipantsTab({ tableId, isOpen, isActive }: TableSe
     return (
         <div className="space-y-4">
             <div className="text-sm text-zinc-400">
-                {!isJoinable && (
+                {isTournamentActive && (
+                    <div className="mb-4 rounded-lg border border-yellow-500/20 bg-yellow-500/10 p-3 text-yellow-400">
+                        Seats are locked while the tournament is active.
+                    </div>
+                )}
+                {!isJoinable && !isTournamentActive && (
                     <div className="mb-4 rounded-lg border border-yellow-500/20 bg-yellow-500/10 p-3 text-yellow-400">
                         ⚠️ Participants can only be added/removed when the table is joinable (no active game).
                     </div>

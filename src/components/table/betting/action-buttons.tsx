@@ -2,7 +2,7 @@ import { motion } from 'framer-motion';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from '~/components/ui/button';
 import { useActions } from '~/hooks/use-actions';
-import { useGameState, useIsJoinable } from '~/hooks/use-table-selectors';
+import { useGameState, useIsHandInProgress } from '~/hooks/use-table-selectors';
 
 interface ActionButtonsProps {
     // No props needed - all data comes from selectors
@@ -18,7 +18,7 @@ export function ActionButtons({ }: ActionButtonsProps) {
     const { mutate: performAction, isPending: isLoading } = useActions();
 
     // Get data from Zustand store using selectors
-    const isJoinable = useIsJoinable() ?? false;
+    const isHandInProgress = useIsHandInProgress();
     const gameStatus = useGameState();
 
     const isDealerTurn = gameStatus
@@ -67,7 +67,7 @@ export function ActionButtons({ }: ActionButtonsProps) {
                     {/* Game Control Buttons */}
                     <Button
                         onClick={() => {
-                            if (isJoinable) {
+                            if (!isHandInProgress) {
                                 performAction('START_GAME')
                             } else {
                                 performAction('RESET_TABLE')
@@ -76,12 +76,12 @@ export function ActionButtons({ }: ActionButtonsProps) {
                         disabled={isLoading}
                         className="transition-all duration-200 hover:scale-105 hover:bg-green-600/80 shadow-2xl inline-flex items-center justify-center font-semibold px-8 py-3 rounded-xl border text-white bg-green-600/70 border-green-300/80 backdrop-blur"
                     >
-                        {isJoinable ? 'Start Game' : 'Reset Table'}
+                        {!isHandInProgress ? 'Start Game' : 'Reset Table'}
                     </Button>
 
                     <Button
                         onClick={dealRandomCard}
-                        disabled={isLoading || (!isJoinable && !isDealerTurn)}
+                        disabled={isLoading || (isHandInProgress && !isDealerTurn)}
                         className="transition-all duration-200 hover:scale-105 hover:bg-purple-500/80 shadow-2xl inline-flex items-center justify-center font-semibold px-8 py-3 rounded-xl border text-white bg-purple-500/70 border-purple-300/80 backdrop-blur"
                     >
                         {isLoading ? 'Dealing...' : 'Deal Random'}

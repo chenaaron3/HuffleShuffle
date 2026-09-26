@@ -1,5 +1,6 @@
 import { eq } from "drizzle-orm";
 import { computeBlindState } from "~/server/api/lib/blind-timer";
+import { tableAvailability } from "~/server/api/table/tournaments";
 import type { SeatWithPlayer, TableSnapshot } from "~/server/api/table/types";
 import { db } from "~/server/db";
 import { pokerTables } from "~/server/db/schema";
@@ -48,15 +49,15 @@ export async function summarizeTable(
   const latestGame = snapshot.games[0] ?? null;
   const latestTournament = snapshot.tournaments[0] ?? null;
   const tableSeats = snapshot.seats;
-  const isJoinable = !latestGame || latestGame.isCompleted;
   const availableSeats = snapshot.maxSeats - tableSeats.length;
+  const availability = tableAvailability(latestGame, latestTournament);
 
   return {
     table: snapshot,
     seats: tableSeats,
     game: latestGame,
     tournament: latestTournament,
-    isJoinable,
+    ...availability,
     availableSeats,
     blinds: computeBlindState(snapshot),
   };

@@ -6,6 +6,7 @@ import {
   ensureAccount,
   getWalletBalance,
 } from "~/server/api/ledger";
+import { assertSeatsUnlocked } from "~/server/api/table/tournaments";
 import { db } from "~/server/db";
 import { games, piDevices, seats, users } from "~/server/db/schema";
 import { rsaEncryptB64 } from "~/utils/crypto";
@@ -51,6 +52,8 @@ export async function createSeatTransaction(
     buyIn: buyInAmount,
     userPublicKey,
   } = params;
+
+  await assertSeatsUnlocked(tx, tableId);
 
   await tx
     .update(users)
@@ -116,6 +119,8 @@ export async function removePlayerSeatTransaction(
   },
 ): Promise<{ ok: true }> {
   const { tableId, playerId } = params;
+
+  await assertSeatsUnlocked(tx, tableId);
 
   const seat = await tx.query.seats.findFirst({
     where: and(eq(seats.tableId, tableId), eq(seats.playerId, playerId)),

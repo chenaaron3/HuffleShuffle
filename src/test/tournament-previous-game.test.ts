@@ -146,7 +146,11 @@ describe("tournament previous-game scope", () => {
 
   it("snapshot includes the latest tournament (open or ended)", async () => {
     const table = await seedTable();
-    expect((await summarizeTable(db, table.id)).tournament).toBeNull();
+    const emptySnap = await summarizeTable(db, table.id);
+    expect(emptySnap.tournament).toBeNull();
+    expect(emptySnap.isTournamentActive).toBe(false);
+    expect(emptySnap.isHandInProgress).toBe(false);
+    expect(emptySnap.isJoinable).toBe(true);
 
     const open = await startTournamentIfNeeded(db, table.id);
     const openSnap = await summarizeTable(db, table.id);
@@ -155,11 +159,17 @@ describe("tournament previous-game scope", () => {
       endedAt: null,
       winner: null,
     });
+    expect(openSnap.isTournamentActive).toBe(true);
+    expect(openSnap.isHandInProgress).toBe(false);
+    expect(openSnap.isJoinable).toBe(false);
 
     await endOpenTournament(db, table.id);
     const endedSnap = await summarizeTable(db, table.id);
     expect(endedSnap.tournament?.id).toBe(open.id);
     expect(endedSnap.tournament?.endedAt).not.toBeNull();
     expect(endedSnap.tournament?.winner).toBeNull();
+    expect(endedSnap.isTournamentActive).toBe(false);
+    expect(endedSnap.isHandInProgress).toBe(false);
+    expect(endedSnap.isJoinable).toBe(true);
   });
 });
