@@ -1,123 +1,34 @@
 import { AnimatePresence, motion } from 'framer-motion';
-import { Track } from 'livekit-client';
 import { useSession } from 'next-auth/react';
-import { CardImage } from '~/components/table/cards/card-img';
 import {
-    useCanVolunteerShow, useCommunityCards, useDealerId, useGameState, useIsDealerRole, useIsPlayerTurn, useWinningCards
+    useCanVolunteerShow,
+    useGameState,
+    useIsPlayerTurn,
 } from '~/hooks/use-table-selectors';
 
-import { ParticipantTile, useTracks, VideoTrack } from '@livekit/components-react';
-
-import { ActionButtons } from '~/components/table/betting/action-buttons';
 import { ShowHandControl } from '~/components/table/betting/show-hand-control';
 import { VerticalRaiseControls } from '~/components/table/betting/vertical-raise-controls';
+import { DealerFeed } from '~/components/table/camera/dealer-feed';
 import { TurnIndicator } from '~/components/table/feed/turn-indicator';
 import { LeaveTableButton } from '~/components/table/leave-table-button';
-import { PotAndBlindsDisplay } from '~/components/table/pot/pot-blinds-display';
-import { SidePotDetails } from '~/components/table/pot/side-pot-details';
 
-interface DealerCameraProps {
-    // Hide player betting controls (e.g., for mobile where they're in betting tab)
-    hidePlayerBettingControls?: boolean;
-}
-
-export function DealerCamera({
-    hidePlayerBettingControls = false,
-}: DealerCameraProps) {
+export function DealerCamera() {
     const { data: session } = useSession();
     const userId = session?.user?.id;
-
-    // Get data from Zustand store using selectors
-    const communityCards = useCommunityCards();
     const gameStatus = useGameState();
-    const winningCards = useWinningCards();
-    const dealerUserId = useDealerId();
-    const isDealer = useIsDealerRole();
     const isPlayerTurn = useIsPlayerTurn(userId);
     const canVolunteerShow = useCanVolunteerShow(userId);
 
-    const trackRefs = useTracks([Track.Source.Camera]);
-    const dealerRef = dealerUserId
-        ? trackRefs.find(
-            (t) => t.participant.identity === dealerUserId && t.source === Track.Source.Camera,
-        )
-        : null;
-
     return (
-        <div className="relative w-full h-full lg:h-auto lg:aspect-video overflow-hidden border border-white/10 rounded-lg bg-black">
-            {/* Main Dealer Video */}
-            {dealerRef ? (
-                <ParticipantTile trackRef={dealerRef}>
-                    <VideoTrack trackRef={dealerRef} />
-                </ParticipantTile>
-            ) : (
-                <div className="flex h-full items-center justify-center text-zinc-400">
-                    Waiting for dealer camera...
-                </div>
-            )}
-
-            {/* Community Cards Overlay - Top Left */}
-            {communityCards.length > 0 && (
-                <div className="absolute top-2 left-2 sm:top-4 sm:left-4 z-30 flex items-center gap-1">
-                    <AnimatePresence mode="popLayout">
-                        {communityCards.map((card: string, index: number) => {
-                            // Check if this community card is part of the winning hand
-                            const normalizedCard = card.toUpperCase();
-                            const isWinningCard = gameStatus === 'SHOWDOWN' &&
-                                Array.isArray(winningCards) &&
-                                winningCards.some(wc => wc.toUpperCase() === normalizedCard);
-
-                            return (
-                                <motion.div
-                                    key={`community-card-${card}`}
-                                    className="relative"
-                                    initial={{ opacity: 0, y: 20, scale: 0.8 }}
-                                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                                    exit={{ opacity: 0, y: -20, scale: 0.8 }}
-                                    transition={{
-                                        duration: 0.4,
-                                        delay: index * 0.1,
-                                        ease: "easeOut"
-                                    }}
-                                >
-                                    <CardImage
-                                        code={card}
-                                        size={65}
-                                        highlighted={isWinningCard}
-                                    />
-                                </motion.div>
-                            );
-                        })}
-                    </AnimatePresence>
-                </div>
-            )}
-
-            {/* Pot Total & Blinds Overlay - Center Top */}
-            <div id="pot-display" className="absolute inset-0 p-4 w-full transform z-40 flex flex-col gap-2 items-end pointer-events-none">
-                <PotAndBlindsDisplay className="shrink-0" />
-                <SidePotDetails className="pointer-events-auto" />
-            </div>
-
-            {/* Turn Indicator - Bottom Left */}
+        <DealerFeed>
             <div className="absolute bottom-4 left-4">
                 <TurnIndicator />
             </div>
 
-            {/* Action Buttons Overlay - Dealer only */}
-            <AnimatePresence mode="wait">
-                {isDealer && (
-                    <div className="absolute flex bottom-4 right-4 justify-end items-end">
-                        <ActionButtons />
-                    </div>
-                )}
-            </AnimatePresence>
-
-            {/* Leave Table Button - Bottom Left */}
             <LeaveTableButton />
 
-            {/* Horizontal Raise Controls - Bottom Right */}
             <AnimatePresence mode="wait">
-                {isPlayerTurn && !hidePlayerBettingControls && (
+                {isPlayerTurn && (
                     <motion.div
                         key="controls"
                         layoutId="raise-controls"
@@ -132,9 +43,8 @@ export function DealerCamera({
                 )}
             </AnimatePresence>
 
-            {/* Show Hand Control - Bottom Right (during showdown) */}
             <AnimatePresence mode="wait">
-                {gameStatus === 'SHOWDOWN' && canVolunteerShow && !hidePlayerBettingControls && (
+                {gameStatus === 'SHOWDOWN' && canVolunteerShow && (
                     <motion.div
                         key="show-hand"
                         layoutId="show-hand-controls"
@@ -148,9 +58,6 @@ export function DealerCamera({
                     </motion.div>
                 )}
             </AnimatePresence>
-
-            {/* Subtle gradient overlay for better text readability */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-black/10 pointer-events-none" />
-        </div>
+        </DealerFeed>
     );
 }

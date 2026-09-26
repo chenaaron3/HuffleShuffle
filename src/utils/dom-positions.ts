@@ -45,15 +45,15 @@ export function getElementPosition(
 /**
  * Get seat position by seat ID
  */
-export function getSeatPosition(seatId: string): { x: number; y: number } {
-  return getElementCenterPosition(`seat-${seatId}`)!;
+export function getSeatPosition(seatId: string): { x: number; y: number } | null {
+  return getElementCenterPosition(`seat-${seatId}`);
 }
 
 /**
  * Get pot display position
  */
-export function getPotPosition(): { x: number; y: number } {
-  return getElementCenterPosition("pot-display")!;
+export function getPotPosition(): { x: number; y: number } | null {
+  return getElementCenterPosition("pot-display");
 }
 
 /**

@@ -1,8 +1,13 @@
 import { useRouter } from 'next/router';
 import { useIsDealerRole, useIsHandInProgress, useIsJoinable, useTableId } from '~/hooks/use-table-selectors';
+import { cn } from '~/lib/utils';
 import { api } from '~/utils/api';
 
-export function LeaveTableButton() {
+interface LeaveTableButtonProps {
+    compact?: boolean;
+}
+
+export function LeaveTableButton({ compact = false }: LeaveTableButtonProps) {
     const router = useRouter();
     const isDealerRole = useIsDealerRole();
     const tableId = useTableId();
@@ -36,13 +41,16 @@ export function LeaveTableButton() {
     }
 
     return (
-        <div className="absolute bottom-4 left-4">
+        <div className={compact ? undefined : 'absolute bottom-4 left-4'}>
             <button
                 onClick={handleLeaveTable}
                 disabled={isLeaving}
-                className="transition-all duration-200 hover:scale-105 shadow-lg bg-red-600/90 text-white font-semibold px-4 py-2 rounded-lg border border-red-500/50 backdrop-blur"
+                className={cn(
+                    'transition-all duration-200 hover:scale-105 shadow-lg bg-red-600/90 text-white font-semibold border border-red-500/50 backdrop-blur',
+                    compact ? 'rounded-md px-2 py-1 text-xs' : 'rounded-lg px-4 py-2',
+                )}
             >
-                {isLeaving ? 'Leaving...' : 'Leave Table'}
+                {isLeaving ? 'Leaving...' : compact ? 'Leave' : 'Leave Table'}
             </button>
         </div>
     );

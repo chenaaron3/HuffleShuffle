@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { ToggleGroup, ToggleGroupItem } from '~/components/ui/toggle-group';
 import { cn } from '~/lib/utils';
 
@@ -11,6 +11,7 @@ interface QuickActionsProps {
     disabled: boolean;
     gameState?: string;
     isMyTurn?: boolean;
+    compact?: boolean;
 }
 
 const actionDescriptions = {
@@ -19,7 +20,7 @@ const actionDescriptions = {
     'check-fold': "Auto-check if no bet, otherwise auto-fold.",
 };
 
-export function QuickActions({ value, onChange, disabled, gameState, isMyTurn = false }: QuickActionsProps) {
+export function QuickActions({ value, onChange, disabled, gameState, isMyTurn = false, compact = false }: QuickActionsProps) {
     const [hoveredAction, setHoveredAction] = useState<QuickActionType>(null);
     // Show during betting or dealing phases
     const dealingStates = ['DEAL_HOLE_CARDS', 'DEAL_FLOP', 'DEAL_TURN', 'DEAL_RIVER'];
@@ -33,11 +34,15 @@ export function QuickActions({ value, onChange, disabled, gameState, isMyTurn = 
     const displayedAction = hoveredAction || value;
 
     return (
-        <div className="h-full rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md shadow-[0_8px_32px_rgba(0,0,0,0.4)] p-5 w-full flex flex-col justify-between gap-5">
-            {/* Header */}
-            <div>
-                <h3 className="text-sm font-semibold text-white/90">Auto-Play Actions</h3>
-            </div>
+        <div className={cn(
+            'rounded-2xl border border-white/10 bg-zinc-900/90 backdrop-blur-md shadow-[0_8px_32px_rgba(0,0,0,0.4)] flex flex-col',
+            compact ? 'w-64 gap-2 p-2' : 'h-full w-full justify-between gap-5 bg-white/5 p-5',
+        )}>
+            {!compact && (
+                <div>
+                    <h3 className="text-sm font-semibold text-white/90">Auto-Play Actions</h3>
+                </div>
+            )}
 
             {/* Toggle Group */}
             <ToggleGroup
@@ -106,6 +111,7 @@ export function QuickActions({ value, onChange, disabled, gameState, isMyTurn = 
             </ToggleGroup>
 
             {/* Description Area - Fixed height */}
+            {!compact && (
             <div className="h-5 flex items-center">
                 <AnimatePresence mode="wait">
                     {displayedAction ? (
@@ -142,6 +148,7 @@ export function QuickActions({ value, onChange, disabled, gameState, isMyTurn = 
                     )}
                 </AnimatePresence>
             </div>
+            )}
         </div>
     );
 }

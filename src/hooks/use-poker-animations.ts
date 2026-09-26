@@ -55,6 +55,7 @@ export function usePokerAnimations({
             // Get exact DOM positions - start from the bet chip, not the seat center
             const fromPosition = getSeatPosition(previousSeat.id);
             const toPosition = getPotPosition();
+            if (!fromPosition || !toPosition) return;
 
             triggerChipStream(fromPosition, toPosition, previousSeat.currentBet);
           }
@@ -80,6 +81,7 @@ export function usePokerAnimations({
             // Get exact DOM positions - from pot to seat center (where balance is displayed)
             const fromPosition = getPotPosition();
             const toPosition = getSeatPosition(seat.id);
+            if (!fromPosition || !toPosition) return;
 
             triggerChipStream(fromPosition, toPosition, seat.winAmount);
           }

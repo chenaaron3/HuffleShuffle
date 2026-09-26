@@ -14,10 +14,10 @@ import {
 import { cn } from '~/lib/utils';
 
 interface VerticalRaiseControlsProps {
-    // No props needed - all data comes from selectors
+    compact?: boolean;
 }
 
-export function VerticalRaiseControls({ }: VerticalRaiseControlsProps) {
+export function VerticalRaiseControls({ compact = false }: VerticalRaiseControlsProps) {
     const { data: session } = useSession();
     const userId = session?.user?.id;
 
@@ -183,7 +183,10 @@ export function VerticalRaiseControls({ }: VerticalRaiseControlsProps) {
                     ease: "easeOut"
                 }
             }}
-            className="relative rounded-xl shadow-2xl w-80 bg-zinc-900/95 border border-white/10 p-3 backdrop-blur flex flex-col gap-3"
+            className={cn(
+                'relative rounded-xl shadow-2xl bg-zinc-900/95 border border-white/10 backdrop-blur flex flex-col',
+                compact ? 'w-64 gap-2 p-2' : 'w-80 gap-3 p-3',
+            )}
         >
             <GlowingEffect disabled={false} spread={25} proximity={40} inactiveZone={0.3} borderWidth={2} variant="golden" className="rounded-xl" />
             {!isForcedAllIn && (
@@ -203,7 +206,7 @@ export function VerticalRaiseControls({ }: VerticalRaiseControlsProps) {
                     {/* Horizontal Slider with Official Tooltip */}
                     <div className="w-full space-y-3">
                         {/* Slider with Always Visible Tooltip */}
-                        <Tooltip open={true}>
+                        <Tooltip open={compact ? false : true}>
                             <TooltipTrigger asChild>
                                 <div className="w-full">
                                     <Slider
@@ -245,6 +248,19 @@ export function VerticalRaiseControls({ }: VerticalRaiseControlsProps) {
                         {/* Min/Max Labels */}
                         <div className="flex justify-between w-full text-xs text-white/60">
                             <span>${minRaise}</span>
+                            {compact && (
+                                <input
+                                    type="text"
+                                    value={inputValue}
+                                    onChange={handleInputChange}
+                                    onBlur={handleInputBlur}
+                                    onFocus={handleInputFocus}
+                                    onKeyDown={handleInputKeyDown}
+                                    className="w-14 bg-zinc-800/80 border border-white/10 rounded text-white text-xs py-0.5 px-1 text-center outline-none focus:ring-1 focus:ring-orange-400/50"
+                                    inputMode="numeric"
+                                    pattern="[0-9]*"
+                                />
+                            )}
                             <span>${maxBetAmount}</span>
                         </div>
                     </div>

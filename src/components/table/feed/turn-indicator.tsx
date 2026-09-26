@@ -1,6 +1,5 @@
 import { useSession } from 'next-auth/react';
-import { useEffect, useRef } from 'react';
-import { useSoundEffects } from '~/components/providers/SoundProvider';
+import { useTurnNotificationSound } from '~/hooks/use-turn-notification-sound';
 import {
     useActivePlayerName, useGameState, useIsDealerRole, useIsHandInProgress, useIsPlayerTurn
 } from '~/hooks/use-table-selectors';
@@ -20,23 +19,8 @@ export function TurnIndicator({ }: TurnIndicatorProps) {
     const activePlayerName = useActivePlayerName();
     const isPlayerTurn = useIsPlayerTurn(userId);
     const isDealerTurn = ['DEAL_HOLE_CARDS', 'DEAL_FLOP', 'DEAL_TURN', 'DEAL_RIVER'].includes(gameStatus ?? '');
-    const { play } = useSoundEffects();
     const isViewerTurn = isDealer && isDealerTurn || !isDealer && isPlayerTurn;
-    const previousViewerTurn = useRef(isViewerTurn);
-
-    useEffect(() => {
-        if (!gameStatus || !isHandInProgress) {
-            previousViewerTurn.current = isViewerTurn;
-            return;
-        }
-
-        const wasViewerTurn = previousViewerTurn.current;
-        if (!wasViewerTurn && isViewerTurn) {
-            play('turnNotification');
-        }
-
-        previousViewerTurn.current = isViewerTurn;
-    }, [gameStatus, isHandInProgress, isViewerTurn, play]);
+    useTurnNotificationSound();
 
     // Only show when a hand is in progress
     if (!gameStatus || !isHandInProgress) {

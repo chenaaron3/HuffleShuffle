@@ -1,38 +1,50 @@
 import { useEffect, useState } from 'react';
 
 /**
- * Hook to detect if the device is a mobile device in landscape orientation.
- * Uses viewport width (< 1024px) and checks if width > height for landscape.
- * This matches Tailwind's `lg:` breakpoint (1024px).
+ * Viewport layout for the table shell.
+ * Desktop = width >= 1024 (Tailwind `lg`).
+ * Mobile landscape = width < 1024 and width > height.
  */
-export function useIsMobileLandscape() {
-  const [isMobileLandscape, setIsMobileLandscape] = useState(false);
+export function useTableViewport() {
+  const [layout, setLayout] = useState<{
+    isDesktop: boolean;
+    isMobileLandscape: boolean;
+  }>(() => {
+    if (typeof window === 'undefined') {
+      return { isDesktop: false, isMobileLandscape: false };
+    }
+    const width = window.innerWidth;
+    const height = window.innerHeight;
+    const isDesktop = width >= 1024;
+    return { isDesktop, isMobileLandscape: !isDesktop && width > height };
+  });
 
   useEffect(() => {
-    // Only run on client
-    if (typeof window === "undefined") return;
+    if (typeof window === 'undefined') return;
 
-    const checkMobileLandscape = () => {
+    const check = () => {
       const width = window.innerWidth;
       const height = window.innerHeight;
-      // Mobile landscape: width < 1024px (lg breakpoint) AND width > height
-      const isMobile = width < 1024;
-      const isLandscape = width > height;
-      setIsMobileLandscape(isMobile && isLandscape);
+      const isDesktop = width >= 1024;
+      setLayout({
+        isDesktop,
+        isMobileLandscape: !isDesktop && width > height,
+      });
     };
 
-    // Check immediately
-    checkMobileLandscape();
-
-    // Listen for resize and orientation changes
-    window.addEventListener("resize", checkMobileLandscape);
-    window.addEventListener("orientationchange", checkMobileLandscape);
-
+    check();
+    window.addEventListener('resize', check);
+    window.addEventListener('orientationchange', check);
     return () => {
-      window.removeEventListener("resize", checkMobileLandscape);
-      window.removeEventListener("orientationchange", checkMobileLandscape);
+      window.removeEventListener('resize', check);
+      window.removeEventListener('orientationchange', check);
     };
   }, []);
 
-  return isMobileLandscape;
+  return layout;
+}
+
+/** @deprecated Prefer useTableViewport — kept for existing callers. */
+export function useIsMobileLandscape() {
+  return useTableViewport().isMobileLandscape;
 }

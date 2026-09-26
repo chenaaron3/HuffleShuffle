@@ -10,7 +10,7 @@ import { TableSetupModal } from '~/components/TableSetupModal';
 import { DealerCamera } from '~/components/table/camera/dealer-camera';
 import { EventFeed } from '~/components/table/feed/event-feed';
 import { HandCamera } from '~/components/table/camera/hand-camera';
-import { MobileBettingView, MobileTableLayout } from '~/components/table/mobile';
+import { MobileTableLayout, MobileTableView } from '~/components/table/mobile';
 import { QuickActions } from '~/components/table/betting/quick-actions';
 import { SeatSection } from '~/components/table/seat';
 import { WinnerDialog } from '~/components/table/dialogs/winner-dialog';
@@ -30,7 +30,7 @@ import {
 } from '~/hooks/use-table-selectors';
 import { requireAuth } from '~/server/auth/guards';
 import { api } from '~/utils/api';
-import { rsaDecryptBase64 } from '~/utils/crypto';
+import { getPrivateKeyForTable, rsaDecryptBase64 } from '~/utils/crypto';
 import { disconnectPusherClient } from '~/utils/pusher-client';
 
 import { LiveKitRoom, RoomAudioRenderer, StartAudio } from '@livekit/components-react';
@@ -109,6 +109,8 @@ export default function TableView() {
         void (async () => {
             if (!id || !currentSeat?.encryptedUserNonce) return;
             try {
+                const privateKey = await getPrivateKeyForTable(id);
+                if (!privateKey) return;
                 const roomName = await rsaDecryptBase64(id, currentSeat.encryptedUserNonce);
                 console.log('roomName', roomName);
                 setHandRoomName(roomName);
@@ -264,24 +266,13 @@ export default function TableView() {
                                     </div>
                                 </>
                             }
-                            mobileContent={{
-                                dealer: (
-                                    <div className="h-full w-full flex items-center justify-center p-2">
-                                        <div className="w-full h-full max-w-full max-h-full flex items-center justify-center">
-                                            <DealerCamera
-                                                hidePlayerBettingControls={true}
-                                            />
-                                        </div>
-                                    </div>
-                                ),
-                                betting: (
-                                    <MobileBettingView
-                                        handRoomName={handRoomName}
-                                        quickAction={quickAction}
-                                        onQuickActionChange={setQuickAction}
-                                    />
-                                ),
-                            }}
+                            mobileContent={
+                                <MobileTableView
+                                    quickAction={quickAction}
+                                    onQuickActionChange={setQuickAction}
+                                    handRoomName={handRoomName}
+                                />
+                            }
                         />
                         <TableAnimation
                             seats={originalSeats}

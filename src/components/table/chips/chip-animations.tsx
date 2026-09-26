@@ -48,7 +48,7 @@ export function ChipStream({
         onComplete?.();
     };
 
-    if (!isVisible) return null;
+    if (!isVisible || !fromPosition || !toPosition) return null;
 
     const portalContent = (
         <div className="fixed inset-0 pointer-events-none z-30">

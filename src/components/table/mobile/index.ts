@@ -1,5 +1,3 @@
-export { CommunityCardsDisplay } from "./community-cards-display";
-export { MobileBettingView } from "./betting-view";
-export { MobileSeatSection } from "./seat-section";
+export { MobileSeatOverlay } from "./seat-overlay";
 export { MobileTableLayout } from "./table-layout";
-export { MobileTableTabs } from "./table-tabs";
+export { MobileTableView } from "./table-view";

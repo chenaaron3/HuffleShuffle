@@ -38,6 +38,8 @@ export interface SeatCardProps {
     tableId: string;
     dealerCanControlAudio?: boolean;
     fullHeight?: boolean;
+    overlay?: boolean;
+    fill?: boolean;
 }
 
 export function SeatCard({
@@ -56,6 +58,8 @@ export function SeatCard({
     tableId,
     dealerCanControlAudio,
     fullHeight = false,
+    overlay = false,
+    fill = false,
 }: SeatCardProps) {
     const [isMoving, setIsMoving] = React.useState(false);
     const tableQuery = useTableQuery(tableId ?? undefined);
@@ -129,7 +133,7 @@ export function SeatCard({
     }
 
     const borderStyle = timerBorder.getBorderStyle(!!isWinner, !!active, gameState);
-    const { heightClass, widthClass, aspectStyle } = getSeatSizeClasses(fullHeight);
+    const { heightClass, widthClass, aspectStyle } = getSeatSizeClasses(fullHeight, overlay, fill);
 
     const isBettingTurn =
         gameState === 'BETTING' &&
@@ -145,7 +149,7 @@ export function SeatCard({
     return (
         <motion.div
             id={`seat-${seat.id}`}
-            className={`relative isolate flex ${heightClass} ${widthClass} flex-col rounded-xl bg-zinc-900/60 backdrop-blur-sm overflow-visible`}
+            className={`relative isolate flex ${heightClass} ${widthClass} flex-col rounded-xl bg-zinc-900/60 backdrop-blur-sm ${overlay ? 'overflow-hidden' : 'overflow-visible'}`}
             style={fullHeight ? { ...borderStyle, ...aspectStyle } : borderStyle}
         >
             {showGlow && <SeatTurnGlow seatId={seat.id} glowRgb={glowRgb} />}
@@ -207,7 +211,7 @@ export function SeatCard({
                     )}
                 </div>
 
-                <div className="absolute bottom-0 left-0 right-0 px-2 pb-2 pt-1 bg-gradient-to-t from-black/50 via-black/30 to-transparent">
+                <div className="absolute bottom-0 left-0 right-0 z-30 px-2 pb-2 pt-1 bg-gradient-to-t from-black/70 via-black/40 to-transparent">
                     <div className="flex items-end justify-between">
                         <div className="flex flex-col gap-1 items-start">
                             {gameState === 'SHOWDOWN' && (seat.winAmount ?? 0) > 0 && (
@@ -282,7 +286,7 @@ export function SeatCard({
                                         key={`seat-${seat.id}-card-slot-${cardIndex}`}
                                         card={card}
                                         index={cardIndex}
-                                        size={30}
+                                        size={overlay ? 26 : 30}
                                         gameState={gameState}
                                         winningCards={seat.winningCards ?? undefined}
                                         seatId={seat.id}
@@ -298,7 +302,11 @@ export function SeatCard({
                 <AnimatePresence>
                     {seat.currentBet > 0 && (
                         <motion.div
-                            className={`absolute top-1/2 transform -translate-y-1/2 z-20 pointer-events-none ${side === 'right' ? 'left-0 -translate-x-1/2' : 'right-0 translate-x-1/2'}`}
+                            className={`absolute z-40 pointer-events-none ${
+                                overlay
+                                    ? 'right-2 top-12'
+                                    : `top-1/2 -translate-y-1/2 ${side === 'right' ? 'left-0 -translate-x-1/2' : 'right-0 translate-x-1/2'}`
+                            }`}
                             initial={{ scale: 0, opacity: 0, rotate: -180 }}
                             animate={{ scale: 1, opacity: 1, rotate: 0 }}
                             exit={{ scale: 0, opacity: 0, rotate: 180 }}
@@ -306,7 +314,7 @@ export function SeatCard({
                         >
                             <div className="relative">
                                 <div className="absolute inset-0 rounded-full bg-black/30 blur-sm scale-95" />
-                                <div className="relative rounded-full border-2 shadow-lg flex items-center justify-center bg-gradient-to-br from-yellow-400 via-yellow-500 to-yellow-600 border-yellow-300 w-14 h-14">
+                                <div className={`relative rounded-full border-2 shadow-lg flex items-center justify-center bg-gradient-to-br from-yellow-400 via-yellow-500 to-yellow-600 border-yellow-300 ${overlay ? 'h-11 w-11' : 'h-14 w-14'}`}>
                                     <div className="absolute inset-1 rounded-full border border-yellow-200/50" />
                                     <RollingNumber value={seat.currentBet} className="relative text-sm font-bold" prefix="$" />
                                 </div>
@@ -317,10 +325,11 @@ export function SeatCard({
 
                 {gameState === 'SHOWDOWN' && seat.handType && (
                     <div
-                        className={`absolute top-1/2 transform -translate-y-1/2 z-20 pointer-events-none ${side === 'right'
-                            ? 'left-0 -translate-x-1/2'
-                            : 'right-0 translate-x-1/2'
-                            }`}
+                        className={`absolute z-40 pointer-events-none ${
+                            overlay
+                                ? 'left-2 top-12'
+                                : `top-1/2 -translate-y-1/2 ${side === 'right' ? 'left-0 -translate-x-1/2' : 'right-0 translate-x-1/2'}`
+                        }`}
                     >
                         <div className="relative">
                             <div className="absolute inset-0 bg-black/30 rounded-full blur-sm scale-95" />
@@ -336,7 +345,7 @@ export function SeatCard({
                     </div>
                 )}
 
-                <div className="absolute top-2 right-2">
+                <div className="absolute top-2 right-2 z-30">
                     <AnimatePresence>
                         {isWinner && (
                             <motion.div
