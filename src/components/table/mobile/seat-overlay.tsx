@@ -156,7 +156,7 @@ export function MobileSeatOverlay({ handRoomName }: { handRoomName: string | nul
             )}
 
             <div
-                className="absolute z-50"
+                className="absolute z-50 pr-6"
                 style={{
                     bottom: 'max(0.75rem, env(safe-area-inset-bottom))',
                     left: 'max(0.75rem, env(safe-area-inset-left))',
@@ -183,7 +183,7 @@ export function MobileSeatOverlay({ handRoomName }: { handRoomName: string | nul
                         <MobileOverlaySeat seat={displayedSeat} />
                     </div>
                 ) : (
-                    <div className="flex h-32 w-52 items-center justify-center rounded-xl border border-dashed border-zinc-500/50 bg-zinc-900/30 text-sm text-zinc-400">
+                    <div className="flex h-40 w-64 items-center justify-center rounded-xl border border-dashed border-zinc-500/50 bg-zinc-900/30 text-sm text-zinc-400">
                         No players
                     </div>
                 )}

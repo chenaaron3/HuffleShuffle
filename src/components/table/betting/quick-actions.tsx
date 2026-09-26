@@ -20,11 +20,32 @@ const actionDescriptions = {
     'check-fold': "Auto-check if no bet, otherwise auto-fold.",
 };
 
-const actionButtonClass = {
-    fold: 'bg-red-600 hover:bg-red-700',
-    check: 'bg-green-600 hover:bg-green-700',
-    'check-fold': 'bg-orange-500 hover:bg-orange-600',
-} as const;
+const actions = [
+    {
+        value: 'fold' as const,
+        label: 'Fold',
+        emoji: '🚫',
+        className:
+            'data-[state=on]:bg-[#B5332F]/20 data-[state=on]:text-white data-[state=on]:border-[#B5332F]/40 data-[state=on]:ring-2 data-[state=on]:ring-[#B5332F]/20 hover:bg-[#B5332F]/10 hover:text-white/90 hover:border-[#B5332F]/30',
+        descriptionClass: 'text-[#B5332F]/90',
+    },
+    {
+        value: 'check' as const,
+        label: 'Check',
+        emoji: '✓',
+        className:
+            'data-[state=on]:bg-[#2EA043]/20 data-[state=on]:text-white data-[state=on]:border-[#2EA043]/40 data-[state=on]:ring-2 data-[state=on]:ring-[#2EA043]/20 hover:bg-[#2EA043]/10 hover:text-white/90 hover:border-[#2EA043]/30',
+        descriptionClass: 'text-[#2EA043]/90',
+    },
+    {
+        value: 'check-fold' as const,
+        label: 'C/F',
+        emoji: '⚡',
+        className:
+            'data-[state=on]:bg-[#F3C36A]/20 data-[state=on]:text-white data-[state=on]:border-[#F3C36A]/40 data-[state=on]:ring-2 data-[state=on]:ring-[#F3C36A]/20 hover:bg-[#F3C36A]/10 hover:text-white/90 hover:border-[#F3C36A]/30',
+        descriptionClass: 'text-[#F3C36A]/90',
+    },
+];
 
 export function QuickActions({ value, onChange, disabled, gameState, isMyTurn = false, compact = false }: QuickActionsProps) {
     const [hoveredAction, setHoveredAction] = useState<QuickActionType>(null);
@@ -39,23 +60,23 @@ export function QuickActions({ value, onChange, disabled, gameState, isMyTurn = 
 
     return (
         <div className={cn(
-            'flex flex-col border border-white/10 bg-zinc-900/95 shadow-2xl backdrop-blur',
-            compact ? 'w-72 gap-0 rounded-lg p-1.5' : 'h-full w-full justify-center gap-2 rounded-xl p-2',
+            'flex flex-col border border-white/10 bg-zinc-900/90 shadow-[0_8px_32px_rgba(0,0,0,0.4)] backdrop-blur-md',
+            compact ? 'w-64 gap-1 rounded-xl p-2' : 'h-full w-full justify-between gap-5 rounded-2xl bg-white/5 p-5',
         )}>
+            {!compact && (
+                <h3 className="text-sm font-semibold text-white/90">Auto-Play Actions</h3>
+            )}
+
             <ToggleGroup
                 type="single"
                 value={value ?? ''}
                 onValueChange={(newValue) => {
                     onChange(newValue === value ? null : (newValue as QuickActionType));
                 }}
-                className="grid w-full grid-cols-3 gap-1"
+                className={cn('grid grid-cols-3', compact ? 'w-full gap-1.5' : 'gap-2.5')}
                 disabled={disabled}
             >
-                {([
-                    { value: 'fold', label: 'Fold' },
-                    { value: 'check', label: 'Check' },
-                    { value: 'check-fold', label: 'Check/Fold' },
-                ] as const).map((action) => (
+                {actions.map((action) => (
                     <ToggleGroupItem
                         key={action.value}
                         value={action.value}
@@ -63,13 +84,16 @@ export function QuickActions({ value, onChange, disabled, gameState, isMyTurn = 
                         onMouseEnter={() => setHoveredAction(action.value)}
                         onMouseLeave={() => setHoveredAction(null)}
                         className={cn(
-                            'flex-1 rounded-md border-0 text-white data-[state=off]:opacity-45 data-[state=on]:opacity-100 data-[state=on]:ring-2 data-[state=on]:ring-white/40',
-                            compact ? 'h-7 px-1.5 text-[11px]' : 'h-9 px-2 text-sm',
-                            actionButtonClass[action.value],
+                            'flex items-center justify-center border border-white/10 bg-white/5 text-white/70 transition-all duration-200',
+                            compact ? 'h-8 gap-1 rounded-lg px-1.5' : 'h-auto gap-1.5 rounded-xl px-3 py-2.5',
+                            action.className,
                             disabled && 'cursor-not-allowed opacity-50',
                         )}
                     >
-                        <span className="whitespace-nowrap">{action.label}</span>
+                        <span className={compact ? 'text-xs' : 'text-sm'}>{action.emoji}</span>
+                        <span className={cn('font-medium whitespace-nowrap', compact ? 'text-[11px]' : 'text-xs')}>
+                            {action.label}
+                        </span>
                     </ToggleGroupItem>
                 ))}
             </ToggleGroup>
@@ -85,10 +109,8 @@ export function QuickActions({ value, onChange, disabled, gameState, isMyTurn = 
                                 exit={{ opacity: 0, y: 5 }}
                                 transition={{ duration: 0.15 }}
                                 className={cn(
-                                    'w-full text-xs font-medium',
-                                    displayedAction === 'fold' && 'text-red-300',
-                                    displayedAction === 'check' && 'text-green-300',
-                                    displayedAction === 'check-fold' && 'text-orange-300',
+                                    'w-full text-xs font-medium leading-relaxed',
+                                    actions.find((action) => action.value === displayedAction)?.descriptionClass,
                                 )}
                             >
                                 {actionDescriptions[displayedAction]}

@@ -149,7 +149,7 @@ export function SeatCard({
     return (
         <motion.div
             id={`seat-${seat.id}`}
-            className={`relative isolate flex ${heightClass} ${widthClass} flex-col rounded-xl bg-zinc-900 ${overlay ? 'hs-overlay-seat overflow-hidden border border-white/20 shadow-xl' : 'overflow-visible bg-zinc-900/60 backdrop-blur-sm'}`}
+            className={`relative isolate flex ${heightClass} ${widthClass} flex-col rounded-xl bg-zinc-900 ${overlay ? 'hs-overlay-seat overflow-visible border border-white/20 shadow-xl' : 'overflow-visible bg-zinc-900/60 backdrop-blur-sm'}`}
             style={fullHeight ? { ...borderStyle, ...aspectStyle } : borderStyle}
         >
             {showGlow && <SeatTurnGlow seatId={seat.id} glowRgb={glowRgb} />}
@@ -200,48 +200,48 @@ export function SeatCard({
                     )}
 
                     {button && (
-                        <div className="absolute top-2 left-2 rounded-lg bg-white px-2 py-1 text-xs font-semibold text-black shadow-lg border border-gray-400/50">
+                        <div className={`absolute top-1.5 left-1.5 rounded-md bg-white font-semibold text-black shadow-lg border border-gray-400/50 ${overlay ? 'px-1.5 py-0.5 text-[10px]' : 'px-2 py-1 text-xs'}`}>
                             BU
                         </div>
                     )}
                     {small && !button && (
-                        <div className="absolute top-2 left-2 rounded-lg bg-blue-600 px-2 py-1 text-xs font-semibold text-white shadow-lg border border-green-500/30">
+                        <div className={`absolute top-1.5 left-1.5 rounded-md bg-blue-600 font-semibold text-white shadow-lg border border-green-500/30 ${overlay ? 'px-1.5 py-0.5 text-[10px]' : 'px-2 py-1 text-xs'}`}>
                             SB
                         </div>
                     )}
                     {big && !button && (
-                        <div className="absolute top-2 left-2 rounded-lg bg-red-600 px-2 py-1 text-xs font-semibold text-white shadow-lg border border-red-500/50">
+                        <div className={`absolute top-1.5 left-1.5 rounded-md bg-red-600 font-semibold text-white shadow-lg border border-red-500/50 ${overlay ? 'px-1.5 py-0.5 text-[10px]' : 'px-2 py-1 text-xs'}`}>
                             BB
                         </div>
                     )}
                 </div>
 
-                <div className="absolute bottom-0 left-0 right-0 z-30 px-2 pb-2 pt-1 bg-gradient-to-t from-black/70 via-black/40 to-transparent">
+                <div className={`absolute bottom-0 left-0 right-0 z-30 bg-gradient-to-t from-black/70 via-black/40 to-transparent ${overlay ? 'px-1.5 pb-1.5 pt-1' : 'px-2 pb-2 pt-1'}`}>
                     <div className="flex items-end justify-between">
-                        <div className="flex flex-col gap-1 items-start">
+                        <div className={`flex flex-col items-start ${overlay ? 'gap-0.5' : 'gap-1'}`}>
                             {gameState === 'SHOWDOWN' && (seat.winAmount ?? 0) > 0 && (
-                                <div className="w-fit rounded-full text-xs font-medium text-center shadow-lg bg-green-600/30 border border-green-400/50 px-3 py-1 text-green-300">
+                                <div className={`w-fit rounded-full font-medium text-center shadow-lg bg-green-600/30 border border-green-400/50 text-green-300 ${overlay ? 'px-2 py-0.5 text-[10px]' : 'px-3 py-1 text-xs'}`}>
                                     <RollingNumber value={seat.winAmount ?? 0} prefix="+$" />
                                 </div>
                             )}
                             {seat.seatStatus === 'all-in' && (
-                                <div className="w-fit rounded-full text-xs font-medium text-center shadow-lg px-3 py-1 bg-yellow-600/30 border border-yellow-400/50 text-yellow-300">
+                                <div className={`w-fit rounded-full font-medium text-center shadow-lg bg-yellow-600/30 border border-yellow-400/50 text-yellow-300 ${overlay ? 'px-2 py-0.5 text-[10px]' : 'px-3 py-1 text-xs'}`}>
                                     ALL-IN
                                 </div>
                             )}
                             {seat.seatStatus === 'folded' && (
-                                <div className="w-fit rounded-full text-xs font-medium text-center shadow-lg px-3 py-1 bg-zinc-600/30 border border-zinc-400/50 text-zinc-300">
+                                <div className={`w-fit rounded-full font-medium text-center shadow-lg bg-zinc-600/30 border border-zinc-400/50 text-zinc-300 ${overlay ? 'px-2 py-0.5 text-[10px]' : 'px-3 py-1 text-xs'}`}>
                                     FOLDED
                                 </div>
                             )}
                             {seat.seatStatus === 'eliminated' && (
-                                <div className="w-fit rounded-full text-xs font-medium text-center shadow-lg px-3 py-1 bg-red-600/30 border border-red-400/50 text-red-300">
+                                <div className={`w-fit rounded-full font-medium text-center shadow-lg bg-red-600/30 border border-red-400/50 text-red-300 ${overlay ? 'px-2 py-0.5 text-[10px]' : 'px-3 py-1 text-xs'}`}>
                                     ELIMINATED
                                 </div>
                             )}
                             {seat.seatStatus === 'active' && gameState === 'BETTING' && seat.lastAction && (
                                 <div
-                                    className={`w-fit rounded-full text-xs font-medium text-center shadow-lg px-3 py-1 ${seat.lastAction === 'RAISE'
+                                    className={`w-fit rounded-full font-medium text-center shadow-lg ${overlay ? 'px-2 py-0.5 text-[10px]' : 'px-3 py-1 text-xs'} ${seat.lastAction === 'RAISE'
                                         ? 'bg-red-600/30 border border-red-400/50 text-red-300'
                                         : seat.lastAction === 'CALL'
                                             ? 'bg-blue-600/30 border border-blue-400/50 text-blue-300'
@@ -254,7 +254,7 @@ export function SeatCard({
                                 </div>
                             )}
                             <div
-                                className="rounded-full text-xs font-medium shadow-lg bg-green-600/30 border border-green-400/50 px-3 py-1 text-green-300 cursor-default overflow-hidden"
+                                className={`rounded-full font-medium shadow-lg bg-green-600/30 border border-green-400/50 text-green-300 cursor-default overflow-hidden ${overlay ? 'px-2 py-0.5 text-[10px]' : 'px-3 py-1 text-xs'}`}
                                 onMouseEnter={() => setTotalHovered(true)}
                                 onMouseLeave={() => setTotalHovered(false)}
                             >
@@ -291,7 +291,7 @@ export function SeatCard({
                                         key={`seat-${seat.id}-card-slot-${cardIndex}`}
                                         card={card}
                                         index={cardIndex}
-                                        size={overlay ? 26 : 30}
+                                        size={overlay ? 20 : 30}
                                         gameState={gameState}
                                         winningCards={seat.winningCards ?? undefined}
                                         seatId={seat.id}
@@ -309,7 +309,7 @@ export function SeatCard({
                         <motion.div
                             className={`absolute z-40 pointer-events-none ${
                                 overlay
-                                    ? 'right-2 top-12'
+                                    ? '-right-3 top-1/2 -translate-y-1/2'
                                     : `top-1/2 -translate-y-1/2 ${side === 'right' ? 'left-0 -translate-x-1/2' : 'right-0 translate-x-1/2'}`
                             }`}
                             initial={{ scale: 0, opacity: 0, rotate: -180 }}
@@ -319,9 +319,9 @@ export function SeatCard({
                         >
                             <div className="relative">
                                 <div className="absolute inset-0 rounded-full bg-black/30 blur-sm scale-95" />
-                                <div className={`relative rounded-full border-2 shadow-lg flex items-center justify-center bg-gradient-to-br from-yellow-400 via-yellow-500 to-yellow-600 border-yellow-300 ${overlay ? 'h-11 w-11' : 'h-14 w-14'}`}>
+                                <div className={`relative rounded-full border-2 shadow-lg flex items-center justify-center bg-gradient-to-br from-yellow-400 via-yellow-500 to-yellow-600 border-yellow-300 ${overlay ? 'h-8 w-8' : 'h-14 w-14'}`}>
                                     <div className="absolute inset-1 rounded-full border border-yellow-200/50" />
-                                    <RollingNumber value={seat.currentBet} className="relative text-sm font-bold" prefix="$" />
+                                    <RollingNumber value={seat.currentBet} className={`relative font-bold ${overlay ? 'text-[10px]' : 'text-sm'}`} prefix="$" />
                                 </div>
                             </div>
                         </motion.div>
@@ -332,7 +332,7 @@ export function SeatCard({
                     <div
                         className={`absolute z-40 pointer-events-none ${
                             overlay
-                                ? 'left-2 top-12'
+                                ? '-left-2 top-1/2 -translate-y-1/2'
                                 : `top-1/2 -translate-y-1/2 ${side === 'right' ? 'left-0 -translate-x-1/2' : 'right-0 translate-x-1/2'}`
                         }`}
                     >
@@ -350,7 +350,7 @@ export function SeatCard({
                     </div>
                 )}
 
-                <div className="absolute top-2 right-2 z-30">
+                <div className={`absolute z-30 ${overlay ? 'top-1.5 right-1.5' : 'top-2 right-2'}`}>
                     <AnimatePresence>
                         {isWinner && (
                             <motion.div
@@ -374,7 +374,7 @@ export function SeatCard({
                         )}
                     </AnimatePresence>
                     <div
-                        className={`relative z-10 rounded-lg px-3 py-1 text-xs font-semibold backdrop-blur-sm border ${isSelf
+                        className={`relative z-10 rounded-md font-semibold backdrop-blur-sm border ${overlay ? 'px-1.5 py-0.5 text-[10px]' : 'px-3 py-1 text-xs'} ${isSelf
                             ? 'bg-emerald-600/20 border-emerald-400/50 text-emerald-200'
                             : 'bg-black/80 border-white/10 text-white'
                             }`}
