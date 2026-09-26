@@ -11,6 +11,8 @@ interface ParticipantMuteButtonProps {
     playerId: string | null;
     /** Dealers mute server-side for everyone; other users mute locally for themselves only. */
     canControlAudio?: boolean;
+    /** Overlay fades in on hover; standalone stays visible (mobile toolbar). */
+    variant?: 'overlay' | 'standalone';
 }
 
 /**
@@ -22,7 +24,12 @@ interface ParticipantMuteButtonProps {
  *
  * Renders nothing when the player has no audio track.
  */
-export function ParticipantMuteButton({ tableId, playerId, canControlAudio }: ParticipantMuteButtonProps) {
+export function ParticipantMuteButton({
+    tableId,
+    playerId,
+    canControlAudio,
+    variant = 'overlay',
+}: ParticipantMuteButtonProps) {
     const audioRefs = useTracks([Track.Source.Microphone]);
     const audioTrackRef = playerId ? audioRefs.find(
         (t) => t.participant.identity === playerId && t.source === Track.Source.Microphone
@@ -68,22 +75,30 @@ export function ParticipantMuteButton({ tableId, playerId, canControlAudio }: Pa
         ? (isAudioMuted ? 'Unmute player microphone' : 'Mute player microphone')
         : (isLocallyMuted ? 'Unmute player for me' : 'Mute player for me');
 
+    const button = (
+        <button
+            type="button"
+            onClick={canControlAudio ? handleDealerToggleMute : handleToggleLocalMute}
+            disabled={canControlAudio ? isMuting : false}
+            className={`flex h-8 w-8 items-center justify-center rounded-md text-xs font-medium transition-colors ${buttonClasses}`}
+            aria-label={label}
+            title={label}
+        >
+            {(canControlAudio ? isAudioMuted : displayAudioMuted) ? (
+                <MicOff className="h-4 w-4" aria-hidden="true" />
+            ) : (
+                <Mic className="h-4 w-4" aria-hidden="true" />
+            )}
+        </button>
+    );
+
+    if (variant === 'standalone') {
+        return button;
+    }
+
     return (
-        <div className="pointer-events-auto absolute inset-0 flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-30">
-            <button
-                type="button"
-                onClick={canControlAudio ? handleDealerToggleMute : handleToggleLocalMute}
-                disabled={canControlAudio ? isMuting : false}
-                className={`flex h-8 w-8 items-center justify-center rounded-md text-xs font-medium transition-colors ${buttonClasses}`}
-                aria-label={label}
-                title={label}
-            >
-                {(canControlAudio ? isAudioMuted : displayAudioMuted) ? (
-                    <MicOff className="h-4 w-4" aria-hidden="true" />
-                ) : (
-                    <Mic className="h-4 w-4" aria-hidden="true" />
-                )}
-            </button>
+        <div className="pointer-events-auto absolute inset-0 z-30 flex items-center justify-center gap-1 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+            {button}
         </div>
     );
 }

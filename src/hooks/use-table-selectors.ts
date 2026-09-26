@@ -1,5 +1,5 @@
 import { useSession } from 'next-auth/react';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { selectTableSnapshot, useTableStore } from '~/stores/table-store';
 
 import type { SeatPlayer, SeatWithPlayer } from "~/server/api/table/types";
@@ -281,10 +281,35 @@ export function useCanVolunteerShow(userId: string | undefined) {
   }, [userId, gameState, currentSeat]);
 }
 
-/** Winner recorded on the latest tournament in the table snapshot. */
+const TOURNAMENT_WINNER_MODAL_WINDOW_MS = 60_000;
+
+function tournamentEndedAtMs(
+  endedAt: Date | string | null | undefined,
+): number | null {
+  if (!endedAt) return null;
+  const ms = new Date(endedAt).getTime();
+  return Number.isFinite(ms) ? ms : null;
+}
+
+/** Winner recorded on the latest tournament, only within 1 minute of it ending. */
 export function useTournamentWinner(): SeatPlayer | null {
   const snapshot = useTableStore(selectTableSnapshot);
-  return snapshot?.tournament?.winner ?? null;
+  const winner = snapshot?.tournament?.winner ?? null;
+  const winnerId = winner?.id ?? null;
+  const endedAtMs = tournamentEndedAtMs(snapshot?.tournament?.endedAt);
+  const [, setTick] = useState(0);
+
+  useEffect(() => {
+    if (!winnerId || endedAtMs == null) return;
+    const remaining = endedAtMs + TOURNAMENT_WINNER_MODAL_WINDOW_MS - Date.now();
+    if (remaining <= 0) return;
+    const id = window.setTimeout(() => setTick((n) => n + 1), remaining);
+    return () => window.clearTimeout(id);
+  }, [winnerId, endedAtMs]);
+
+  if (!winner || endedAtMs == null) return null;
+  if (Date.now() - endedAtMs > TOURNAMENT_WINNER_MODAL_WINDOW_MS) return null;
+  return winner;
 }
 
 export function useSidePotDetails() {

@@ -68,8 +68,7 @@ function fireGoldenFireworks(isSelf: boolean) {
 }
 
 /**
- * Shown when the game is over and only one player remains (everyone else
- * eliminated). Renders a centered dialog with the winner's name and confetti.
+ * Shown for one minute after a tournament ends with a recorded winner.
  * The winner themselves gets a personalized "YOU WON" celebration.
  */
 export function WinnerDialog() {

@@ -2,6 +2,7 @@ import { useSession } from 'next-auth/react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { HandCamera } from '~/components/table/camera/hand-camera';
 import { LeaveTableButton } from '~/components/table/leave-table-button';
+import { MobileSeatMediaControls } from '~/components/table/mobile/seat-media-controls';
 import { SeatCard } from '~/components/table/seat';
 import {
     useBlindSeatNumbers,
@@ -68,6 +69,8 @@ export function MobileSeatOverlay({ handRoomName }: { handRoomName: string | nul
     const highlightedSeatId = useHighlightedSeatId();
     const mySeatId = useCurrentUserSeatId(userId);
     const tableId = useTableId();
+
+    const isDealerRole = useIsDealerRole();
 
     const occupiedSeats = useMemo(
         () => originalSeats
@@ -162,8 +165,16 @@ export function MobileSeatOverlay({ handRoomName }: { handRoomName: string | nul
                     left: 'max(0.5rem, env(safe-area-inset-left))',
                 }}
             >
-                <div className="absolute -top-9 left-0 z-50">
+                <div className="mb-1 flex items-center gap-1">
                     <LeaveTableButton compact />
+                    {displayedSeat && (
+                        <MobileSeatMediaControls
+                            seat={displayedSeat}
+                            tableId={tableId}
+                            myUserId={userId}
+                            dealerCanControlAudio={isDealerRole}
+                        />
+                    )}
                 </div>
 
                 {displayedSeat ? (
