@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion';
 import { Coins } from 'lucide-react';
 import { useSession } from 'next-auth/react';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from '~/components/ui/button';
 import { RollingNumber } from '~/components/table/chips/chip-animations';
 import { GlowingEffect } from '~/components/effects/glowing-effect';
@@ -43,11 +43,6 @@ export function VerticalRaiseControls({ compact = false }: VerticalRaiseControls
         }
     }, [minRaiseIncrement, currentBetTarget]);
 
-    // Handle raise action
-    const handleRaise = () => {
-        performAction('RAISE', { amount: raiseAmount });
-    };
-
     // Handle fold action
     const handleFold = () => {
         performAction('FOLD');
@@ -80,6 +75,9 @@ export function VerticalRaiseControls({ compact = false }: VerticalRaiseControls
 
     const [inputValue, setInputValue] = useState<string>(validatedAmount.toString());
     const [isEditing, setIsEditing] = useState(false);
+    const inputRef = useRef<HTMLInputElement>(null);
+    const inputValueRef = useRef(inputValue);
+    inputValueRef.current = inputValue;
 
     useEffect(() => {
         if (!isEditing) {
@@ -105,19 +103,54 @@ export function VerticalRaiseControls({ compact = false }: VerticalRaiseControls
         setInputValue(rawValue);
     };
 
-    // Handle input blur - finalize the value
-    const handleInputBlur = () => {
+    const commitInputValue = useCallback(() => {
         setIsEditing(false);
-        const numValue = parseInt(inputValue, 10);
+        const rawValue = inputValueRef.current;
+        const numValue = parseInt(rawValue, 10);
 
-        if (isNaN(numValue) || inputValue === '') {
+        if (isNaN(numValue) || rawValue === '') {
             setInputValue(validatedAmount.toString());
-        } else {
-            const validated = clampAmount(numValue);
-            setInputValue(validated.toString());
-            handleAmountChange(validated);
+            return validatedAmount;
         }
+
+        const validated = clampAmount(numValue);
+        setInputValue(validated.toString());
+        setRaiseAmount(validated);
+        return validated;
+    }, [validatedAmount, minRaise, maxBetAmount]);
+
+    const handleRaise = () => {
+        const amount = isEditing ? commitInputValue() : validatedAmount;
+        performAction('RAISE', { amount });
     };
+
+    // Handle input blur / keyboard dismiss - finalize the value
+    const handleInputBlur = () => {
+        commitInputValue();
+    };
+
+    // Mobile keyboards (especially Android back) often hide without firing blur.
+    useEffect(() => {
+        if (!isEditing) return;
+        const viewport = window.visualViewport;
+        if (!viewport) return;
+
+        let previousHeight = viewport.height;
+        const handleViewportResize = () => {
+            const nextHeight = viewport.height;
+            const grew = nextHeight - previousHeight;
+            previousHeight = nextHeight;
+            if (grew > 80) {
+                commitInputValue();
+                inputRef.current?.blur();
+            }
+        };
+
+        viewport.addEventListener('resize', handleViewportResize);
+        return () => {
+            viewport.removeEventListener('resize', handleViewportResize);
+        };
+    }, [isEditing, commitInputValue]);
 
     // Handle input focus
     const handleInputFocus = (e: React.FocusEvent<HTMLInputElement>) => {
@@ -126,7 +159,7 @@ export function VerticalRaiseControls({ compact = false }: VerticalRaiseControls
         e.target.select();
     };
 
-    // Handle Enter key to submit
+    // Handle Enter / Done to commit
     const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
         if (e.key === 'Enter') {
             e.currentTarget.blur(); // This will trigger handleInputBlur
@@ -240,6 +273,7 @@ export function VerticalRaiseControls({ compact = false }: VerticalRaiseControls
                             Pot
                         </Button>
                         <input
+                            ref={inputRef}
                             type="text"
                             value={inputValue}
                             onChange={handleInputChange}
@@ -249,6 +283,7 @@ export function VerticalRaiseControls({ compact = false }: VerticalRaiseControls
                             className="h-6 w-11 shrink-0 rounded-md border border-white/10 bg-zinc-800/80 px-1 text-center text-[10px] text-white outline-none focus:ring-1 focus:ring-orange-400/50"
                             inputMode="numeric"
                             pattern="[0-9]*"
+                            enterKeyHint="done"
                         />
                     </div>
                 </div>
@@ -292,6 +327,7 @@ export function VerticalRaiseControls({ compact = false }: VerticalRaiseControls
                                 )}
                             >
                                 <input
+                                    ref={inputRef}
                                     type="text"
                                     value={inputValue}
                                     onChange={handleInputChange}
@@ -302,6 +338,7 @@ export function VerticalRaiseControls({ compact = false }: VerticalRaiseControls
                                     placeholder={validatedAmount.toString()}
                                     inputMode="numeric"
                                     pattern="[0-9]*"
+                                    enterKeyHint="done"
                                 />
                             </TooltipContent>
                         </Tooltip>
