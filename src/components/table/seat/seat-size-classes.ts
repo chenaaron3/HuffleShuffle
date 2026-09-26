@@ -8,7 +8,7 @@ export function getSeatSizeClasses(fullHeight: boolean, overlay = false, fill = 
     }
     if (overlay) {
         return {
-            heightClass: 'h-20 min-h-20',
+            heightClass: 'h-[6.25rem] min-h-[6.25rem]',
             widthClass: 'w-40 min-w-40 shrink-0',
             aspectStyle: undefined,
         };

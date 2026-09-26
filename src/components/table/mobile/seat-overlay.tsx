@@ -183,7 +183,7 @@ export function MobileSeatOverlay({ handRoomName }: { handRoomName: string | nul
                         <MobileOverlaySeat seat={displayedSeat} />
                     </div>
                 ) : (
-                    <div className="flex h-20 w-40 items-center justify-center rounded-lg border border-dashed border-zinc-500/50 bg-zinc-900/30 text-xs text-zinc-400">
+                    <div className="flex h-[6.25rem] w-40 items-center justify-center rounded-lg border border-dashed border-zinc-500/50 bg-zinc-900/30 text-xs text-zinc-400">
                         No players
                     </div>
                 )}
