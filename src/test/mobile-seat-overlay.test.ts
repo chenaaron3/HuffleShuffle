@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   resolveDisplayedSeatId,
+  resolveShowdownWinnerSeatId,
   shouldClearManualSeatSelection,
 } from "~/components/table/mobile/seat-overlay-logic";
 
@@ -71,6 +72,36 @@ describe("resolveDisplayedSeatId", () => {
         mySeatId: "seat-me",
         occupiedSeatIds: [],
       }),
+    ).toBeNull();
+  });
+});
+
+describe("resolveShowdownWinnerSeatId", () => {
+  it("picks the seat with the largest win amount", () => {
+    expect(
+      resolveShowdownWinnerSeatId([
+        { id: "seat-a", winAmount: 40 },
+        { id: "seat-b", winAmount: 120 },
+        { id: "seat-c", winAmount: 80 },
+      ]),
+    ).toBe("seat-b");
+  });
+
+  it("keeps the first seat when win amounts tie", () => {
+    expect(
+      resolveShowdownWinnerSeatId([
+        { id: "seat-a", winAmount: 100 },
+        { id: "seat-b", winAmount: 100 },
+      ]),
+    ).toBe("seat-a");
+  });
+
+  it("returns null when nobody won chips", () => {
+    expect(
+      resolveShowdownWinnerSeatId([
+        { id: "seat-a", winAmount: 0 },
+        { id: "seat-b" },
+      ]),
     ).toBeNull();
   });
 });

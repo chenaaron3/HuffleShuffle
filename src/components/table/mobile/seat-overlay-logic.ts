@@ -1,3 +1,18 @@
+export function resolveShowdownWinnerSeatId(
+  seats: readonly { id: string; winAmount?: number | null }[],
+): string | null {
+  let bestId: string | null = null;
+  let bestAmount = 0;
+  for (const seat of seats) {
+    const amount = seat.winAmount ?? 0;
+    if (amount > bestAmount) {
+      bestAmount = amount;
+      bestId = seat.id;
+    }
+  }
+  return bestId;
+}
+
 export function resolveDisplayedSeatId({
   selectedSeatId,
   highlightedSeatId,

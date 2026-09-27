@@ -17,6 +17,7 @@ import {
 
 import {
     resolveDisplayedSeatId,
+    resolveShowdownWinnerSeatId,
     shouldClearManualSeatSelection,
 } from './seat-overlay-logic';
 
@@ -66,6 +67,7 @@ export function MobileSeatOverlay({ handRoomName }: { handRoomName: string | nul
     const { data: session } = useSession();
     const userId = session?.user?.id;
     const originalSeats = useOriginalSeats();
+    const gameState = useGameState();
     const highlightedSeatId = useHighlightedSeatId();
     const mySeatId = useCurrentUserSeatId(userId);
     const tableId = useTableId();
@@ -82,27 +84,35 @@ export function MobileSeatOverlay({ handRoomName }: { handRoomName: string | nul
         () => occupiedSeats.map((seat) => seat.id),
         [occupiedSeats],
     );
+    const winnerSeatId = useMemo(
+        () =>
+            gameState === 'SHOWDOWN'
+                ? resolveShowdownWinnerSeatId(occupiedSeats)
+                : null,
+        [gameState, occupiedSeats],
+    );
+    const overlayHighlightedSeatId = highlightedSeatId ?? winnerSeatId;
 
     const [pickerOpen, setPickerOpen] = useState(false);
     const [selectedSeatId, setSelectedSeatId] = useState<string | null>(null);
-    const previousHighlightRef = useRef<string | null>(highlightedSeatId);
+    const previousHighlightRef = useRef<string | null>(overlayHighlightedSeatId);
 
     useEffect(() => {
         const { clearSelection, nextPreviousHighlightedSeatId } =
             shouldClearManualSeatSelection({
                 pickerOpen,
                 previousHighlightedSeatId: previousHighlightRef.current,
-                highlightedSeatId,
+                highlightedSeatId: overlayHighlightedSeatId,
             });
         previousHighlightRef.current = nextPreviousHighlightedSeatId;
         if (clearSelection) {
             setSelectedSeatId(null);
         }
-    }, [highlightedSeatId, pickerOpen]);
+    }, [overlayHighlightedSeatId, pickerOpen]);
 
     const displayedSeatId = resolveDisplayedSeatId({
         selectedSeatId,
-        highlightedSeatId,
+        highlightedSeatId: overlayHighlightedSeatId,
         mySeatId,
         occupiedSeatIds,
     });
