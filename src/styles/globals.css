@@ -183,3 +183,21 @@ body {
     display: none !important;
   }
 }
+
+.hs-square-media-btn.lk-button {
+  display: flex !important;
+  width: 1.5rem !important;
+  height: 1.5rem !important;
+  min-width: 1.5rem !important;
+  padding: 0 !important;
+  background-color: rgb(255 255 255 / 0.9) !important;
+  color: #000 !important;
+  border-radius: 0.375rem !important;
+}
+.hs-square-media-btn.lk-button:hover {
+  background-color: #fff !important;
+}
+.hs-square-media-btn.lk-button svg {
+  width: 0.875rem !important;
+  height: 0.875rem !important;
+}

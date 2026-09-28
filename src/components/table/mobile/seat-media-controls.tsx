@@ -23,14 +23,14 @@ export function MobileSeatMediaControls({
     const isSelf = !!myUserId && playerId === myUserId;
 
     return (
-        <div className="flex items-center gap-1">
+        <div className="flex flex-col items-center gap-0.5">
             {isSelf ? (
                 <>
-                    <BackgroundBlurToggle className="h-8 bg-black/50 px-1.5" />
+                    <BackgroundBlurToggle compact className="bg-black/50" />
                     <TrackToggle
                         source={Track.Source.Microphone}
                         showIcon
-                        className="flex h-8 w-8 items-center justify-center rounded-md bg-white/90 text-xs font-medium text-black hover:bg-white"
+                        className="hs-square-media-btn flex h-6 w-6 items-center justify-center overflow-hidden rounded-md bg-white/90 text-xs font-medium text-black hover:bg-white"
                         aria-label="Toggle microphone"
                         title="Toggle microphone"
                     />

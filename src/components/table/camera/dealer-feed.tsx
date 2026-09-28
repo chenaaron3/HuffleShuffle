@@ -13,6 +13,7 @@ import {
 import { ParticipantTile, useTracks, VideoTrack } from '@livekit/components-react';
 
 import { ActionButtons } from '~/components/table/betting/action-buttons';
+import { MobileSeatHud } from '~/components/table/mobile/seat-hud';
 import { PotAndBlindsDisplay } from '~/components/table/pot/pot-blinds-display';
 import { SidePotDetails } from '~/components/table/pot/side-pot-details';
 
@@ -90,7 +91,8 @@ export function DealerFeed({
                 : 'absolute inset-0 z-40 flex w-full transform flex-col items-end gap-2 p-4 pointer-events-none'
             }>
                 <PotAndBlindsDisplay compact={compact} className="shrink-0" />
-                <SidePotDetails className="pointer-events-auto" />
+                {compact && <MobileSeatHud />}
+                {!compact && <SidePotDetails className="pointer-events-auto" />}
             </div>
 
             <AnimatePresence mode="wait">

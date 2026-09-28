@@ -75,24 +75,30 @@ export function ParticipantMuteButton({
         ? (isAudioMuted ? 'Unmute player microphone' : 'Mute player microphone')
         : (isLocallyMuted ? 'Unmute player for me' : 'Mute player for me');
 
+    const isStandalone = variant === 'standalone';
+    const buttonSizeClass = isStandalone
+        ? 'h-6 w-6'
+        : 'h-8 w-8';
+    const iconClass = isStandalone ? 'h-3.5 w-3.5' : 'h-4 w-4';
+
     const button = (
         <button
             type="button"
             onClick={canControlAudio ? handleDealerToggleMute : handleToggleLocalMute}
             disabled={canControlAudio ? isMuting : false}
-            className={`flex h-8 w-8 items-center justify-center rounded-md text-xs font-medium transition-colors ${buttonClasses}`}
+            className={`flex ${buttonSizeClass} items-center justify-center rounded-md text-xs font-medium transition-colors ${buttonClasses}`}
             aria-label={label}
             title={label}
         >
             {(canControlAudio ? isAudioMuted : displayAudioMuted) ? (
-                <MicOff className="h-4 w-4" aria-hidden="true" />
+                <MicOff className={iconClass} aria-hidden="true" />
             ) : (
-                <Mic className="h-4 w-4" aria-hidden="true" />
+                <Mic className={iconClass} aria-hidden="true" />
             )}
         </button>
     );
 
-    if (variant === 'standalone') {
+    if (isStandalone) {
         return button;
     }
 

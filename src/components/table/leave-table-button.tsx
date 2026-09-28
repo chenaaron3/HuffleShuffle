@@ -1,3 +1,4 @@
+import { Loader2, SquareArrowLeft } from 'lucide-react';
 import { useRouter } from 'next/router';
 import { useIsDealerAtTable, useIsHandInProgress, useIsJoinable, useIsSpectator, useTableId } from '~/hooks/use-table-selectors';
 import { cn } from '~/lib/utils';
@@ -46,18 +47,30 @@ export function LeaveTableButton({ compact = false }: LeaveTableButtonProps) {
     }
 
     return (
-        <div className={compact ? undefined : 'absolute bottom-4 left-4'}>
-            <button
-                onClick={handleLeaveTable}
-                disabled={isLeaving}
-                className={cn(
-                    'transition-all duration-200 hover:scale-105 shadow-lg bg-red-600/90 text-white font-semibold border border-red-500/50 backdrop-blur',
-                    compact ? 'rounded-md px-2 py-1 text-xs' : 'rounded-lg px-4 py-2',
-                )}
-            >
-                {isLeaving ? 'Leaving...' : compact ? 'Leave' : 'Leave Table'}
-            </button>
-        </div>
+        <button
+            onClick={handleLeaveTable}
+            disabled={isLeaving}
+            aria-label={isLeaving ? 'Leaving table' : 'Leave table'}
+            title={isLeaving ? 'Leaving...' : compact ? 'Leave table' : 'Leave Table'}
+            className={cn(
+                'transition-all duration-200 hover:scale-105 shadow-lg bg-red-600/90 text-white font-semibold border border-red-500/50 backdrop-blur',
+                compact
+                    ? 'flex h-6 w-6 items-center justify-center rounded-md'
+                    : 'rounded-lg px-4 py-2',
+            )}
+        >
+            {compact ? (
+                isLeaving ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+                ) : (
+                    <SquareArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
+                )
+            ) : isLeaving ? (
+                'Leaving...'
+            ) : (
+                'Leave Table'
+            )}
+        </button>
     );
 }
 

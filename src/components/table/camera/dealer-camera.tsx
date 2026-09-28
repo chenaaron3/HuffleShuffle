@@ -21,11 +21,10 @@ export function DealerCamera() {
 
     return (
         <DealerFeed>
-            <div className="absolute bottom-4 left-4">
+            <div className="absolute bottom-4 left-4 z-50 flex flex-col items-start gap-2">
                 <TurnIndicator />
+                <LeaveTableButton />
             </div>
-
-            <LeaveTableButton />
 
             <AnimatePresence mode="wait">
                 {isPlayerTurn && (

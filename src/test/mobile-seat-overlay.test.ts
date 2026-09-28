@@ -4,6 +4,7 @@ import {
   resolveDisplayedSeatId,
   resolveShowdownWinnerSeatId,
   shouldClearManualSeatSelection,
+  shouldReleasePin,
 } from "~/components/table/mobile/seat-overlay-logic";
 
 describe("resolveDisplayedSeatId", () => {
@@ -133,6 +134,20 @@ describe("shouldClearManualSeatSelection", () => {
     });
   });
 
+  it("does not snap when the video is pinned", () => {
+    expect(
+      shouldClearManualSeatSelection({
+        pickerOpen: false,
+        pinned: true,
+        previousHighlightedSeatId: "seat-a",
+        highlightedSeatId: "seat-b",
+      }),
+    ).toEqual({
+      clearSelection: false,
+      nextPreviousHighlightedSeatId: "seat-b",
+    });
+  });
+
   it("does not snap when the highlight is unchanged", () => {
     expect(
       shouldClearManualSeatSelection({
@@ -144,5 +159,37 @@ describe("shouldClearManualSeatSelection", () => {
       clearSelection: false,
       nextPreviousHighlightedSeatId: "seat-a",
     });
+  });
+});
+
+describe("shouldReleasePin", () => {
+  it("releases when the pinned seat leaves the table", () => {
+    expect(
+      shouldReleasePin({
+        pinned: true,
+        selectedSeatId: "seat-gone",
+        occupiedSeatIds: ["seat-a", "seat-b"],
+      }),
+    ).toBe(true);
+  });
+
+  it("keeps the pin while the seat is occupied", () => {
+    expect(
+      shouldReleasePin({
+        pinned: true,
+        selectedSeatId: "seat-a",
+        occupiedSeatIds: ["seat-a", "seat-b"],
+      }),
+    ).toBe(false);
+  });
+
+  it("does not release when nothing is pinned", () => {
+    expect(
+      shouldReleasePin({
+        pinned: false,
+        selectedSeatId: "seat-gone",
+        occupiedSeatIds: ["seat-a"],
+      }),
+    ).toBe(false);
   });
 });

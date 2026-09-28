@@ -1,3 +1,11 @@
+/** Column count for the expanded mobile player grid. */
+export function playerGridColumnCount(seatCount: number): number {
+  if (seatCount <= 1) return 1;
+  if (seatCount <= 4) return 2;
+  if (seatCount <= 6) return 3;
+  return 4;
+}
+
 export function resolveShowdownWinnerSeatId(
   seats: readonly { id: string; winAmount?: number | null }[],
 ): string | null {
@@ -32,14 +40,16 @@ export function resolveDisplayedSeatId({
 
 export function shouldClearManualSeatSelection({
   pickerOpen,
+  pinned = false,
   previousHighlightedSeatId,
   highlightedSeatId,
 }: {
   pickerOpen: boolean;
+  pinned?: boolean;
   previousHighlightedSeatId: string | null;
   highlightedSeatId: string | null;
 }): { clearSelection: boolean; nextPreviousHighlightedSeatId: string | null } {
-  if (pickerOpen) {
+  if (pickerOpen || pinned) {
     return {
       clearSelection: false,
       nextPreviousHighlightedSeatId: highlightedSeatId,
@@ -49,4 +59,17 @@ export function shouldClearManualSeatSelection({
     clearSelection: previousHighlightedSeatId !== highlightedSeatId,
     nextPreviousHighlightedSeatId: highlightedSeatId,
   };
+}
+
+export function shouldReleasePin({
+  pinned,
+  selectedSeatId,
+  occupiedSeatIds,
+}: {
+  pinned: boolean;
+  selectedSeatId: string | null;
+  occupiedSeatIds: readonly string[];
+}): boolean {
+  if (!pinned || !selectedSeatId) return false;
+  return !occupiedSeatIds.includes(selectedSeatId);
 }
