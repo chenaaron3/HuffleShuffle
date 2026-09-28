@@ -80,6 +80,7 @@ export default function TableView() {
         gameState: state,
         bettingActorSeatId,
         currentBetTarget,
+        enabled: !isSpectator,
     });
 
     // --- Dealer timer hook ---

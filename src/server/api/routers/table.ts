@@ -39,6 +39,7 @@ import {
 } from "~/server/api/game/helpers/cards";
 import { grantBotFunds } from "~/server/api/ledger";
 import { resolveLiveKitAccess } from "~/server/api/table/livekit-access";
+import { assertTableParticipant } from "~/server/api/table/membership";
 import {
   createSeatTransaction,
   removePlayerSeatTransaction,
@@ -234,6 +235,7 @@ export const tableRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
       ensureDealerRole(ctx.session.user.role);
+      await assertTableParticipant(userId, input.tableId);
 
       await withTableMutation(db, input.tableId, async (tx) => {
         // Get the table
@@ -378,6 +380,7 @@ export const tableRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
       ensurePlayerRole(ctx.session.user.role);
+      await assertTableParticipant(userId, input.tableId);
 
       const result = await withTableMutation(db, input.tableId, async (tx) => {
         return await removePlayerSeatTransaction(tx, {
@@ -401,6 +404,7 @@ export const tableRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
       ensureDealerRole(ctx.session.user.role);
+      await assertTableParticipant(userId, input.tableId);
 
       const result = await withTableMutation(db, input.tableId, async (tx) => {
         const snapshot = await tx.query.pokerTables.findFirst({
@@ -498,6 +502,7 @@ export const tableRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
       ensureDealerRole(ctx.session.user.role);
+      await assertTableParticipant(userId, input.tableId);
 
       const result = await withTableMutation(db, input.tableId, async (tx) => {
         const table = await tx.query.pokerTables.findFirst({
@@ -532,6 +537,7 @@ export const tableRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
       ensureDealerRole(ctx.session.user.role);
+      await assertTableParticipant(userId, input.tableId);
 
       const result = await withTableMutation(db, input.tableId, async (tx) => {
         // Verify caller is the dealer of this table
@@ -565,6 +571,7 @@ export const tableRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
       ensureDealerRole(ctx.session.user.role);
+      await assertTableParticipant(userId, input.tableId);
 
       const table = await db.query.pokerTables.findFirst({
         where: eq(pokerTables.id, input.tableId),
@@ -621,6 +628,7 @@ export const tableRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
       ensurePlayerRole(ctx.session.user.role);
+      await assertTableParticipant(userId, input.tableId);
       const result = await withTableMutation(db, input.tableId, async (tx) => {
         // Verify table exists, is joinable, and batch seats + pi devices
         const table = await tx.query.pokerTables.findFirst({
@@ -750,6 +758,7 @@ export const tableRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
+      await assertTableParticipant(userId, input.tableId);
       await withTableMutation(db, input.tableId, async (tx) => {
         // Deal path: resolve card / SQS in the adapter, then dispatch CARD_DEALT when inline.
         if (input.action === "DEAL_CARD" || input.action === "DEAL_RANDOM") {
@@ -881,6 +890,7 @@ export const tableRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
       ensureDealerRole(ctx.session.user.role);
+      await assertTableParticipant(userId, input.tableId);
 
       await withTableMutation(db, input.tableId, async (tx) => {
         await dispatchGameEvent(

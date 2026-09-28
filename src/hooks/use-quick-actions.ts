@@ -11,6 +11,7 @@ interface UseQuickActionsParams {
   gameState: string | undefined;
   bettingActorSeatId: string | null;
   currentBetTarget: number;
+  enabled?: boolean;
 }
 
 /**
@@ -23,6 +24,7 @@ export function useQuickActions({
   gameState,
   bettingActorSeatId,
   currentBetTarget,
+  enabled = true,
 }: UseQuickActionsParams) {
   const [quickAction, setQuickAction] = React.useState<QuickActionType>(null);
   const setSnapshot = useTableStore(selectSetSnapshot);
@@ -58,7 +60,7 @@ export function useQuickActions({
 
   // Execute quick action when it's the player's turn
   React.useEffect(() => {
-    if (!quickAction || !currentSeat || gameState !== "BETTING") return;
+    if (!enabled || !quickAction || !currentSeat || gameState !== "BETTING") return;
 
     const isMyTurn = bettingActorSeatId === currentSeat.id;
     if (!isMyTurn) return;
@@ -90,6 +92,7 @@ export function useQuickActions({
     tableId,
     action,
     setSnapshot,
+    enabled,
   ]);
 
   return {
