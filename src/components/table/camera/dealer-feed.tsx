@@ -6,7 +6,7 @@ import {
     useCommunityCards,
     useDealerId,
     useGameState,
-    useIsDealerRole,
+    useIsDealerAtTable,
     useWinningCards,
 } from '~/hooks/use-table-selectors';
 
@@ -27,7 +27,7 @@ export function DealerFeed({
     const gameStatus = useGameState();
     const winningCards = useWinningCards();
     const dealerUserId = useDealerId();
-    const isDealer = useIsDealerRole();
+    const isDealer = useIsDealerAtTable();
 
     const trackRefs = useTracks([Track.Source.Camera]);
     const dealerRef = dealerUserId

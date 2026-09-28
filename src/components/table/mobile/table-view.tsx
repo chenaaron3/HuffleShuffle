@@ -6,7 +6,7 @@ import {
     useCanVolunteerShow,
     useCurrentSeat,
     useGameState,
-    useIsDealerRole,
+    useIsDealerAtTable,
     useIsPlayerTurn,
 } from '~/hooks/use-table-selectors';
 
@@ -32,7 +32,7 @@ export function MobileTableView({
     const { data: session } = useSession();
     const userId = session?.user?.id;
     const gameStatus = useGameState();
-    const isDealer = useIsDealerRole();
+    const isDealer = useIsDealerAtTable();
     const isPlayerTurn = useIsPlayerTurn(userId);
     const currentSeat = useCurrentSeat(userId);
     const canVolunteerShow = useCanVolunteerShow(userId);

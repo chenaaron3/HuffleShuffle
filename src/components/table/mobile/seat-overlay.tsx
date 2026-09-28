@@ -9,7 +9,7 @@ import {
     useCurrentUserSeatId,
     useGameState,
     useHighlightedSeatId,
-    useIsDealerRole,
+    useIsDealerAtTable,
     useOriginalSeats,
     useTableId,
     useTurnStartTime,
@@ -38,7 +38,7 @@ function MobileOverlaySeat({ seat, fill = false }: { seat: SeatWithPlayer; fill?
     const gameState = useGameState();
     const turnStartTime = useTurnStartTime();
     const tableId = useTableId();
-    const isDealerRole = useIsDealerRole();
+    const isDealerAtTable = useIsDealerAtTable();
 
     return (
         <SeatCard
@@ -56,7 +56,7 @@ function MobileOverlaySeat({ seat, fill = false }: { seat: SeatWithPlayer; fill?
             canMoveSeat={false}
             turnStartTime={turnStartTime}
             tableId={tableId}
-            dealerCanControlAudio={isDealerRole}
+            dealerCanControlAudio={isDealerAtTable}
             overlay
             fill={fill}
         />
@@ -72,7 +72,7 @@ export function MobileSeatOverlay({ handRoomName }: { handRoomName: string | nul
     const mySeatId = useCurrentUserSeatId(userId);
     const tableId = useTableId();
 
-    const isDealerRole = useIsDealerRole();
+    const isDealerAtTable = useIsDealerAtTable();
 
     const occupiedSeats = useMemo(
         () => originalSeats
@@ -182,7 +182,7 @@ export function MobileSeatOverlay({ handRoomName }: { handRoomName: string | nul
                             seat={displayedSeat}
                             tableId={tableId}
                             myUserId={userId}
-                            dealerCanControlAudio={isDealerRole}
+                            dealerCanControlAudio={isDealerAtTable}
                         />
                     )}
                 </div>

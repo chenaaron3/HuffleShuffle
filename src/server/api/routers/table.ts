@@ -38,6 +38,7 @@ import {
   parseRankSuitToBarcode,
 } from "~/server/api/game/helpers/cards";
 import { grantBotFunds } from "~/server/api/ledger";
+import { resolveLiveKitAccess } from "~/server/api/table/livekit-access";
 import {
   createSeatTransaction,
   removePlayerSeatTransaction,
@@ -73,20 +74,26 @@ export const tableRouter = createTRPCRouter({
       });
       if (!table) throw new Error("Table not found");
 
-      // Authorization: dealer of this table OR seated player at this table
-      let authorized = false;
-      if (ctx.session.user.role === "dealer" && table.dealerId === userId) {
-        authorized = true;
-      } else if (ctx.session.user.role === "player") {
-        const seat = await db.query.seats.findFirst({
-          where: and(
-            eq(seats.tableId, input.tableId),
-            eq(seats.playerId, userId),
-          ),
-        });
-        authorized = !!seat;
+      const seat = await db.query.seats.findFirst({
+        where: and(
+          eq(seats.tableId, input.tableId),
+          eq(seats.playerId, userId),
+        ),
+        columns: { id: true },
+      });
+      const access = resolveLiveKitAccess({
+        tableDealerId: table.dealerId,
+        userId,
+        seatedAtThisTable: !!seat,
+      });
+      // Spectators may only join the public table room, not private hand rooms.
+      if (
+        access === "subscribe" &&
+        input.roomName &&
+        input.roomName !== input.tableId
+      ) {
+        throw new Error("FORBIDDEN: not part of this table");
       }
-      if (!authorized) throw new Error("FORBIDDEN: not part of this table");
 
       const apiKey = process.env.LIVEKIT_API_KEY;
       const apiSecret = process.env.LIVEKIT_API_SECRET;
@@ -95,10 +102,10 @@ export const tableRouter = createTRPCRouter({
         throw new Error("LiveKit env vars are not configured");
       }
 
-      // Create grant for this room (tableId). Participants can publish and subscribe.
+      // Create grant for this room (tableId). Spectators subscribe only.
       const grant: VideoGrant = {
         room: input.roomName ?? input.tableId,
-        canPublish: true,
+        canPublish: access === "publish",
         canSubscribe: true,
         roomJoin: true,
       } as VideoGrant;

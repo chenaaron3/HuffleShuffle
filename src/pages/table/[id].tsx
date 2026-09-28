@@ -25,8 +25,8 @@ import { useTableEvents } from '~/hooks/use-table-events';
 import { useTableQuery } from '~/hooks/use-table-query';
 import { useTableRealtimePusher } from '~/hooks/use-table-realtime-pusher';
 import {
-    useBettingActorSeatId, useCurrentSeat, useGameState, useIsDealerRole,
-    useCurrentBetTarget, useIsPlayerTurn, useOriginalSeats, useTableSnapshot
+    useBettingActorSeatId, useCurrentSeat, useGameState, useIsDealerAtTable,
+    useCurrentBetTarget, useIsPlayerTurn, useIsSpectator, useOriginalSeats, useTableSnapshot
 } from '~/hooks/use-table-selectors';
 import { requireAuth } from '~/server/auth/guards';
 import { api } from '~/utils/api';
@@ -44,7 +44,8 @@ export default function TableView() {
     const { data: session } = useSession();
     const { enabled: backgroundBlurEnabled } = useBackgroundBlur();
     const [showSetup, setShowSetup] = React.useState<boolean>(false);
-    const isDealerRole = useIsDealerRole();
+    const isDealerAtTable = useIsDealerAtTable();
+    const isSpectator = useIsSpectator();
 
     // Use the hook that manages query and updates store
     const tableQuery = useTableQuery(id);
@@ -82,7 +83,6 @@ export default function TableView() {
     });
 
     // --- Dealer timer hook ---
-    const isDealerAtTable = isDealerRole && snapshot?.table?.dealerId === session?.user?.id;
     useDealerTimer({
         tableId: id ?? '',
         gameState: state,
@@ -138,10 +138,16 @@ export default function TableView() {
         };
     }, []);
 
-    // LiveKit: fetch token when tableId is known and user is part of the table
+    React.useEffect(() => {
+        if (tableQuery.isError) {
+            void router.replace('/lobby');
+        }
+    }, [tableQuery.isError, router]);
+
+    // LiveKit: seated players and this table's dealer publish; spectators subscribe.
     const livekit = api.table.livekitToken.useQuery(
         { tableId: id ?? '' },
-        { enabled: !!id && !!session?.user?.id }
+        { enabled: !!id && !!session?.user?.id && !tableQuery.isError },
     );
 
     const canRenderLivekit = Boolean(id && livekit.data?.token && livekit.data?.serverUrl);
@@ -162,7 +168,10 @@ export default function TableView() {
 
     // Early return if table query is loading or has no data
     // This ensures useTableId() will always return a valid string in child components
-    if (tableQuery.isLoading || !tableQuery.data?.table?.id) {
+    const tableReady =
+        !!tableQuery.data?.table?.id &&
+        snapshot?.table?.id === tableQuery.data.table.id;
+    if (tableQuery.isLoading || !tableReady) {
         return (
             <>
                 <Head>
@@ -199,15 +208,15 @@ export default function TableView() {
                                 videoCodec: 'vp9' as VideoCodec,
                             },
                         }}
-                        video={true}
-                        audio={true}
+                        video={!isSpectator}
+                        audio={!isSpectator}
                     >
                         <RoomAudioRenderer />
-                        <AutoBackgroundBlur enabled={!isDealerRole && backgroundBlurEnabled} />
-                        <SetVideoPublishingQuality quality={VideoQuality.LOW} skipForDealer={isDealerRole} />
+                        <AutoBackgroundBlur enabled={!isSpectator && !isDealerAtTable && backgroundBlurEnabled} />
+                        <SetVideoPublishingQuality quality={VideoQuality.LOW} skipForDealer={isDealerAtTable} />
                         <div className="absolute z-10 right-0 flex max-w-7xl items-center gap-3 px-4">
                             <StartAudio label="Enable Audio" />
-                            {isDealerRole && (
+                            {isDealerAtTable && (
                                 <button
                                     onClick={() => setShowSetup(true)}
                                     className="ml-auto rounded-md bg-white px-3 py-2 text-sm font-medium text-black hover:bg-zinc-200"
@@ -238,12 +247,14 @@ export default function TableView() {
                                                 <div className="flex-1 min-w-0">
                                                     <EventFeed events={events} seats={originalSeats} />
                                                 </div>
-                                                <div className="flex gap-3 items-center">
-                                                    <HandCamera
-                                                        tableId={tableIdStr}
-                                                        roomName={handRoomName}
-                                                    />
-                                                </div>
+                                                {!isSpectator && (
+                                                    <div className="flex gap-3 items-center">
+                                                        <HandCamera
+                                                            tableId={tableIdStr}
+                                                            roomName={handRoomName}
+                                                        />
+                                                    </div>
+                                                )}
                                                 <div className="flex-1 min-w-0 h-full">
                                                     {currentSeat && (
                                                         <QuickActions
@@ -286,7 +297,7 @@ export default function TableView() {
                 )}
                 <WinnerDialog />
             </main>
-            {isDealerRole && (
+            {isDealerAtTable && (
                 <TableSetupModal tableId={tableIdStr} open={showSetup} onClose={() => setShowSetup(false)} />
             )}
         </>

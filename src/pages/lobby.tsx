@@ -3,7 +3,7 @@ import { useSession } from "next-auth/react";
 import Head from "next/head";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   Dialog,
   DialogClose,
@@ -24,19 +24,11 @@ import type { GetServerSideProps } from "next";
 const DEFAULT_JOIN_CHIPS = 1000;
 
 export default function LobbyPage() {
-  const { data: session, status } = useSession();
+  const { data: session } = useSession();
   const router = useRouter();
   const { data: tables, refetch } = api.table.list.useQuery(undefined, {
     refetchOnWindowFocus: false,
   });
-
-  // Check if user has an existing seat
-  const { data: existingSeat } = api.user.checkExistingSeat.useQuery(
-    undefined,
-    {
-      enabled: status === "authenticated",
-    },
-  );
 
   const isDealer = useIsDealerRole();
   const createMutation = api.table.create.useMutation({
@@ -82,13 +74,6 @@ export default function LobbyPage() {
     null,
   );
   const [joinDisplayName, setJoinDisplayName] = useState("");
-
-  // Redirect to table if user has an existing seat
-  useEffect(() => {
-    if (existingSeat?.hasSeat && existingSeat.tableId) {
-      void router.push(`/table/${existingSeat.tableId}`);
-    }
-  }, [existingSeat, router]);
 
   const createTable = (
     <div className="rounded-lg border border-white/10 bg-zinc-900/50 p-4">
@@ -243,49 +228,58 @@ export default function LobbyPage() {
                         )}
                       </p>
                     </div>
-                    {isDealer ? (
+                    <div className="flex shrink-0 items-center gap-2">
+                      {isDealer ? (
+                        <button
+                          onClick={() =>
+                            dealerJoinMutation.mutate({ tableId: t.id })
+                          }
+                          disabled={
+                            t.isHandInProgress || dealerJoinMutation.isPending
+                          }
+                          className={`rounded-md px-3 py-2 text-sm font-medium ${
+                            !t.isHandInProgress
+                              ? "bg-white text-black hover:bg-zinc-200"
+                              : "cursor-not-allowed bg-zinc-700 text-zinc-400"
+                          }`}
+                        >
+                          {dealerJoinMutation.isPending
+                            ? "Joining..."
+                            : "Join Table"}
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => {
+                            if (!t.isJoinable || t.availableSeats === 0) return;
+                            const defaultName =
+                              session?.user?.displayName?.trim() ||
+                              (session?.user?.name ?? "").trim() ||
+                              "Player";
+                            setJoinDisplayName(defaultName);
+                            setPendingJoinTableId(t.id);
+                          }}
+                          disabled={!t.isJoinable || t.availableSeats === 0}
+                          className={`rounded-md px-3 py-2 text-sm font-medium ${
+                            t.isJoinable && t.availableSeats > 0
+                              ? "bg-white text-black hover:bg-zinc-200"
+                              : "cursor-not-allowed bg-zinc-700 text-zinc-400"
+                          }`}
+                        >
+                          {!t.isJoinable
+                            ? "Game in progress"
+                            : t.availableSeats === 0
+                              ? "Full"
+                              : "Join"}
+                        </button>
+                      )}
                       <button
-                        onClick={() =>
-                          dealerJoinMutation.mutate({ tableId: t.id })
-                        }
-                        disabled={
-                          t.isHandInProgress || dealerJoinMutation.isPending
-                        }
-                        className={`rounded-md px-3 py-2 text-sm font-medium ${
-                          !t.isHandInProgress
-                            ? "bg-white text-black hover:bg-zinc-200"
-                            : "cursor-not-allowed bg-zinc-700 text-zinc-400"
-                        }`}
+                        type="button"
+                        onClick={() => void router.push(`/table/${t.id}`)}
+                        className="rounded-md border border-white/20 px-3 py-2 text-sm font-medium text-white hover:bg-white/10"
                       >
-                        {dealerJoinMutation.isPending
-                          ? "Joining..."
-                          : "Join Table"}
+                        Watch
                       </button>
-                    ) : (
-                      <button
-                        onClick={() => {
-                          if (!t.isJoinable || t.availableSeats === 0) return;
-                          const defaultName =
-                            session?.user?.displayName?.trim() ||
-                            (session?.user?.name ?? "").trim() ||
-                            "Player";
-                          setJoinDisplayName(defaultName);
-                          setPendingJoinTableId(t.id);
-                        }}
-                        disabled={!t.isJoinable || t.availableSeats === 0}
-                        className={`rounded-md px-3 py-2 text-sm font-medium ${
-                          t.isJoinable && t.availableSeats > 0
-                            ? "bg-white text-black hover:bg-zinc-200"
-                            : "cursor-not-allowed bg-zinc-700 text-zinc-400"
-                        }`}
-                      >
-                        {!t.isJoinable
-                          ? "Game in progress"
-                          : t.availableSeats === 0
-                            ? "Full"
-                            : "Join"}
-                      </button>
-                    )}
+                    </div>
                   </div>
                 </div>
               ))}

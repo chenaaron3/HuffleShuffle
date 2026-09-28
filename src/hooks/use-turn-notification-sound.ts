@@ -2,7 +2,7 @@ import { useSession } from 'next-auth/react';
 import { useEffect, useRef } from 'react';
 import { useSoundEffects } from '~/components/providers/SoundProvider';
 import {
-    useGameState, useIsDealerRole, useIsHandInProgress, useIsPlayerTurn
+    useGameState, useIsDealerAtTable, useIsHandInProgress, useIsPlayerTurn
 } from '~/hooks/use-table-selectors';
 
 const DEALER_TURN_STATES = ['DEAL_HOLE_CARDS', 'DEAL_FLOP', 'DEAL_TURN', 'DEAL_RIVER'];
@@ -16,7 +16,7 @@ export function useTurnNotificationSound() {
     const userId = session?.user?.id;
     const gameStatus = useGameState();
     const isHandInProgress = useIsHandInProgress();
-    const isDealer = useIsDealerRole();
+    const isDealer = useIsDealerAtTable();
     const isPlayerTurn = useIsPlayerTurn(userId);
     const isDealerTurn = DEALER_TURN_STATES.includes(gameStatus ?? '');
     const { play } = useSoundEffects();

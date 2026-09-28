@@ -1,7 +1,7 @@
 import { useSession } from 'next-auth/react';
 import { useTurnNotificationSound } from '~/hooks/use-turn-notification-sound';
 import {
-    useActivePlayerName, useGameState, useIsDealerRole, useIsHandInProgress, useIsPlayerTurn
+    useActivePlayerName, useGameState, useIsDealerAtTable, useIsHandInProgress, useIsPlayerTurn
 } from '~/hooks/use-table-selectors';
 
 interface TurnIndicatorProps {
@@ -15,7 +15,7 @@ export function TurnIndicator({ }: TurnIndicatorProps) {
     // Get data from Zustand store using selectors
     const gameStatus = useGameState();
     const isHandInProgress = useIsHandInProgress();
-    const isDealer = useIsDealerRole();
+    const isDealer = useIsDealerAtTable();
     const activePlayerName = useActivePlayerName();
     const isPlayerTurn = useIsPlayerTurn(userId);
     const isDealerTurn = ['DEAL_HOLE_CARDS', 'DEAL_FLOP', 'DEAL_TURN', 'DEAL_RIVER'].includes(gameStatus ?? '');

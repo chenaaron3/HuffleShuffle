@@ -1,7 +1,7 @@
 import { useSession } from 'next-auth/react';
 import {
     useBlindSeatNumbers, useCurrentUserSeatId, useGameState, useHighlightedSeatId,
-    useIsDealerRole, useIsJoinable, usePaddedSeats, useTableId, useTurnStartTime,
+    useIsDealerAtTable, useIsJoinable, usePaddedSeats, useTableId, useTurnStartTime,
 } from '~/hooks/use-table-selectors';
 
 import { SeatCard } from './seat-card';
@@ -26,8 +26,7 @@ export function SeatSection({ side }: SeatSectionProps) {
     const canMoveSeat = Boolean(isJoinable && currentUserSeatId);
     const turnStartTime = useTurnStartTime();
     const tableId = useTableId();
-    const isDealerRole = useIsDealerRole();
-    const dealerCanControlAudio = isDealerRole;
+    const dealerCanControlAudio = useIsDealerAtTable();
 
     const seats = side === 'left' ? allSeats.slice(0, 4) : allSeats.slice(4, 8);
 

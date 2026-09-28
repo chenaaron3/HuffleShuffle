@@ -266,6 +266,23 @@ export function useIsDealerRole() {
   return session?.user?.role === "dealer";
 }
 
+/** True when this session user is the assigned dealer of the current table. */
+export function useIsDealerAtTable() {
+  const { data: session } = useSession();
+  const dealerId = useDealerId();
+  return !!session?.user?.id && dealerId === session.user.id;
+}
+
+/** Watching without a seat and without being this table's dealer. */
+export function useIsSpectator() {
+  const { data: session } = useSession();
+  const snapshot = useTableSnapshot();
+  const currentSeat = useCurrentSeat(session?.user?.id);
+  const isDealerAtTable = useIsDealerAtTable();
+  if (!session?.user?.id || !snapshot?.table) return false;
+  return !currentSeat && !isDealerAtTable;
+}
+
 /**
  * True when the current user can volunteer to show their hand at showdown.
  * Uses cardsVisibleToOthers from server-computed redaction.

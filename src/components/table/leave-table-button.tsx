@@ -1,5 +1,5 @@
 import { useRouter } from 'next/router';
-import { useIsDealerRole, useIsHandInProgress, useIsJoinable, useTableId } from '~/hooks/use-table-selectors';
+import { useIsDealerAtTable, useIsHandInProgress, useIsJoinable, useIsSpectator, useTableId } from '~/hooks/use-table-selectors';
 import { cn } from '~/lib/utils';
 import { api } from '~/utils/api';
 
@@ -9,7 +9,8 @@ interface LeaveTableButtonProps {
 
 export function LeaveTableButton({ compact = false }: LeaveTableButtonProps) {
     const router = useRouter();
-    const isDealerRole = useIsDealerRole();
+    const isDealerAtTable = useIsDealerAtTable();
+    const isSpectator = useIsSpectator();
     const tableId = useTableId();
     const isJoinable = useIsJoinable();
     const isHandInProgress = useIsHandInProgress();
@@ -29,14 +30,18 @@ export function LeaveTableButton({ compact = false }: LeaveTableButtonProps) {
     const isLeaving = leaveMutation.isPending || dealerLeaveMutation.isPending;
 
     const handleLeaveTable = () => {
-        if (isDealerRole) {
+        if (isSpectator) {
+            void router.push('/lobby');
+            return;
+        }
+        if (isDealerAtTable) {
             dealerLeaveMutation.mutate({ tableId });
         } else {
             leaveMutation.mutate({ tableId });
         }
     };
 
-    if (isDealerRole ? isHandInProgress : !isJoinable) {
+    if (!isSpectator && (isDealerAtTable ? isHandInProgress : !isJoinable)) {
         return null;
     }
 
