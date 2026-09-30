@@ -182,6 +182,11 @@ body {
   .hs-overlay-seat .lk-button {
     display: none !important;
   }
+  /* LiveKit landscape cameras default to cover; mobile dealer feed should show the full frame. */
+  .hs-dealer-feed-contain .lk-participant-media-video,
+  .hs-dealer-feed-contain .lk-participant-media-video[data-orientation='landscape'] {
+    object-fit: contain !important;
+  }
 }
 
 .hs-square-media-btn.lk-button {

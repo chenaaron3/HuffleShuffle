@@ -11,6 +11,7 @@ import {
 } from '~/hooks/use-table-selectors';
 
 import { ParticipantTile, useTracks, VideoTrack } from '@livekit/components-react';
+import { cn } from '~/lib/utils';
 
 import { ActionButtons } from '~/components/table/betting/action-buttons';
 import { MobileSeatHud } from '~/components/table/mobile/seat-hud';
@@ -38,10 +39,18 @@ export function DealerFeed({
         : null;
 
     return (
-        <div className="relative w-full h-full lg:h-auto lg:aspect-video overflow-hidden bg-black lg:border lg:border-white/10 lg:rounded-lg">
+        <div
+            className={cn(
+                'relative h-full w-full overflow-hidden bg-black lg:h-auto lg:aspect-video lg:rounded-lg lg:border lg:border-white/10',
+                compact && 'hs-dealer-feed-contain',
+            )}
+        >
             {dealerRef ? (
-                <ParticipantTile trackRef={dealerRef}>
-                    <VideoTrack trackRef={dealerRef} />
+                <ParticipantTile trackRef={dealerRef} className="h-full w-full">
+                    <VideoTrack
+                        trackRef={dealerRef}
+                        className={cn('h-full w-full', compact && 'object-contain')}
+                    />
                 </ParticipantTile>
             ) : (
                 <div className="flex h-full items-center justify-center text-zinc-400">
