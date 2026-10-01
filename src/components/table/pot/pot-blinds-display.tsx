@@ -9,6 +9,7 @@ import { RollingNumber } from '~/components/table/chips/chip-animations';
 interface PotAndBlindsDisplayProps {
     className?: string;
     compact?: boolean;
+    hideTimer?: boolean;
 }
 
 function formatTimeRemaining(seconds: number): string {
@@ -17,7 +18,11 @@ function formatTimeRemaining(seconds: number): string {
     return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
-export function PotAndBlindsDisplay({ className, compact = false }: PotAndBlindsDisplayProps) {
+export function PotAndBlindsDisplay({
+    className,
+    compact = false,
+    hideTimer = false,
+}: PotAndBlindsDisplayProps) {
     // Get data from Zustand store using selectors
     const potTotal = useTotalPot() ?? 0;
     const blinds = useBlinds();
@@ -29,7 +34,7 @@ export function PotAndBlindsDisplay({ className, compact = false }: PotAndBlinds
     const progressPercent = liveBlindState.progressPercent;
     const isAtMaxMultiplier = liveBlindState.isAtMaxMultiplier;
     const blindTimerVisible =
-        Boolean(blinds?.startedAt) || Boolean(blinds?.isPaused);
+        !hideTimer && (Boolean(blinds?.startedAt) || Boolean(blinds?.isPaused));
 
     return (
         <motion.div

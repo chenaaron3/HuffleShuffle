@@ -8,7 +8,7 @@ import { useActions } from '~/hooks/use-actions';
 import { useCanVolunteerShow } from '~/hooks/use-table-selectors';
 import { cn } from '~/lib/utils';
 
-export function ShowHandControl({ compact = false }: { compact?: boolean }) {
+export function ShowHandControl({ compact = false, className }: { compact?: boolean; className?: string }) {
   const { data: session } = useSession();
   const userId = session?.user?.id;
   const canVolunteer = useCanVolunteerShow(userId);
@@ -37,6 +37,7 @@ export function ShowHandControl({ compact = false }: { compact?: boolean }) {
       className={cn(
         'relative border border-white/10 bg-zinc-900/95 shadow-2xl backdrop-blur',
         compact ? 'w-36 rounded-lg p-1.5' : 'w-48 rounded-xl p-3',
+        className,
       )}
     >
       <GlowingEffect

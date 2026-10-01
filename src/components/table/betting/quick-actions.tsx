@@ -12,6 +12,7 @@ interface QuickActionsProps {
     gameState?: string;
     isMyTurn?: boolean;
     compact?: boolean;
+    className?: string;
 }
 
 const actionDescriptions = {
@@ -47,7 +48,7 @@ const actions = [
     },
 ];
 
-export function QuickActions({ value, onChange, disabled, gameState, isMyTurn = false, compact = false }: QuickActionsProps) {
+export function QuickActions({ value, onChange, disabled, gameState, isMyTurn = false, compact = false, className }: QuickActionsProps) {
     const [hoveredAction, setHoveredAction] = useState<QuickActionType>(null);
     const dealingStates = ['DEAL_HOLE_CARDS', 'DEAL_FLOP', 'DEAL_TURN', 'DEAL_RIVER'];
     const shouldShow = gameState === 'BETTING' || dealingStates.includes(gameState ?? '');
@@ -62,6 +63,7 @@ export function QuickActions({ value, onChange, disabled, gameState, isMyTurn = 
         <div className={cn(
             'flex flex-col border border-white/10 bg-zinc-900/90 shadow-[0_8px_32px_rgba(0,0,0,0.4)] backdrop-blur-md',
             compact ? 'w-64 gap-1 rounded-xl p-2' : 'h-full w-full justify-between gap-5 rounded-2xl bg-white/5 p-5',
+            className,
         )}>
             {!compact && (
                 <h3 className="text-sm font-semibold text-white/90">Auto-Play Actions</h3>

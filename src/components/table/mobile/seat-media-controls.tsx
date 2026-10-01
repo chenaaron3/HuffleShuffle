@@ -11,6 +11,7 @@ interface MobileSeatMediaControlsProps {
     tableId: string;
     myUserId: string | null | undefined;
     dealerCanControlAudio: boolean;
+    layout?: 'column' | 'row';
 }
 
 export function MobileSeatMediaControls({
@@ -18,12 +19,13 @@ export function MobileSeatMediaControls({
     tableId,
     myUserId,
     dealerCanControlAudio,
+    layout = 'column',
 }: MobileSeatMediaControlsProps) {
     const playerId = seat.player?.id ?? null;
     const isSelf = !!myUserId && playerId === myUserId;
 
     return (
-        <div className="flex flex-col items-center gap-0.5">
+        <div className={layout === 'row' ? 'flex items-center gap-1.5' : 'flex flex-col items-center gap-0.5'}>
             {isSelf ? (
                 <>
                     <BackgroundBlurToggle compact className="bg-black/50" />

@@ -15,9 +15,10 @@ import { cn } from '~/lib/utils';
 
 interface VerticalRaiseControlsProps {
     compact?: boolean;
+    className?: string;
 }
 
-export function VerticalRaiseControls({ compact = false }: VerticalRaiseControlsProps) {
+export function VerticalRaiseControls({ compact = false, className }: VerticalRaiseControlsProps) {
     const { data: session } = useSession();
     const userId = session?.user?.id;
 
@@ -219,6 +220,7 @@ export function VerticalRaiseControls({ compact = false }: VerticalRaiseControls
             className={cn(
                 'relative flex flex-col border border-white/10 bg-zinc-900/95 shadow-2xl backdrop-blur',
                 compact ? 'w-52 gap-1 rounded-lg p-1' : 'w-80 gap-3 rounded-xl p-3',
+                className,
             )}
         >
             {!compact && (

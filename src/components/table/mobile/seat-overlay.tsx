@@ -4,6 +4,7 @@ import { useSession } from 'next-auth/react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { HandCamera } from '~/components/table/camera/hand-camera';
 import { LeaveTableButton } from '~/components/table/leave-table-button';
+import { MobilePlayersRail } from '~/components/table/mobile/players-rail';
 import { MobileSeatMediaControls } from '~/components/table/mobile/seat-media-controls';
 import { SeatCard } from '~/components/table/seat';
 import {
@@ -31,6 +32,7 @@ import {
     shouldReleasePin,
 } from './seat-overlay-logic';
 
+import type { QuickActionType } from '~/components/table/betting/quick-actions';
 import type { SeatWithPlayer } from '~/server/api/table/types';
 
 function MobileOverlaySeat({ seat, fill = false }: { seat: SeatWithPlayer; fill?: boolean }) {
@@ -66,7 +68,15 @@ function MobileOverlaySeat({ seat, fill = false }: { seat: SeatWithPlayer; fill?
     );
 }
 
-export function MobileSeatOverlay({ handRoomName }: { handRoomName: string | null }) {
+export function MobileSeatOverlay({
+    handRoomName,
+    quickAction,
+    onQuickActionChange,
+}: {
+    handRoomName: string | null;
+    quickAction: QuickActionType;
+    onQuickActionChange: (action: QuickActionType) => void;
+}) {
     const { data: session } = useSession();
     const userId = session?.user?.id;
     const originalSeats = useOriginalSeats();
@@ -98,6 +108,7 @@ export function MobileSeatOverlay({ handRoomName }: { handRoomName: string | nul
     const overlayHighlightedSeatId = highlightedSeatId ?? winnerSeatId;
 
     const [pickerOpen, setPickerOpen] = useState(false);
+    const [railCollapsed, setRailCollapsed] = useState(false);
     const [selectedSeatId, setSelectedSeatId] = useState<string | null>(null);
     const [pinned, setPinned] = useState(false);
     const [handCameraExpanded, setHandCameraExpanded] = useState(true);
@@ -134,8 +145,7 @@ export function MobileSeatOverlay({ handRoomName }: { handRoomName: string | nul
         occupiedSeats.find((seat) => seat.id === displayedSeatId) ?? null;
 
     const handleSelectSeat = (seatId: string) => {
-        setSelectedSeatId(seatId);
-        setPickerOpen(false);
+        setSelectedSeatId((current) => (current === seatId ? null : seatId));
     };
 
     const handleTogglePin = () => {
@@ -152,44 +162,67 @@ export function MobileSeatOverlay({ handRoomName }: { handRoomName: string | nul
     return (
         <>
             {pickerOpen && (
-                <div
-                    className="absolute inset-0 z-[80] bg-black/80 p-3"
-                    onClick={() => setPickerOpen(false)}
-                    role="presentation"
-                >
-                    <div
-                        className="grid h-full w-full gap-2"
-                        style={{
-                            gridTemplateColumns: `repeat(${playerGridColumnCount(occupiedSeats.length)}, minmax(0, 1fr))`,
-                            gridAutoRows: '1fr',
-                        }}
-                    >
-                        {occupiedSeats.map((seat) => (
-                            <div
-                                key={seat.id}
-                                role="button"
-                                tabIndex={0}
-                                onClick={(event) => {
-                                    event.stopPropagation();
-                                    handleSelectSeat(seat.id);
-                                }}
-                                onKeyDown={(event) => {
-                                    if (event.key === 'Enter' || event.key === ' ') {
-                                        event.preventDefault();
-                                        handleSelectSeat(seat.id);
-                                    }
-                                }}
-                                className={`h-full min-h-0 min-w-0 rounded-xl text-left ${
-                                    seat.id === displayedSeatId
-                                        ? 'ring-2 ring-white'
-                                        : ''
-                                }`}
-                                aria-label={`View ${seat.player?.displayName ?? 'player'}`}
-                            >
-                                <MobileOverlaySeat seat={seat} fill />
-                            </div>
-                        ))}
+                <div className="absolute inset-0 z-[80] flex bg-black">
+                    <div className="relative min-h-0 min-w-0 flex-1 p-3">
+                        <div
+                            className="grid h-full w-full gap-2"
+                            style={{
+                                gridTemplateColumns: `repeat(${playerGridColumnCount(occupiedSeats.length)}, minmax(0, 1fr))`,
+                                gridAutoRows: '1fr',
+                            }}
+                        >
+                            {occupiedSeats.map((seat) => (
+                                <div
+                                    key={seat.id}
+                                    role="button"
+                                    tabIndex={0}
+                                    onClick={() => handleSelectSeat(seat.id)}
+                                    onKeyDown={(event) => {
+                                        if (event.key === 'Enter' || event.key === ' ') {
+                                            event.preventDefault();
+                                            handleSelectSeat(seat.id);
+                                        }
+                                    }}
+                                    className={`relative h-full min-h-0 min-w-0 rounded-xl text-left ${
+                                        seat.id === selectedSeatId
+                                            ? 'ring-2 ring-white'
+                                            : ''
+                                    }`}
+                                    aria-pressed={seat.id === selectedSeatId}
+                                    aria-label={`${seat.id === selectedSeatId ? 'Deselect' : 'Select'} ${seat.player?.displayName ?? 'player'}`}
+                                >
+                                    <MobileOverlaySeat seat={seat} fill />
+                                    {seat.id === selectedSeatId && (
+                                        <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-black/35">
+                                            <div
+                                                className="pointer-events-auto"
+                                                onClick={(event) => event.stopPropagation()}
+                                                onKeyDown={(event) => event.stopPropagation()}
+                                            >
+                                                <MobileSeatMediaControls
+                                                    seat={seat}
+                                                    tableId={tableId}
+                                                    myUserId={userId}
+                                                    dealerCanControlAudio={isDealerAtTable}
+                                                    layout="row"
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
                     </div>
+                    <MobilePlayersRail
+                        quickAction={quickAction}
+                        onQuickActionChange={onQuickActionChange}
+                        handRoomName={handRoomName}
+                        tableId={tableId}
+                        showHandCamera={!!mySeatId}
+                        collapsed={railCollapsed}
+                        onCollapsedChange={setRailCollapsed}
+                        onClose={() => setPickerOpen(false)}
+                    />
                 </div>
             )}
 
@@ -201,7 +234,7 @@ export function MobileSeatOverlay({ handRoomName }: { handRoomName: string | nul
                 }}
             >
                 <div className="flex flex-col items-start gap-1">
-                    {mySeatId && (
+                    {mySeatId && !pickerOpen && (
                         <motion.div
                             role="button"
                             tabIndex={0}
