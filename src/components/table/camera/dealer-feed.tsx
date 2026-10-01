@@ -86,6 +86,7 @@ export function DealerFeed({
                                     <CardImage
                                         code={card}
                                         size={compact ? 40 : 65}
+                                        compact={compact}
                                         highlighted={isWinningCard}
                                     />
                                 </motion.div>

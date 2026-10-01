@@ -56,7 +56,7 @@ export function EventFeed({
     );
 }
 
-function EventLine({ ev, seats }: { ev: EventRow; seats: SeatWithPlayer[] }) {
+export function EventLine({ ev, seats }: { ev: EventRow; seats: SeatWithPlayer[] }) {
     const t = ev.type;
     const d: any = ev.details ?? {};
 

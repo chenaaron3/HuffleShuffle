@@ -10,6 +10,7 @@ import {
 } from '~/hooks/use-table-selectors';
 import { cn } from '~/lib/utils';
 
+import { MobileLastEvent } from './last-event';
 import { playerGridColumnCount } from './seat-overlay-logic';
 import { buildHudGrid } from './seat-hud-logic';
 
@@ -111,59 +112,63 @@ export function MobileSeatHud() {
     const [collapsed, setCollapsed] = useState(false);
     const reduceMotion = useReducedMotion();
     const cells = grid.flat();
-    if (cells.length === 0) return null;
 
     const transition = reduceMotion
         ? { duration: 0 }
         : { type: 'spring' as const, stiffness: 380, damping: 32, mass: 0.8 };
 
     return (
-        <AnimatePresence mode="popLayout" initial={false}>
-            {collapsed ? (
-                <motion.button
-                    key="hud-collapsed"
-                    type="button"
-                    layoutId="mobile-seat-hud"
-                    onClick={() => setCollapsed(false)}
-                    aria-label="Show table seats"
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.8 }}
-                    transition={transition}
-                    className="pointer-events-auto mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-black/70 text-white"
-                    style={{ originX: 1, originY: 0 }}
-                >
-                    <LayoutGrid className="h-3.5 w-3.5" aria-hidden="true" />
-                </motion.button>
-            ) : (
-                <motion.button
-                    key="hud-expanded"
-                    type="button"
-                    layoutId="mobile-seat-hud"
-                    onClick={() => setCollapsed(true)}
-                    aria-label="Hide table seats"
-                    initial={{ opacity: 0, scale: 0.92 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.92 }}
-                    transition={transition}
-                    className="pointer-events-auto mt-1 grid shrink-0 cursor-pointer items-center justify-items-start gap-0.5 overflow-visible pb-3 pt-3 text-left"
-                    style={{
-                        originX: 1,
-                        originY: 0,
-                        gridTemplateColumns: `repeat(${playerGridColumnCount(cells.length)}, max-content)`,
-                    }}
-                >
-                    {grid.map((row, rowIndex) =>
-                        row.map((cell) => (
-                            <HudCellView
-                                key={cell.seatNumber}
-                                cell={cell}
-                                badgeAbove={rowIndex === 0}
-                            />
-                        )),
+        <div className="mt-1 flex shrink-0 flex-col items-end gap-1">
+            {cells.length > 0 && (
+                <AnimatePresence mode="popLayout" initial={false}>
+                    {collapsed ? (
+                        <motion.button
+                            key="hud-collapsed"
+                            type="button"
+                            layoutId="mobile-seat-hud"
+                            onClick={() => setCollapsed(false)}
+                            aria-label="Show table seats"
+                            initial={{ opacity: 0, scale: 0.8 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.8 }}
+                            transition={transition}
+                            className="pointer-events-auto flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-black/70 text-white"
+                            style={{ originX: 1, originY: 0 }}
+                        >
+                            <LayoutGrid className="h-3.5 w-3.5" aria-hidden="true" />
+                        </motion.button>
+                    ) : (
+                        <motion.button
+                            key="hud-expanded"
+                            type="button"
+                            layoutId="mobile-seat-hud"
+                            onClick={() => setCollapsed(true)}
+                            aria-label="Hide table seats"
+                            initial={{ opacity: 0, scale: 0.92 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.92 }}
+                            transition={transition}
+                            className="pointer-events-auto grid shrink-0 cursor-pointer items-center justify-items-start gap-0.5 overflow-visible pb-3 pt-3 text-left"
+                            style={{
+                                originX: 1,
+                                originY: 0,
+                                gridTemplateColumns: `repeat(${playerGridColumnCount(cells.length)}, max-content)`,
+                            }}
+                        >
+                            {grid.map((row, rowIndex) =>
+                                row.map((cell) => (
+                                    <HudCellView
+                                        key={cell.seatNumber}
+                                        cell={cell}
+                                        badgeAbove={rowIndex === 0}
+                                    />
+                                )),
+                            )}
+                        </motion.button>
                     )}
-                </motion.button>
+                </AnimatePresence>
             )}
-        </AnimatePresence>
+            <MobileLastEvent />
+        </div>
     );
 }

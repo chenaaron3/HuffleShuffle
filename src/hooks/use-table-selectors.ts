@@ -1,6 +1,6 @@
 import { useSession } from 'next-auth/react';
 import { useEffect, useMemo, useState } from 'react';
-import { selectTableSnapshot, useTableStore } from '~/stores/table-store';
+import { selectGameEvents, selectTableSnapshot, useTableStore } from '~/stores/table-store';
 
 import type { SeatPlayer, SeatWithPlayer } from "~/server/api/table/types";
 
@@ -327,6 +327,10 @@ export function useTournamentWinner(): SeatPlayer | null {
   if (!winner || endedAtMs == null) return null;
   if (Date.now() - endedAtMs > TOURNAMENT_WINNER_MODAL_WINDOW_MS) return null;
   return winner;
+}
+
+export function useGameEvents() {
+  return useTableStore(selectGameEvents);
 }
 
 export function useSidePotDetails() {
