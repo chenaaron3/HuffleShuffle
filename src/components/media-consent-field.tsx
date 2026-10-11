@@ -12,6 +12,64 @@ interface MediaConsentFieldProps {
 const optionClassName =
   "flex cursor-pointer items-center gap-2 text-sm text-zinc-200 has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-60";
 
+function PermissionBadge({ value }: { value: boolean | null }) {
+  const label = value === null ? "Not set" : value ? "Yes" : "No";
+  return (
+    <span
+      className={
+        value === true
+          ? "rounded-full bg-green-500/15 px-2.5 py-0.5 text-xs font-medium text-green-300"
+          : "rounded-full bg-white/10 px-2.5 py-0.5 text-xs font-medium text-zinc-300"
+      }
+    >
+      {label}
+    </span>
+  );
+}
+
+interface MediaConsentSummaryProps {
+  recordingConsent: boolean;
+  socialMediaConsent: boolean | null;
+}
+
+/** Read-only view of saved permissions, shown in the join dialog once consent is given. */
+export function MediaConsentSummary({
+  recordingConsent,
+  socialMediaConsent,
+}: MediaConsentSummaryProps) {
+  return (
+    <div className="mt-4 rounded-md border border-white/10 bg-black/40 p-4">
+      <p className="text-sm font-medium text-white">
+        Your recording &amp; media permissions
+      </p>
+      <dl className="mt-2 divide-y divide-white/10 text-sm">
+        <div className="flex items-center justify-between gap-4 py-2">
+          <dt className="text-zinc-300">Game recording consent</dt>
+          <dd>
+            <PermissionBadge value={recordingConsent} />
+          </dd>
+        </div>
+        <div className="flex items-center justify-between gap-4 py-2">
+          <dt className="text-zinc-300">Social media &amp; promotional consent</dt>
+          <dd>
+            <PermissionBadge value={socialMediaConsent} />
+          </dd>
+        </div>
+      </dl>
+      <p className="mt-1 text-xs text-zinc-500">
+        Want to change your permissions? Send an email to{" "}
+        <a
+          href="mailto:cabreu@huffleshuffle.com"
+          className="font-medium text-zinc-300 underline-offset-2 hover:underline"
+        >
+          cabreu@huffleshuffle.com
+        </a>{" "}
+        and we&apos;ll update your preferences for you.
+      </p>
+    </div>
+  );
+}
+
 /** Player permissions shown in the join dialog until recording consent is given. */
 export function MediaConsentField({
   recordingConsent,

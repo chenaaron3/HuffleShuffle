@@ -12,7 +12,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "~/components/ui/dialog";
-import { MediaConsentField } from "~/components/media-consent-field";
+import {
+  MediaConsentField,
+  MediaConsentSummary,
+} from "~/components/media-consent-field";
 import { useIsDealerRole } from "~/hooks/use-table-selectors";
 import { requireAuth } from "~/server/auth/guards";
 import { MAX_SEATS_PER_TABLE } from "~/server/db/schema";
@@ -350,6 +353,11 @@ export default function LobbyPage() {
               socialMediaConsent={socialMediaChoice}
               onSocialMediaConsentChange={setSocialMediaChoice}
               disabled={joinFlowPending}
+            />
+          ) : consent ? (
+            <MediaConsentSummary
+              recordingConsent={consent.recordingConsent}
+              socialMediaConsent={consent.socialMediaConsent}
             />
           ) : null}
           <div className="mt-6 flex justify-end gap-2">
