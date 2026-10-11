@@ -45,6 +45,9 @@ export const users = createTable(
     image: d.varchar({ length: 255 }),
     role: userRoleEnum("role").notNull().default("player"),
     publicKey: d.text(),
+    /** Recording + social/promotional media opt-in; required to join a table as a player. */
+    mediaConsent: d.boolean().notNull().default(false),
+    mediaConsentUpdatedAt: d.timestamp({ withTimezone: true }),
   }),
 );
 

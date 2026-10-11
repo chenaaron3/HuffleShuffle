@@ -9,6 +9,7 @@ import {
   parseDashboardTab,
   type DashboardTab,
 } from "~/components/dashboard/constants";
+import { ConsentTab } from "~/components/dashboard/consent-tab";
 import { HandsTab } from "~/components/dashboard/hands-tab";
 import { PlayersTab } from "~/components/dashboard/players-tab";
 import { WaitlistTab } from "~/components/dashboard/waitlist-tab";
@@ -20,6 +21,7 @@ import type { GetServerSideProps } from "next";
 const TAB_LABELS: Record<DashboardTab, string> = {
   waitlist: "Waitlist",
   players: "Players",
+  consent: "Consent",
   hands: "Hands",
 };
 
@@ -48,7 +50,7 @@ export default function DashboardPage() {
   return (
     <>
       <Head>
-        <title>Dashboard - HuffleShuffle</title>
+        <title>Dashboard - HuffleShuffle™</title>
       </Head>
       <main className="min-h-screen bg-black text-white">
         <div className="mx-auto max-w-6xl px-6 py-10">
@@ -85,6 +87,12 @@ export default function DashboardPage() {
             </TabsContent>
             <TabsContent value="players">
               <PlayersTab
+                pagination={pagination}
+                onPaginationChange={setPagination}
+              />
+            </TabsContent>
+            <TabsContent value="consent">
+              <ConsentTab
                 pagination={pagination}
                 onPaginationChange={setPagination}
               />

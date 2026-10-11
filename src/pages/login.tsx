@@ -14,7 +14,7 @@ export default function LoginPage({ callbackUrl }: LoginPageProps) {
   return (
     <>
       <Head>
-        <title>Sign in - HuffleShuffle</title>
+        <title>Sign in - HuffleShuffle™</title>
       </Head>
       <main className="relative min-h-screen overflow-hidden bg-gradient-to-b from-[#0b0f14] via-[#0a0d12] to-black text-white">
         {/* Full-page decorative assets (same placement as home) */}

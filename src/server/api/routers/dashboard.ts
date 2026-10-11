@@ -1,5 +1,15 @@
-import { and, asc, desc, eq, sql } from "drizzle-orm";
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  inArray,
+  ne,
+  notInArray,
+  sql,
+} from "drizzle-orm";
 import { z } from "zod";
+import { BOT_USER_IDS } from "~/server/api/bots/constants";
 import { createTRPCRouter, dealerProcedure } from "~/server/api/trpc";
 import {
   gameEvents,
@@ -41,6 +51,82 @@ export const dashboardRouter = createTRPCRouter({
         rows,
         totalCount: countRows[0]?.count ?? 0,
       };
+    }),
+
+  deleteWaitlistEntries: dealerProcedure
+    .input(z.object({ ids: z.array(z.string().min(1)).min(1).max(500) }))
+    .mutation(async ({ ctx, input }) => {
+      const deleted = await ctx.db
+        .delete(waitlist)
+        .where(inArray(waitlist.id, input.ids))
+        .returning({ id: waitlist.id });
+      return { deletedCount: deleted.length };
+    }),
+
+  listConsent: dealerProcedure
+    .input(paginationInput)
+    .query(async ({ ctx, input }) => {
+      const offset = (input.page - 1) * input.pageSize;
+      const humanPlayers = and(
+        eq(users.role, "player"),
+        notInArray(users.id, [...BOT_USER_IDS]),
+      );
+
+      const [rows, countRows] = await Promise.all([
+        ctx.db
+          .select({
+            id: users.id,
+            displayName: users.displayName,
+            email: users.email,
+            mediaConsent: users.mediaConsent,
+            mediaConsentUpdatedAt: users.mediaConsentUpdatedAt,
+          })
+          .from(users)
+          .where(humanPlayers)
+          .orderBy(asc(users.displayName), asc(users.email))
+          .limit(input.pageSize)
+          .offset(offset),
+        ctx.db
+          .select({ count: sql<number>`count(*)::int` })
+          .from(users)
+          .where(humanPlayers),
+      ]);
+
+      return {
+        rows,
+        totalCount: countRows[0]?.count ?? 0,
+      };
+    }),
+
+  setConsent: dealerProcedure
+    .input(z.object({ userId: z.string().min(1), mediaConsent: z.boolean() }))
+    .mutation(async ({ ctx, input }) => {
+      const [updated] = await ctx.db
+        .update(users)
+        .set({
+          mediaConsent: input.mediaConsent,
+          mediaConsentUpdatedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(users.id, input.userId),
+            eq(users.role, "player"),
+            ne(users.mediaConsent, input.mediaConsent),
+          ),
+        )
+        .returning({
+          id: users.id,
+          mediaConsent: users.mediaConsent,
+          mediaConsentUpdatedAt: users.mediaConsentUpdatedAt,
+        });
+      if (updated) return updated;
+
+      const existing = await ctx.db.query.users.findFirst({
+        where: and(eq(users.id, input.userId), eq(users.role, "player")),
+        columns: { id: true, mediaConsent: true, mediaConsentUpdatedAt: true },
+      });
+      if (!existing) throw new Error("Player not found");
+      return existing;
     }),
 
   listPlayers: dealerProcedure

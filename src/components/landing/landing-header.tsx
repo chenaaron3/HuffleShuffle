@@ -28,10 +28,12 @@ export function LandingHeader() {
         <div className="flex items-center gap-3">
           <BrandMark />
           <div>
-            <div className="font-display text-sm font-semibold tracking-[0.18em] text-landing-gold-bright">
-              HUFFLESHUFFLE
+            <div className="font-display text-sm font-semibold tracking-[0.06em] text-landing-gold-bright">
+              HuffleShuffle<span className="align-super text-[0.6em]">™</span>
             </div>
-            <div className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Live-dealer poker</div>
+            <div className="text-[10px] uppercase tracking-[0.22em] text-slate-500">
+              Real Poker. Live. Online.
+            </div>
           </div>
         </div>
 

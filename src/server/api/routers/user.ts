@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { getCommittedTableId } from "~/server/api/table/membership";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
@@ -34,4 +34,32 @@ export const userRouter = createTRPCRouter({
         .where(eq(users.id, ctx.session.user.id));
       return { displayName: input.displayName } as const;
     }),
+
+  getConsent: protectedProcedure.query(async ({ ctx }) => {
+    const user = await db.query.users.findFirst({
+      where: eq(users.id, ctx.session.user.id),
+      columns: { mediaConsent: true, mediaConsentUpdatedAt: true },
+    });
+    return {
+      mediaConsent: user?.mediaConsent ?? false,
+      mediaConsentUpdatedAt: user?.mediaConsentUpdatedAt ?? null,
+    };
+  }),
+
+  /** Players may only opt in; opting out is handled by an admin via the dashboard. */
+  optInConsent: protectedProcedure.mutation(async ({ ctx }) => {
+    const [updated] = await db
+      .update(users)
+      .set({ mediaConsent: true, mediaConsentUpdatedAt: new Date() })
+      .where(and(eq(users.id, ctx.session.user.id), eq(users.mediaConsent, false)))
+      .returning({ mediaConsentUpdatedAt: users.mediaConsentUpdatedAt });
+    if (updated) {
+      return { mediaConsent: true, mediaConsentUpdatedAt: updated.mediaConsentUpdatedAt };
+    }
+    const user = await db.query.users.findFirst({
+      where: eq(users.id, ctx.session.user.id),
+      columns: { mediaConsentUpdatedAt: true },
+    });
+    return { mediaConsent: true, mediaConsentUpdatedAt: user?.mediaConsentUpdatedAt ?? null };
+  }),
 });

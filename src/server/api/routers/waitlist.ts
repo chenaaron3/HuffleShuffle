@@ -1,6 +1,8 @@
+import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
 import { waitlist } from "~/server/db/schema";
+import { TURNSTILE_ACTIONS, verifyTurnstileToken } from "~/server/turnstile";
 
 function normalizePhone(raw: string): string {
   const digits = raw.replace(/\D/g, "");
@@ -32,9 +34,22 @@ export const waitlistRouter = createTRPCRouter({
         email: z.string().email().max(255),
         phone: optionalPhoneSchema.optional(),
         instagram: z.string().trim().max(255).optional(),
+        captchaToken: z.string().max(2048).optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      const captchaOk = await verifyTurnstileToken(
+        input.captchaToken,
+        TURNSTILE_ACTIONS.waitlist,
+        ctx.clientIp,
+      );
+      if (!captchaOk) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Captcha verification failed. Please try again.",
+        });
+      }
+
       const email = input.email.trim().toLowerCase();
       const phoneRaw = input.phone?.trim();
       const phone = phoneRaw ? normalizePhone(phoneRaw) : null;

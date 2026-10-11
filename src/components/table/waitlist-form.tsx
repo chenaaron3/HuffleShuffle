@@ -2,7 +2,12 @@
 
 import { motion } from 'framer-motion';
 import { Check, Mail, X } from 'lucide-react';
-import { type FormEvent, type ReactNode, useId, useState } from 'react';
+import { type FormEvent, type ReactNode, useId, useRef, useState } from 'react';
+import {
+  isTurnstileEnabled,
+  TurnstileWidget,
+  type TurnstileWidgetHandle,
+} from '~/components/turnstile-widget';
 import {
   Dialog,
   DialogClose,
@@ -78,6 +83,8 @@ export function WaitlistForm({ className = '', variant = 'button' }: WaitlistFor
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [instagram, setInstagram] = useState('');
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const turnstileRef = useRef<TurnstileWidgetHandle>(null);
   const fieldId = useId();
   const inlineEmailId = useId();
 
@@ -85,6 +92,7 @@ export function WaitlistForm({ className = '', variant = 'button' }: WaitlistFor
     setName('');
     setPhone('');
     setInstagram('');
+    setCaptchaToken(null);
   };
 
   const joinMutation = api.waitlist.join.useMutation({
@@ -94,12 +102,16 @@ export function WaitlistForm({ className = '', variant = 'button' }: WaitlistFor
       setOpen(false);
       setSubmitted(true);
     },
+    onError: () => {
+      turnstileRef.current?.reset();
+    },
   });
 
   const handleOpenChange = (nextOpen: boolean) => {
     setOpen(nextOpen);
     if (!nextOpen) {
       resetOptionalFields();
+      joinMutation.reset();
       if (variant === 'button') setEmail('');
     }
   };
@@ -109,6 +121,7 @@ export function WaitlistForm({ className = '', variant = 'button' }: WaitlistFor
   const canSubmit =
     name.trim().length > 0 &&
     email.trim().length > 0 &&
+    (!isTurnstileEnabled || captchaToken !== null) &&
     !joinMutation.isPending;
 
   const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
@@ -119,6 +132,7 @@ export function WaitlistForm({ className = '', variant = 'button' }: WaitlistFor
       email: email.trim(),
       phone: phone.trim() || undefined,
       instagram: instagram.trim() || undefined,
+      captchaToken: captchaToken ?? undefined,
     });
   };
 
@@ -209,6 +223,19 @@ export function WaitlistForm({ className = '', variant = 'button' }: WaitlistFor
               className={inputClassName}
             />
           </div>
+
+          <TurnstileWidget
+            ref={turnstileRef}
+            action="waitlist"
+            onTokenChange={setCaptchaToken}
+            className="min-h-[65px]"
+          />
+
+          {joinMutation.error && (
+            <p role="alert" className="text-sm text-red-400">
+              {joinMutation.error.message}
+            </p>
+          )}
 
           <button
             type="submit"

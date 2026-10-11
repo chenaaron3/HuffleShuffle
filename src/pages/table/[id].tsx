@@ -158,7 +158,7 @@ export default function TableView() {
         return (
             <>
                 <Head>
-                    <title>Table Not Found - HuffleShuffle</title>
+                    <title>Table Not Found - HuffleShuffle™</title>
                 </Head>
                 <main className="flex h-dvh items-center justify-center bg-black text-white">
                     <div className="text-zinc-400">Table not found</div>
@@ -176,7 +176,7 @@ export default function TableView() {
         return (
             <>
                 <Head>
-                    <title>Loading Table - HuffleShuffle</title>
+                    <title>Loading Table - HuffleShuffle™</title>
                 </Head>
                 <main className="flex h-dvh items-center justify-center bg-black text-white">
                     <div className="text-zinc-400">Loading table...</div>
@@ -188,7 +188,7 @@ export default function TableView() {
     return (
         <>
             <Head>
-                <title>Table - HuffleShuffle</title>
+                <title>Table - HuffleShuffle™</title>
             </Head>
             <main className="h-dvh w-full overflow-hidden bg-black text-white">
                 {/* Table Status Indicator */}

@@ -63,6 +63,9 @@ const ensurePlayerRole = (role: string | undefined) => {
   if (role !== "player") throw new Error("FORBIDDEN: player role required");
 };
 
+export const MEDIA_CONSENT_REQUIRED_ERROR =
+  "You must opt in to recording and media consent before joining a table";
+
 export const tableRouter = createTRPCRouter({
   livekitToken: protectedProcedure
     .input(z.object({ tableId: z.string(), roomName: z.string().optional() }))
@@ -321,6 +324,7 @@ export const tableRouter = createTRPCRouter({
         where: eq(users.id, userId),
       });
       if (!user) throw new Error("User not found");
+      if (!user.mediaConsent) throw new Error(MEDIA_CONSENT_REQUIRED_ERROR);
 
       const result = await withTableMutation(db, input.tableId, async (tx) => {
         const snapshot = await tx.query.pokerTables.findFirst({

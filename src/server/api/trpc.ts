@@ -27,6 +27,7 @@ import type { CreateNextContextOptions } from "@trpc/server/adapters/next";
 
 interface CreateContextOptions {
   session: Session | null;
+  clientIp?: string;
 }
 
 /**
@@ -42,6 +43,7 @@ interface CreateContextOptions {
 const createInnerTRPCContext = (opts: CreateContextOptions) => {
   return {
     session: opts.session,
+    clientIp: opts.clientIp,
     db,
   };
 };
@@ -58,8 +60,17 @@ export const createTRPCContext = async (opts: CreateNextContextOptions) => {
   // Get the session from the server using the getServerSession wrapper function
   const session = await auth(req, res);
 
+  const forwardedFor = req.headers["x-forwarded-for"];
+  const forwardedIp = (
+    Array.isArray(forwardedFor) ? forwardedFor[0] : forwardedFor
+  )
+    ?.split(",")[0]
+    ?.trim();
+  const clientIp = forwardedIp ? forwardedIp : req.socket?.remoteAddress;
+
   return createInnerTRPCContext({
     session,
+    clientIp,
   });
 };
 

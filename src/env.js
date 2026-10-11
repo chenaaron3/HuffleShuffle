@@ -30,6 +30,10 @@ export const env = createEnv({
     SQS_QUEUE_URL: z.string(),
     /** When "true", DEAL_CARD / DEAL_RANDOM call dealCard in-process (no SQS). */
     INLINE_DEAL: z.enum(["true", "false"]).optional(),
+    /** Cloudflare Turnstile secret for waitlist signups; required in production. */
+    TURNSTILE_SECRET: z.string().optional(),
+    /** Comma-separated frontend hostnames siteverify must report (no localhost in prod). */
+    TURNSTILE_HOSTNAMES: z.string().optional(),
   },
 
   /**
@@ -40,6 +44,7 @@ export const env = createEnv({
   client: {
     NEXT_PUBLIC_PUSHER_KEY: z.string(),
     NEXT_PUBLIC_PUSHER_CLUSTER: z.string(),
+    NEXT_PUBLIC_TURNSTILE_SITE_KEY: z.string().optional(),
   },
 
   /**
@@ -64,8 +69,11 @@ export const env = createEnv({
     AWS_SECRET_ACCESS_KEY: process.env.AWS_SECRET_ACCESS_KEY,
     SQS_QUEUE_URL: process.env.SQS_QUEUE_URL,
     INLINE_DEAL: process.env.INLINE_DEAL,
+    TURNSTILE_SECRET: process.env.TURNSTILE_SECRET,
+    TURNSTILE_HOSTNAMES: process.env.TURNSTILE_HOSTNAMES,
     NEXT_PUBLIC_PUSHER_KEY: process.env.NEXT_PUBLIC_PUSHER_KEY,
     NEXT_PUBLIC_PUSHER_CLUSTER: process.env.NEXT_PUBLIC_PUSHER_CLUSTER,
+    NEXT_PUBLIC_TURNSTILE_SITE_KEY: process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY,
   },
   /**
    * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially

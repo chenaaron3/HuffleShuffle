@@ -62,7 +62,7 @@ export function LandingPage() {
   return (
     <>
       <Head>
-        <title>HuffleShuffle</title>
+        <title>HuffleShuffle™</title>
         <meta name="description" content="Play online poker with a live dealer" />
       </Head>
       <main

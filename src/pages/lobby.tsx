@@ -58,6 +58,24 @@ export default function LobbyPage() {
 
   const updateDisplayNameMutation = api.user.updateDisplayName.useMutation();
 
+  const { data: consent, refetch: refetchConsent } =
+    api.user.getConsent.useQuery(undefined, {
+      enabled: !isDealer,
+      refetchOnWindowFocus: false,
+    });
+  const optInConsentMutation = api.user.optInConsent.useMutation();
+  const [consentTableId, setConsentTableId] = useState<string | null>(null);
+  const [consentChecked, setConsentChecked] = useState(false);
+
+  const openJoinDialog = (tableId: string) => {
+    const defaultName =
+      session?.user?.displayName?.trim() ||
+      (session?.user?.name ?? "").trim() ||
+      "Player";
+    setJoinDisplayName(defaultName);
+    setPendingJoinTableId(tableId);
+  };
+
   const joinMutation = api.table.join.useMutation();
 
   // Single flag covering the entire join flow (display name -> keygen -> join
@@ -144,7 +162,7 @@ export default function LobbyPage() {
   return (
     <>
       <Head>
-        <title>Lobby - HuffleShuffle</title>
+        <title>Lobby - HuffleShuffle™</title>
       </Head>
       <main className="min-h-screen bg-black text-white">
         <div className="mx-auto max-w-6xl px-6 py-10">
@@ -251,12 +269,12 @@ export default function LobbyPage() {
                         <button
                           onClick={() => {
                             if (!t.isJoinable || t.availableSeats === 0) return;
-                            const defaultName =
-                              session?.user?.displayName?.trim() ||
-                              (session?.user?.name ?? "").trim() ||
-                              "Player";
-                            setJoinDisplayName(defaultName);
-                            setPendingJoinTableId(t.id);
+                            if (!consent?.mediaConsent) {
+                              setConsentChecked(false);
+                              setConsentTableId(t.id);
+                              return;
+                            }
+                            openJoinDialog(t.id);
                           }}
                           disabled={!t.isJoinable || t.availableSeats === 0}
                           className={`rounded-md px-3 py-2 text-sm font-medium ${
@@ -354,14 +372,97 @@ export default function LobbyPage() {
                   await router.push(`/table/${tableId}`);
                 } catch (err) {
                   console.error(err);
+                  setJoinFlowPending(false);
+                  const { data: latestConsent } = await refetchConsent();
+                  if (latestConsent && !latestConsent.mediaConsent) {
+                    setPendingJoinTableId(null);
+                    setConsentChecked(false);
+                    setConsentTableId(pendingJoinTableId);
+                    return;
+                  }
                   alert(
                     err instanceof Error ? err.message : "Failed to join table",
                   );
-                  setJoinFlowPending(false);
                 }
               }}
             >
               {joinFlowPending ? "Joining…" : "Join"}
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+      <Dialog
+        open={!!consentTableId}
+        onOpenChange={(open) => {
+          if (!open && !optInConsentMutation.isPending) setConsentTableId(null);
+        }}
+      >
+        <DialogContent className="mx-4 max-h-[min(90vh,calc(100%-2rem))] overflow-y-auto sm:mx-auto">
+          <DialogHeader>
+            <DialogTitle>Recording &amp; media consent</DialogTitle>
+            <DialogDescription>
+              Games are recorded and may be shared on social media and in
+              promotional content. You need to opt in before joining a table.
+            </DialogDescription>
+          </DialogHeader>
+          <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-md border border-white/10 bg-black/40 p-3 text-sm text-zinc-200">
+            <input
+              type="checkbox"
+              checked={consentChecked}
+              onChange={(e) => setConsentChecked(e.target.checked)}
+              disabled={optInConsentMutation.isPending}
+              className="mt-0.5 size-4 shrink-0 accent-white"
+            />
+            <span>
+              I consent to my games being recorded and to that footage being
+              used on HuffleShuffle&trade; social media and in promotional
+              content.
+            </span>
+          </label>
+          <p className="mt-3 text-xs text-zinc-400">
+            Want to change your permissions later? Send an email to{" "}
+            <a
+              href="mailto:cabreu@huffleshuffle.com"
+              className="font-medium text-zinc-200 underline-offset-2 hover:underline"
+            >
+              cabreu@huffleshuffle.com
+            </a>{" "}
+            and we&apos;ll update your preferences for you.
+          </p>
+          {optInConsentMutation.error ? (
+            <p role="alert" className="mt-3 text-sm text-red-400">
+              {optInConsentMutation.error.message}
+            </p>
+          ) : null}
+          <div className="mt-6 flex justify-end gap-2">
+            <DialogClose asChild>
+              <button
+                type="button"
+                className="rounded-md px-4 py-2 text-sm text-zinc-300 hover:bg-white/10 disabled:pointer-events-none disabled:opacity-50"
+                disabled={optInConsentMutation.isPending}
+              >
+                Cancel
+              </button>
+            </DialogClose>
+            <button
+              type="button"
+              className="rounded-md bg-white px-4 py-2 text-sm font-medium text-black hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={!consentChecked || optInConsentMutation.isPending}
+              onClick={async () => {
+                const tableId = consentTableId;
+                if (!tableId) return;
+                try {
+                  await optInConsentMutation.mutateAsync();
+                } catch (err) {
+                  console.error(err);
+                  return;
+                }
+                await refetchConsent();
+                setConsentTableId(null);
+                openJoinDialog(tableId);
+              }}
+            >
+              {optInConsentMutation.isPending ? "Saving…" : "Continue"}
             </button>
           </div>
         </DialogContent>

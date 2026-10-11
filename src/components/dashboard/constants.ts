@@ -1,6 +1,6 @@
 export const DASHBOARD_PAGE_SIZE = 25;
 
-export const DASHBOARD_TABS = ["waitlist", "players", "hands"] as const;
+export const DASHBOARD_TABS = ["waitlist", "players", "consent", "hands"] as const;
 
 export type DashboardTab = (typeof DASHBOARD_TABS)[number];
 

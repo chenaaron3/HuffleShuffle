@@ -98,6 +98,7 @@ describe("table scenario harness", () => {
           role: "player" as const,
           name: `${i + 1}`,
           displayName: `Player ${i + 1}`,
+          mediaConsent: true,
         })),
       ])
       .onConflictDoUpdate({
@@ -107,6 +108,7 @@ describe("table scenario harness", () => {
           role: sql`EXCLUDED.role`,
           name: sql`EXCLUDED.name`,
           displayName: sql`EXCLUDED."displayName"`,
+          mediaConsent: sql`EXCLUDED."mediaConsent"`,
         },
       });
 
