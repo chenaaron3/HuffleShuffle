@@ -84,7 +84,7 @@ describe("tournament seat lock", () => {
           role: "player",
           name: "P1",
           displayName: "Player 1",
-          mediaConsent: true,
+          recordingConsent: true,
         },
         {
           id: PLAYER2_ID,
@@ -92,7 +92,7 @@ describe("tournament seat lock", () => {
           role: "player",
           name: "P2",
           displayName: "Player 2",
-          mediaConsent: true,
+          recordingConsent: true,
         },
         {
           id: PLAYER3_ID,
@@ -100,7 +100,7 @@ describe("tournament seat lock", () => {
           role: "player",
           name: "P3",
           displayName: "Player 3",
-          mediaConsent: true,
+          recordingConsent: true,
         },
       ])
       .onConflictDoUpdate({
@@ -110,7 +110,7 @@ describe("tournament seat lock", () => {
           role: sql`EXCLUDED.role`,
           name: sql`EXCLUDED.name`,
           displayName: sql`EXCLUDED."displayName"`,
-          mediaConsent: sql`EXCLUDED."mediaConsent"`,
+          recordingConsent: sql`EXCLUDED."recordingConsent"`,
         },
       });
 

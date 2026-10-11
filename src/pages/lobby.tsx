@@ -64,9 +64,17 @@ export default function LobbyPage() {
       enabled: !isDealer,
       refetchOnWindowFocus: false,
     });
-  const optInConsentMutation = api.user.optInConsent.useMutation();
-  const [consentChecked, setConsentChecked] = useState(false);
-  const needsConsent = consent?.mediaConsent !== true;
+  const submitConsentMutation = api.user.submitConsent.useMutation();
+  const [recordingChecked, setRecordingChecked] = useState(false);
+  const [socialMediaChoice, setSocialMediaChoice] = useState<boolean | null>(
+    null,
+  );
+  const needsConsent = consent?.recordingConsent !== true;
+  const consentComplete = recordingChecked && socialMediaChoice !== null;
+  const resetConsentInputs = () => {
+    setRecordingChecked(false);
+    setSocialMediaChoice(null);
+  };
 
   const openJoinDialog = (tableId: string) => {
     const defaultName =
@@ -74,7 +82,7 @@ export default function LobbyPage() {
       (session?.user?.name ?? "").trim() ||
       "Player";
     setJoinDisplayName(defaultName);
-    setConsentChecked(false);
+    resetConsentInputs();
     setPendingJoinTableId(tableId);
   };
 
@@ -337,8 +345,10 @@ export default function LobbyPage() {
           </label>
           {needsConsent ? (
             <MediaConsentField
-              checked={consentChecked}
-              onCheckedChange={setConsentChecked}
+              recordingConsent={recordingChecked}
+              onRecordingConsentChange={setRecordingChecked}
+              socialMediaConsent={socialMediaChoice}
+              onSocialMediaConsentChange={setSocialMediaChoice}
               disabled={joinFlowPending}
             />
           ) : null}
@@ -358,15 +368,17 @@ export default function LobbyPage() {
               disabled={
                 joinFlowPending ||
                 !joinDisplayName.trim() ||
-                (needsConsent && !consentChecked)
+                (needsConsent && !consentComplete)
               }
               onClick={async () => {
                 const name = joinDisplayName.trim();
                 if (!name || !pendingJoinTableId) return;
                 setJoinFlowPending(true);
                 try {
-                  if (needsConsent) {
-                    await optInConsentMutation.mutateAsync();
+                  if (needsConsent && socialMediaChoice !== null) {
+                    await submitConsentMutation.mutateAsync({
+                      socialMediaConsent: socialMediaChoice,
+                    });
                   }
                   await updateDisplayNameMutation.mutateAsync({
                     displayName: name,
@@ -385,8 +397,8 @@ export default function LobbyPage() {
                   console.error(err);
                   setJoinFlowPending(false);
                   const { data: latestConsent } = await refetchConsent();
-                  if (latestConsent && !latestConsent.mediaConsent) {
-                    setConsentChecked(false);
+                  if (latestConsent && !latestConsent.recordingConsent) {
+                    resetConsentInputs();
                     return;
                   }
                   alert(

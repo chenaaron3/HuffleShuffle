@@ -1,9 +1,14 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { getCommittedTableId } from "~/server/api/table/membership";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { db } from "~/server/db";
 import { users } from "~/server/db/schema";
+
+const consentColumns = {
+  recordingConsent: true,
+  socialMediaConsent: true,
+} as const;
 
 export const userRouter = createTRPCRouter({
   checkExistingSeat: protectedProcedure.query(async ({ ctx }) => {
@@ -38,28 +43,44 @@ export const userRouter = createTRPCRouter({
   getConsent: protectedProcedure.query(async ({ ctx }) => {
     const user = await db.query.users.findFirst({
       where: eq(users.id, ctx.session.user.id),
-      columns: { mediaConsent: true, mediaConsentUpdatedAt: true },
+      columns: consentColumns,
     });
     return {
-      mediaConsent: user?.mediaConsent ?? false,
-      mediaConsentUpdatedAt: user?.mediaConsentUpdatedAt ?? null,
+      recordingConsent: user?.recordingConsent ?? false,
+      socialMediaConsent: user?.socialMediaConsent ?? null,
     };
   }),
 
-  /** Players may only opt in; opting out is handled by an admin via the dashboard. */
-  optInConsent: protectedProcedure.mutation(async ({ ctx }) => {
-    const [updated] = await db
-      .update(users)
-      .set({ mediaConsent: true, mediaConsentUpdatedAt: new Date() })
-      .where(and(eq(users.id, ctx.session.user.id), eq(users.mediaConsent, false)))
-      .returning({ mediaConsentUpdatedAt: users.mediaConsentUpdatedAt });
-    if (updated) {
-      return { mediaConsent: true, mediaConsentUpdatedAt: updated.mediaConsentUpdatedAt };
-    }
-    const user = await db.query.users.findFirst({
-      where: eq(users.id, ctx.session.user.id),
-      columns: { mediaConsentUpdatedAt: true },
-    });
-    return { mediaConsent: true, mediaConsentUpdatedAt: user?.mediaConsentUpdatedAt ?? null };
-  }),
+  /**
+   * First-time consent from the join dialog: agrees to recording and records the
+   * social media choice. Once recording consent is given, later changes go
+   * through an admin via the dashboard, so repeat calls are no-ops.
+   */
+  submitConsent: protectedProcedure
+    .input(z.object({ socialMediaConsent: z.boolean() }))
+    .mutation(async ({ ctx, input }) => {
+      const now = new Date();
+      await db
+        .update(users)
+        .set({
+          recordingConsent: true,
+          recordingConsentUpdatedAt: now,
+          socialMediaConsent: input.socialMediaConsent,
+          socialMediaConsentUpdatedAt: sql`case when ${users.socialMediaConsent} is distinct from ${input.socialMediaConsent}::boolean then ${now.toISOString()}::timestamptz else ${users.socialMediaConsentUpdatedAt} end`,
+        })
+        .where(
+          and(
+            eq(users.id, ctx.session.user.id),
+            eq(users.recordingConsent, false),
+          ),
+        );
+      const user = await db.query.users.findFirst({
+        where: eq(users.id, ctx.session.user.id),
+        columns: consentColumns,
+      });
+      return {
+        recordingConsent: user?.recordingConsent ?? false,
+        socialMediaConsent: user?.socialMediaConsent ?? null,
+      };
+    }),
 });

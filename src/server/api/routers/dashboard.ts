@@ -4,7 +4,6 @@ import {
   desc,
   eq,
   inArray,
-  ne,
   notInArray,
   sql,
 } from "drizzle-orm";
@@ -18,6 +17,13 @@ import {
   users,
   waitlist,
 } from "~/server/db/schema";
+
+const consentSelection = {
+  recordingConsent: users.recordingConsent,
+  recordingConsentUpdatedAt: users.recordingConsentUpdatedAt,
+  socialMediaConsent: users.socialMediaConsent,
+  socialMediaConsentUpdatedAt: users.socialMediaConsentUpdatedAt,
+};
 
 const paginationInput = z.object({
   page: z.number().int().min(1).default(1),
@@ -78,8 +84,7 @@ export const dashboardRouter = createTRPCRouter({
             id: users.id,
             displayName: users.displayName,
             email: users.email,
-            mediaConsent: users.mediaConsent,
-            mediaConsentUpdatedAt: users.mediaConsentUpdatedAt,
+            ...consentSelection,
           })
           .from(users)
           .where(humanPlayers)
@@ -99,34 +104,36 @@ export const dashboardRouter = createTRPCRouter({
     }),
 
   setConsent: dealerProcedure
-    .input(z.object({ userId: z.string().min(1), mediaConsent: z.boolean() }))
+    .input(
+      z.object({
+        userId: z.string().min(1),
+        kind: z.enum(["recording", "socialMedia"]),
+        value: z.boolean(),
+      }),
+    )
     .mutation(async ({ ctx, input }) => {
-      const [updated] = await ctx.db
+      const [valueColumn, updatedAtColumn] =
+        input.kind === "recording"
+          ? (["recordingConsent", "recordingConsentUpdatedAt"] as const)
+          : (["socialMediaConsent", "socialMediaConsentUpdatedAt"] as const);
+
+      await ctx.db
         .update(users)
-        .set({
-          mediaConsent: input.mediaConsent,
-          mediaConsentUpdatedAt: new Date(),
-        })
+        .set({ [valueColumn]: input.value, [updatedAtColumn]: new Date() })
         .where(
           and(
             eq(users.id, input.userId),
             eq(users.role, "player"),
-            ne(users.mediaConsent, input.mediaConsent),
+            sql`${users[valueColumn]} is distinct from ${input.value}::boolean`,
           ),
-        )
-        .returning({
-          id: users.id,
-          mediaConsent: users.mediaConsent,
-          mediaConsentUpdatedAt: users.mediaConsentUpdatedAt,
-        });
-      if (updated) return updated;
+        );
 
-      const existing = await ctx.db.query.users.findFirst({
-        where: and(eq(users.id, input.userId), eq(users.role, "player")),
-        columns: { id: true, mediaConsent: true, mediaConsentUpdatedAt: true },
-      });
-      if (!existing) throw new Error("Player not found");
-      return existing;
+      const [row] = await ctx.db
+        .select({ id: users.id, ...consentSelection })
+        .from(users)
+        .where(and(eq(users.id, input.userId), eq(users.role, "player")));
+      if (!row) throw new Error("Player not found");
+      return row;
     }),
 
   listPlayers: dealerProcedure

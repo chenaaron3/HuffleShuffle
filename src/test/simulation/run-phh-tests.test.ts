@@ -220,7 +220,7 @@ describe("PHH Simulation Tests", () => {
               role: "player" as const,
               name: `Player ${i + 1}`,
               displayName: `Player ${i + 1}`,
-              mediaConsent: true,
+              recordingConsent: true,
             })),
           ])
           .onConflictDoUpdate({
@@ -230,7 +230,7 @@ describe("PHH Simulation Tests", () => {
               role: sql`EXCLUDED.role`,
               name: sql`EXCLUDED.name`,
               displayName: sql`EXCLUDED."displayName"`,
-              mediaConsent: sql`EXCLUDED."mediaConsent"`,
+              recordingConsent: sql`EXCLUDED."recordingConsent"`,
             },
           });
 

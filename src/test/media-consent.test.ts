@@ -1,7 +1,7 @@
 import { eq, inArray, sql } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createCaller } from "~/server/api/root";
-import { MEDIA_CONSENT_REQUIRED_ERROR } from "~/server/api/routers/table";
+import { RECORDING_CONSENT_REQUIRED_ERROR } from "~/server/api/routers/table";
 import { db } from "~/server/db";
 import {
   gameEvents,
@@ -68,8 +68,10 @@ describe("media consent", () => {
           role: "player",
           name: "Player",
           displayName: "Player",
-          mediaConsent: false,
-          mediaConsentUpdatedAt: null,
+          recordingConsent: false,
+          recordingConsentUpdatedAt: null,
+          socialMediaConsent: null,
+          socialMediaConsentUpdatedAt: null,
         },
       ])
       .onConflictDoUpdate({
@@ -77,8 +79,10 @@ describe("media consent", () => {
         set: {
           email: sql`EXCLUDED.email`,
           role: sql`EXCLUDED.role`,
-          mediaConsent: sql`EXCLUDED."mediaConsent"`,
-          mediaConsentUpdatedAt: sql`EXCLUDED."mediaConsentUpdatedAt"`,
+          recordingConsent: sql`EXCLUDED."recordingConsent"`,
+          recordingConsentUpdatedAt: sql`EXCLUDED."recordingConsentUpdatedAt"`,
+          socialMediaConsent: sql`EXCLUDED."socialMediaConsent"`,
+          socialMediaConsentUpdatedAt: sql`EXCLUDED."socialMediaConsentUpdatedAt"`,
         },
       });
     await ensureTestWalletBalance(PLAYER_ID, 1000);
@@ -106,13 +110,34 @@ describe("media consent", () => {
   const join = () =>
     player.table.join({ tableId, buyIn: 300, userPublicKey: publicKey });
 
-  it("blocks joining until the player opts in", async () => {
-    expect((await player.user.getConsent()).mediaConsent).toBe(false);
-    await expect(join()).rejects.toThrow(MEDIA_CONSENT_REQUIRED_ERROR);
+  const readConsent = () =>
+    db.query.users.findFirst({
+      where: eq(users.id, PLAYER_ID),
+      columns: {
+        recordingConsent: true,
+        recordingConsentUpdatedAt: true,
+        socialMediaConsent: true,
+        socialMediaConsentUpdatedAt: true,
+      },
+    });
 
-    const optedIn = await player.user.optInConsent();
-    expect(optedIn.mediaConsent).toBe(true);
-    expect(optedIn.mediaConsentUpdatedAt).toBeInstanceOf(Date);
+  it("blocks joining until the player agrees to recording", async () => {
+    expect(await player.user.getConsent()).toEqual({
+      recordingConsent: false,
+      socialMediaConsent: null,
+    });
+    await expect(join()).rejects.toThrow(RECORDING_CONSENT_REQUIRED_ERROR);
+
+    const submitted = await player.user.submitConsent({
+      socialMediaConsent: false,
+    });
+    expect(submitted).toEqual({
+      recordingConsent: true,
+      socialMediaConsent: false,
+    });
+    const stored = await readConsent();
+    expect(stored?.recordingConsentUpdatedAt).toBeInstanceOf(Date);
+    expect(stored?.socialMediaConsentUpdatedAt).toBeInstanceOf(Date);
 
     await join();
     const seated = await db.query.seats.findMany({
@@ -121,51 +146,78 @@ describe("media consent", () => {
     expect(seated.map((s) => s.playerId)).toEqual([PLAYER_ID]);
   });
 
-  it("does not bump the timestamp when opting in again", async () => {
-    const first = await player.user.optInConsent();
-    const second = await player.user.optInConsent();
-    expect(second.mediaConsentUpdatedAt?.getTime()).toBe(
-      first.mediaConsentUpdatedAt?.getTime(),
+  it("ignores repeat submissions once recording consent is given", async () => {
+    await player.user.submitConsent({ socialMediaConsent: true });
+    const first = await readConsent();
+
+    const again = await player.user.submitConsent({ socialMediaConsent: false });
+    expect(again.socialMediaConsent).toBe(true);
+    const second = await readConsent();
+    expect(second?.recordingConsentUpdatedAt?.getTime()).toBe(
+      first?.recordingConsentUpdatedAt?.getTime(),
+    );
+    expect(second?.socialMediaConsentUpdatedAt?.getTime()).toBe(
+      first?.socialMediaConsentUpdatedAt?.getTime(),
     );
   });
 
-  it("lets an admin change consent and records when it changed", async () => {
+  it("lets an admin change each consent and records when it changed", async () => {
     const before = await dealer.dashboard.listConsent({ page: 1, pageSize: 100 });
     const row = before.rows.find((r) => r.id === PLAYER_ID);
-    expect(row?.mediaConsent).toBe(false);
-    expect(row?.mediaConsentUpdatedAt).toBeNull();
+    expect(row).toMatchObject({
+      recordingConsent: false,
+      recordingConsentUpdatedAt: null,
+      socialMediaConsent: null,
+      socialMediaConsentUpdatedAt: null,
+    });
     expect(before.rows.some((r) => r.id.startsWith("bot0000"))).toBe(false);
+
+    const social = await dealer.dashboard.setConsent({
+      userId: PLAYER_ID,
+      kind: "socialMedia",
+      value: false,
+    });
+    expect(social.socialMediaConsent).toBe(false);
+    expect(social.socialMediaConsentUpdatedAt).toBeInstanceOf(Date);
+    expect(social.recordingConsentUpdatedAt).toBeNull();
 
     const on = await dealer.dashboard.setConsent({
       userId: PLAYER_ID,
-      mediaConsent: true,
+      kind: "recording",
+      value: true,
     });
-    expect(on.mediaConsent).toBe(true);
-    expect(on.mediaConsentUpdatedAt).toBeInstanceOf(Date);
+    expect(on.recordingConsent).toBe(true);
+    expect(on.recordingConsentUpdatedAt).toBeInstanceOf(Date);
+    expect(on.socialMediaConsentUpdatedAt?.getTime()).toBe(
+      social.socialMediaConsentUpdatedAt?.getTime(),
+    );
 
     const off = await dealer.dashboard.setConsent({
       userId: PLAYER_ID,
-      mediaConsent: false,
+      kind: "recording",
+      value: false,
     });
-    expect(off.mediaConsent).toBe(false);
-    expect(off.mediaConsentUpdatedAt!.getTime()).toBeGreaterThanOrEqual(
-      on.mediaConsentUpdatedAt!.getTime(),
-    );
+    expect(off.recordingConsent).toBe(false);
 
     const unchanged = await dealer.dashboard.setConsent({
       userId: PLAYER_ID,
-      mediaConsent: false,
+      kind: "recording",
+      value: false,
     });
-    expect(unchanged.mediaConsentUpdatedAt?.getTime()).toBe(
-      off.mediaConsentUpdatedAt?.getTime(),
+    expect(unchanged.recordingConsentUpdatedAt?.getTime()).toBe(
+      off.recordingConsentUpdatedAt?.getTime(),
     );
 
-    await expect(join()).rejects.toThrow(MEDIA_CONSENT_REQUIRED_ERROR);
+    await expect(join()).rejects.toThrow(RECORDING_CONSENT_REQUIRED_ERROR);
   });
 
   it("restricts consent and waitlist admin endpoints to dealers", async () => {
     await expect(
-      player.dashboard.setConsent({ userId: PLAYER_ID, mediaConsent: true }),
+      player.dashboard.setConsent({
+        userId: PLAYER_ID,
+        kind: "recording",
+        value: true,
+      }),
     ).rejects.toThrow();
     await expect(
       player.dashboard.listConsent({ page: 1, pageSize: 25 }),
