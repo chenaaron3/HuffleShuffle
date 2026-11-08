@@ -110,6 +110,15 @@ export async function createNewGame(
   orderedSeats: Array<SeatRow>,
   previousGame: GameRow | null,
 ): Promise<GameRow> {
+  // Refuse to start over an in-progress hand. Abandoning it here would keep
+  // posted blinds/bets out of every stack (no refund, no settleHand), so seat
+  // stacks would drift below their ledger escrow. Use RESET_TABLE instead.
+  if (previousGame && !previousGame.isCompleted) {
+    throw new Error(
+      "A hand is already in progress. Reset the table before starting a new one.",
+    );
+  }
+
   const tournamentId = (await findOpenTournament(tx, table.id))?.id ?? null;
 
   // Reset all seats and mark current game as completed (if exists)
