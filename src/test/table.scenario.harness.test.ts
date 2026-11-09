@@ -123,6 +123,8 @@ describe("table scenario harness", () => {
       maxSeats: 8,
     });
     tableId = res.tableId;
+    // Players may only join while a tournament is open at the table.
+    await dealerCaller.tournament.create({ tableId });
     // Seed Pi devices for card seats 0..7 with a public key so joins can encrypt nonce
     const cardPis = Array.from({ length: 8 }, (_, i) => ({
       serial: `${tableId}-card-${i}`,

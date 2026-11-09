@@ -19,6 +19,7 @@ export async function summarizeTable(
         limit: 1,
       },
       tournaments: {
+        where: (t, { isNotNull }) => isNotNull(t.startedAt),
         orderBy: (t, { desc }) => [desc(t.startedAt)],
         limit: 1,
         with: {

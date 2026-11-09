@@ -12,6 +12,8 @@ import type { AdapterAccount } from "next-auth/adapters";
 
 // Constants
 export const MAX_SEATS_PER_TABLE = 8;
+/** All tournament schedules are wall-clock Eastern time. */
+export const TOURNAMENT_TIMEZONE = "America/New_York";
 
 /**
  * This is an example of how to use the multi-project schema feature of Drizzle ORM. Use the same
@@ -255,6 +257,40 @@ export const gameStateEnum = pgEnum("game_state", [
   "RESET_TABLE",
 ]);
 
+/**
+ * Recurring weekly template. Each series keeps exactly one upcoming tournament;
+ * when it ends (or is cancelled) the next week's tournament is created.
+ * Times are wall-clock in TOURNAMENT_TIMEZONE.
+ */
+export const tournamentSeries = createTable(
+  "tournament_series",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    tableId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => pokerTables.id, { onDelete: "cascade" }),
+    name: d.varchar({ length: 255 }).notNull(),
+    /** 0 = Sunday … 6 = Saturday */
+    dayOfWeek: d.integer().notNull(),
+    /** "HH:mm" 24h */
+    startTime: d.varchar({ length: 5 }).notNull(),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    updatedAt: d.timestamp({ withTimezone: true }).$onUpdate(() => new Date()),
+  }),
+  (t) => [
+    index("tournament_series_table_id_idx").on(t.tableId),
+    check("tournament_series_day_of_week_check", sql`${t.dayOfWeek} BETWEEN 0 AND 6`),
+  ],
+);
+
 export const tournaments = createTable(
   "tournament",
   (d) => ({
@@ -267,11 +303,16 @@ export const tournaments = createTable(
       .varchar({ length: 255 })
       .notNull()
       .references(() => pokerTables.id, { onDelete: "cascade" }),
-    startedAt: d
-      .timestamp({ withTimezone: true })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
+    seriesId: d.varchar({ length: 255 }).references(() => tournamentSeries.id, {
+      onDelete: "set null",
+    }),
+    name: d.varchar({ length: 255 }),
+    /** When players may start joining the table. Before this, players can only register. */
+    scheduledAt: d.timestamp({ withTimezone: true }),
+    /** Set when the dealer starts blinds; null = scheduled but not started. */
+    startedAt: d.timestamp({ withTimezone: true }),
     endedAt: d.timestamp({ withTimezone: true }),
+    cancelledAt: d.timestamp({ withTimezone: true }),
     winnerPlayerId: d.varchar({ length: 255 }).references(() => users.id, {
       onDelete: "set null",
     }),
@@ -284,6 +325,36 @@ export const tournaments = createTable(
   (t) => [
     index("tournament_table_id_idx").on(t.tableId),
     index("tournament_table_ended_idx").on(t.tableId, t.endedAt),
+    index("tournament_series_id_idx").on(t.seriesId),
+  ],
+);
+
+/** Registration queue: ordered by queuedAt; first MAX_SEATS_PER_TABLE are seated, rest waitlisted. */
+export const tournamentRegistrations = createTable(
+  "tournament_registration",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    tournamentId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => tournaments.id, { onDelete: "cascade" }),
+    userId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    /** Queue order (sign-up time by default; admins can reorder). */
+    queuedAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  }),
+  (t) => [
+    uniqueIndex("tournament_registration_unique_idx").on(t.tournamentId, t.userId),
+    index("tournament_registration_order_idx").on(t.tournamentId, t.queuedAt),
   ],
 );
 
@@ -419,8 +490,38 @@ export const tournamentsRelations = relations(tournaments, ({ one, many }) => ({
     fields: [tournaments.winnerPlayerId],
     references: [users.id],
   }),
+  series: one(tournamentSeries, {
+    fields: [tournaments.seriesId],
+    references: [tournamentSeries.id],
+  }),
   games: many(games),
+  registrations: many(tournamentRegistrations),
 }));
+
+export const tournamentSeriesRelations = relations(
+  tournamentSeries,
+  ({ one, many }) => ({
+    table: one(pokerTables, {
+      fields: [tournamentSeries.tableId],
+      references: [pokerTables.id],
+    }),
+    tournaments: many(tournaments),
+  }),
+);
+
+export const tournamentRegistrationsRelations = relations(
+  tournamentRegistrations,
+  ({ one }) => ({
+    tournament: one(tournaments, {
+      fields: [tournamentRegistrations.tournamentId],
+      references: [tournaments.id],
+    }),
+    user: one(users, {
+      fields: [tournamentRegistrations.userId],
+      references: [users.id],
+    }),
+  }),
+);
 
 export const gamesRelations = relations(games, ({ one }) => ({
   table: one(pokerTables, {

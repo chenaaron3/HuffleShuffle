@@ -12,6 +12,7 @@ import {
 import { ConsentTab } from "~/components/dashboard/consent-tab";
 import { HandsTab } from "~/components/dashboard/hands-tab";
 import { PlayersTab } from "~/components/dashboard/players-tab";
+import { TournamentsTab } from "~/components/dashboard/tournaments-tab";
 import { WaitlistTab } from "~/components/dashboard/waitlist-tab";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import { requireDealerAuth } from "~/server/auth/guards";
@@ -19,6 +20,7 @@ import { requireDealerAuth } from "~/server/auth/guards";
 import type { GetServerSideProps } from "next";
 
 const TAB_LABELS: Record<DashboardTab, string> = {
+  tournaments: "Tournaments",
   waitlist: "Waitlist",
   players: "Players",
   consent: "Consent",
@@ -79,6 +81,9 @@ export default function DashboardPage() {
               ))}
             </TabsList>
 
+            <TabsContent value="tournaments">
+              <TournamentsTab />
+            </TabsContent>
             <TabsContent value="waitlist">
               <WaitlistTab
                 pagination={pagination}

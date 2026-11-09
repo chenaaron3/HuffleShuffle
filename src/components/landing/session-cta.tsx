@@ -30,5 +30,15 @@ export function SessionCta({ session }: { session: ReturnType<typeof useSession>
     );
   }
 
-  return <WaitlistForm variant="inline" />;
+  return (
+    <div className="flex flex-col gap-3">
+      <WaitlistForm variant="inline" />
+      <p className="text-sm text-white/60">
+        Registering for a game?{' '}
+        <Link href="/login?callbackUrl=%2Flobby" className="font-medium text-landing-gold hover:text-landing-gold-bright">
+          Sign in
+        </Link>
+      </p>
+    </div>
+  );
 }

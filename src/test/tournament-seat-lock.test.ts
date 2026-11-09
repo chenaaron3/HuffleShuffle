@@ -125,6 +125,7 @@ describe("tournament seat lock", () => {
       maxSeats: 8,
     });
     tableId = created.tableId;
+    await dealer.tournament.create({ tableId });
 
     await db.insert(piDevices).values(
       Array.from({ length: 8 }, (_, i) => ({
@@ -216,6 +217,7 @@ describe("tournament seat lock", () => {
     expect(row?.isJoinable).toBe(true);
 
     await player1.table.leave({ tableId });
+    await dealer.tournament.create({ tableId });
     await player3.table.join({
       tableId,
       buyIn: 300,

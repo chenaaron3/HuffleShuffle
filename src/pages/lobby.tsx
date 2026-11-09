@@ -13,6 +13,10 @@ import {
   DialogTitle,
 } from "~/components/ui/dialog";
 import {
+  TournamentCard,
+  type LobbyTournament,
+} from "~/components/lobby/tournament-card";
+import {
   MediaConsentField,
   MediaConsentSummary,
 } from "~/components/media-consent-field";
@@ -30,11 +34,28 @@ const DEFAULT_JOIN_CHIPS = 1000;
 export default function LobbyPage() {
   const { data: session } = useSession();
   const router = useRouter();
+  const isDealer = useIsDealerRole();
   const { data: tables, refetch } = api.table.list.useQuery(undefined, {
     refetchOnWindowFocus: false,
+    enabled: isDealer,
   });
-
-  const isDealer = useIsDealerRole();
+  const { data: tournamentList, refetch: refetchTournaments } =
+    api.tournament.list.useQuery(undefined, { refetchInterval: 15_000 });
+  const onTournamentChange = {
+    onSuccess: () => void refetchTournaments(),
+    onError: (error: { message: string }) => alert(error.message),
+  };
+  const registerMutation =
+    api.tournament.register.useMutation(onTournamentChange);
+  const unregisterMutation =
+    api.tournament.unregister.useMutation(onTournamentChange);
+  const cancelMutation = api.tournament.cancel.useMutation(onTournamentChange);
+  const onDemandMutation =
+    api.tournament.create.useMutation(onTournamentChange);
+  const tournamentBusy =
+    registerMutation.isPending ||
+    unregisterMutation.isPending ||
+    cancelMutation.isPending;
   const createMutation = api.table.create.useMutation({
     onSuccess: async ({ tableId }) => {
       await refetch();
@@ -181,86 +202,135 @@ export default function LobbyPage() {
         <div className="mx-auto max-w-6xl px-6 py-10">
           <section>
             <div className="mb-4 flex items-center justify-between gap-4">
-              <h2 className="text-2xl font-semibold">Available Tables</h2>
+              <h2 className="text-2xl font-semibold">Tournaments</h2>
               {isDealer ? (
                 <Link
-                  href="/dashboard"
+                  href="/dashboard?tab=tournaments"
                   className="rounded-md bg-white px-4 py-2 text-sm font-medium text-black hover:bg-zinc-200"
                 >
                   Dashboard
                 </Link>
               ) : null}
             </div>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              {(tables ?? []).map((t) => (
-                <div
-                  key={t.id}
-                  className="rounded-lg border border-white/10 bg-zinc-900/50 p-4"
-                >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="flex items-center gap-1.5">
-                        <h3 className="text-lg font-medium">{t.name}</h3>
-                        {isDealer ? (
-                          <button
-                            type="button"
-                            aria-label={
-                              t.isLocked
-                                ? "Unlock database delete protection for this table"
-                                : "Lock database delete protection for this table"
-                            }
-                            title={
-                              t.isLocked
-                                ? "Allow deleting this table row in Drizzle Studio / SQL"
-                                : "Block deleting this table row until lock is removed"
-                            }
-                            onClick={() =>
-                              setTableDeleteLockMutation.mutate({
-                                tableId: t.id,
-                                locked: !t.isLocked,
-                              })
-                            }
-                            disabled={setTableDeleteLockMutation.isPending}
-                            className={`-m-1 shrink-0 rounded-md p-1 transition-colors outline-none hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50 ${
-                              t.isLocked
-                                ? "text-amber-400/90"
-                                : "text-zinc-500 hover:text-zinc-300"
-                            }`}
-                          >
-                            {t.isLocked ? (
-                              <Unlock
-                                className="size-[1.125rem]"
-                                strokeWidth={2}
-                                aria-hidden
-                              />
-                            ) : (
-                              <Lock
-                                className="size-[1.125rem]"
-                                strokeWidth={2}
-                                aria-hidden
-                              />
-                            )}
-                          </button>
-                        ) : null}
+            {tournamentList && tournamentList.length === 0 ? (
+              <div className="rounded-lg border border-white/10 bg-zinc-900/50 px-6 py-10 text-center text-zinc-300">
+                <p className="text-lg font-medium text-white">
+                  No games available today.
+                </p>
+                <p className="mt-1">Games are held on Sundays.</p>
+                <p className="mt-1">
+                  Someone will reach out to help you reserve a seat.
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                {(tournamentList ?? []).map((t: LobbyTournament) => (
+                  <TournamentCard
+                    key={t.id}
+                    tournament={t}
+                    userId={session?.user?.id ?? ""}
+                    isDealer={isDealer}
+                    busy={tournamentBusy}
+                    onRegister={() =>
+                      registerMutation.mutate({ tournamentId: t.id })
+                    }
+                    onUnregister={() =>
+                      unregisterMutation.mutate({ tournamentId: t.id })
+                    }
+                    onJoinTable={() => openJoinDialog(t.table.id)}
+                    onGoToTable={() => void router.push(`/table/${t.table.id}`)}
+                    onCancel={() => {
+                      if (confirm(`Cancel ${t.name}?`)) {
+                        cancelMutation.mutate({ tournamentId: t.id });
+                      }
+                    }}
+                  />
+                ))}
+              </div>
+            )}
+          </section>
+          {isDealer ? (
+            <section className="mt-10">
+              <h2 className="mb-4 text-2xl font-semibold">Tables</h2>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                {(tables ?? []).map((t) => (
+                  <div
+                    key={t.id}
+                    className="rounded-lg border border-white/10 bg-zinc-900/50 p-4"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <h3 className="text-lg font-medium">{t.name}</h3>
+                          {isDealer ? (
+                            <button
+                              type="button"
+                              aria-label={
+                                t.isLocked
+                                  ? "Unlock database delete protection for this table"
+                                  : "Lock database delete protection for this table"
+                              }
+                              title={
+                                t.isLocked
+                                  ? "Allow deleting this table row in Drizzle Studio / SQL"
+                                  : "Block deleting this table row until lock is removed"
+                              }
+                              onClick={() =>
+                                setTableDeleteLockMutation.mutate({
+                                  tableId: t.id,
+                                  locked: !t.isLocked,
+                                })
+                              }
+                              disabled={setTableDeleteLockMutation.isPending}
+                              className={`-m-1 shrink-0 rounded-md p-1 transition-colors outline-none hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50 ${
+                                t.isLocked
+                                  ? "text-amber-400/90"
+                                  : "text-zinc-500 hover:text-zinc-300"
+                              }`}
+                            >
+                              {t.isLocked ? (
+                                <Unlock
+                                  className="size-[1.125rem]"
+                                  strokeWidth={2}
+                                  aria-hidden
+                                />
+                              ) : (
+                                <Lock
+                                  className="size-[1.125rem]"
+                                  strokeWidth={2}
+                                  aria-hidden
+                                />
+                              )}
+                            </button>
+                          ) : null}
+                        </div>
+                        <p className="text-sm text-zinc-400">
+                          Blinds {t.smallBlind}/{t.bigBlind}
+                        </p>
+                        <p className="text-xs text-zinc-500">
+                          {t.playerCount}/{t.maxSeats} players
+                          {t.isJoinable ? (
+                            <span className="ml-2 text-green-400">
+                              • Joinable
+                            </span>
+                          ) : (
+                            <span className="ml-2 text-red-400">
+                              • Game in progress
+                            </span>
+                          )}
+                        </p>
                       </div>
-                      <p className="text-sm text-zinc-400">
-                        Blinds {t.smallBlind}/{t.bigBlind}
-                      </p>
-                      <p className="text-xs text-zinc-500">
-                        {t.playerCount}/{t.maxSeats} players
-                        {t.isJoinable ? (
-                          <span className="ml-2 text-green-400">
-                            • Joinable
-                          </span>
-                        ) : (
-                          <span className="ml-2 text-red-400">
-                            • Game in progress
-                          </span>
-                        )}
-                      </p>
-                    </div>
-                    <div className="flex shrink-0 items-center gap-2">
-                      {isDealer ? (
+                      <div className="flex shrink-0 items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            onDemandMutation.mutate({ tableId: t.id })
+                          }
+                          disabled={onDemandMutation.isPending}
+                          className="rounded-md border border-white/20 px-3 py-2 text-sm font-medium text-white hover:bg-white/10 disabled:opacity-50"
+                        >
+                          Start on-demand game
+                        </button>
                         <button
                           onClick={() =>
                             dealerJoinMutation.mutate({ tableId: t.id })
@@ -278,39 +348,20 @@ export default function LobbyPage() {
                             ? "Joining..."
                             : "Join Table"}
                         </button>
-                      ) : (
                         <button
-                          onClick={() => {
-                            if (!t.isJoinable || t.availableSeats === 0) return;
-                            openJoinDialog(t.id);
-                          }}
-                          disabled={!t.isJoinable || t.availableSeats === 0}
-                          className={`rounded-md px-3 py-2 text-sm font-medium ${
-                            t.isJoinable && t.availableSeats > 0
-                              ? "bg-white text-black hover:bg-zinc-200"
-                              : "cursor-not-allowed bg-zinc-700 text-zinc-400"
-                          }`}
+                          type="button"
+                          onClick={() => void router.push(`/table/${t.id}`)}
+                          className="rounded-md border border-white/20 px-3 py-2 text-sm font-medium text-white hover:bg-white/10"
                         >
-                          {!t.isJoinable
-                            ? "Game in progress"
-                            : t.availableSeats === 0
-                              ? "Full"
-                              : "Join"}
+                          Watch
                         </button>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => void router.push(`/table/${t.id}`)}
-                        className="rounded-md border border-white/20 px-3 py-2 text-sm font-medium text-white hover:bg-white/10"
-                      >
-                        Watch
-                      </button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          </section>
+                ))}
+              </div>
+            </section>
+          ) : null}
         </div>
       </main>
       <Dialog
@@ -404,6 +455,7 @@ export default function LobbyPage() {
                 } catch (err) {
                   console.error(err);
                   setJoinFlowPending(false);
+                  void refetchTournaments();
                   const { data: latestConsent } = await refetchConsent();
                   if (latestConsent && !latestConsent.recordingConsent) {
                     resetConsentInputs();

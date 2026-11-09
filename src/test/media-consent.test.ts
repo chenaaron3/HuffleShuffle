@@ -94,6 +94,7 @@ describe("media consent", () => {
       maxSeats: 8,
     });
     tableId = created.tableId;
+    await dealer.tournament.create({ tableId });
     await db.insert(piDevices).values(
       Array.from({ length: 8 }, (_, i) => ({
         serial: `${tableId}-card-${i}`,

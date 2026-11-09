@@ -49,6 +49,7 @@ import {
   summarizeTable,
 } from "~/server/api/table/snapshot";
 import {
+  assertCanJoinTournamentTable,
   assertSeatsUnlocked,
   tableAvailability,
 } from "~/server/api/table/tournaments";
@@ -128,9 +129,10 @@ export const tableRouter = createTRPCRouter({
       with: {
         games: { orderBy: (g, { desc }) => [desc(g.createdAt)], limit: 1 },
         tournaments: {
+          where: (tourney, { isNotNull }) => isNotNull(tourney.startedAt),
           orderBy: (tourney, { desc }) => [desc(tourney.startedAt)],
           limit: 1,
-          columns: { endedAt: true },
+          columns: { startedAt: true, endedAt: true },
         },
         seats: { columns: { id: true } },
         protection: true,
@@ -339,6 +341,9 @@ export const tableRouter = createTRPCRouter({
         const latestGame = snapshot.games[0] ?? null;
         if (latestGame && !latestGame.isCompleted)
           throw new Error("Cannot join: game already active");
+
+        await assertSeatsUnlocked(tx, input.tableId);
+        await assertCanJoinTournamentTable(tx, input.tableId, userId);
 
         const existingSeats = snapshot.seats;
         if (existingSeats.length >= snapshot.maxSeats)

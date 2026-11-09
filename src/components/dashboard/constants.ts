@@ -1,6 +1,12 @@
 export const DASHBOARD_PAGE_SIZE = 25;
 
-export const DASHBOARD_TABS = ["waitlist", "players", "consent", "hands"] as const;
+export const DASHBOARD_TABS = [
+  "tournaments",
+  "waitlist",
+  "players",
+  "consent",
+  "hands",
+] as const;
 
 export type DashboardTab = (typeof DASHBOARD_TABS)[number];
 
@@ -9,5 +15,5 @@ export function parseDashboardTab(value: string | string[] | undefined): Dashboa
   if (raw && DASHBOARD_TABS.includes(raw as DashboardTab)) {
     return raw as DashboardTab;
   }
-  return "waitlist";
+  return "tournaments";
 }

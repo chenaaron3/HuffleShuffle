@@ -2,6 +2,7 @@ import { blindsRouter } from "~/server/api/routers/blinds";
 import { dashboardRouter } from "~/server/api/routers/dashboard";
 import { setupRouter } from "~/server/api/routers/setup";
 import { tableRouter } from "~/server/api/routers/table";
+import { tournamentRouter } from "~/server/api/routers/tournament";
 import { userRouter } from "~/server/api/routers/user";
 import { waitlistRouter } from "~/server/api/routers/waitlist";
 import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
@@ -18,6 +19,7 @@ export const appRouter = createTRPCRouter({
   blinds: blindsRouter,
   waitlist: waitlistRouter,
   dashboard: dashboardRouter,
+  tournament: tournamentRouter,
 });
 
 // export type definition of API
