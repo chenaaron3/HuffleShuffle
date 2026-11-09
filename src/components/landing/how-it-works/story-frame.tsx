@@ -2,36 +2,8 @@
 
 import { motion } from 'framer-motion';
 import { type ReactNode } from 'react';
-import { type StoryStep, type StoryStepKey } from '../landing-data';
+import { type JourneyStep } from '../landing-data';
 import { revealEase } from '../landing-motion';
-
-const storyBadgeClass: Record<StoryStepKey, string> = {
-  'sign-in': 'border-emerald-300/20 bg-emerald-300/10 text-emerald-200',
-  lobby: 'border-landing-gold/20 bg-landing-gold/[0.07] text-landing-gold-bright',
-  'buy-in': 'border-white/10 bg-white/[0.04] text-slate-400',
-  'play-live': 'border-rose-300/20 bg-rose-300/10 text-rose-200',
-};
-
-const storyBadgeLabel: Record<StoryStepKey, string> = {
-  'sign-in': 'secure wallet',
-  lobby: '12 tables live',
-  'buy-in': 'instant seat',
-  'play-live': 'dealer on camera',
-};
-
-const storyEyebrow: Record<StoryStepKey, string> = {
-  'sign-in': 'one-time setup',
-  lobby: 'find the room',
-  'buy-in': 'claim your seat',
-  'play-live': 'the good part',
-};
-
-const storyFooter: Record<StoryStepKey, string> = {
-  'sign-in': 'Your wallet is ready before the first hand.',
-  lobby: 'Every room has a dealer, a rhythm, and a seat with your name on it.',
-  'buy-in': 'No waiting room. No hidden steps. Just a clear buy-in and a live seat.',
-  'play-live': 'Chat, bet, and enjoy the show with live dealers.',
-};
 
 export function StoryFrame({
   step,
@@ -39,7 +11,7 @@ export function StoryFrame({
   focused,
   reduceMotion,
 }: {
-  step: StoryStep;
+  step: JourneyStep;
   children: ReactNode;
   focused: boolean;
   reduceMotion: boolean;
@@ -64,7 +36,7 @@ export function StoryFrame({
         <div className="mb-8 flex flex-col items-start gap-4 sm:flex-row sm:justify-between sm:gap-5">
           <div className="min-w-0">
             <div className="mb-3 text-[10px] uppercase tracking-[0.25em] text-landing-gold">
-              0{step.id} / {storyEyebrow[step.key]}
+              0{step.id} / {step.eyebrow}
             </div>
             <h3
               className="font-display text-2xl tracking-[-0.04em] text-[#f8e6af] sm:text-3xl"
@@ -74,15 +46,13 @@ export function StoryFrame({
             </h3>
           </div>
           <span
-            className={`shrink-0 rounded-full border px-3 py-1.5 text-[10px] uppercase tracking-[0.16em] ${storyBadgeClass[step.key]}`}
+            className={`shrink-0 rounded-full border px-3 py-1.5 text-[10px] uppercase tracking-[0.16em] ${step.badgeClass}`}
           >
-            {storyBadgeLabel[step.key]}
+            {step.badge}
           </span>
         </div>
         {children}
-        <p className="mt-6 text-center text-xs uppercase tracking-[0.18em] text-slate-500">
-          {storyFooter[step.key]}
-        </p>
+        <p className="mt-6 text-center text-xs uppercase tracking-[0.18em] text-slate-500">{step.footer}</p>
       </div>
     </motion.div>
   );

@@ -36,7 +36,7 @@ export function FinalCtaSection({
             <p className="mt-6 max-w-xl text-base leading-7 text-slate-400">
               {session
                 ? 'Pick a table and play with real people and real dealers in minutes. The next hand starts when you do.'
-                : 'Join the waitlist for updates and early access when tables open up.'}
+                : 'Reserve your seat for this week’s game.'}
             </p>
             <div className="mt-8">
               <SessionCta session={session} />

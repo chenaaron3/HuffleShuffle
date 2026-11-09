@@ -20,8 +20,9 @@ const FeaturesSection = dynamic(
 const DemoSection = dynamic(() => import('./demo-section').then((mod) => mod.DemoSection), {
   ssr: false,
 });
+// Swap for `HowItWorksSection` (wallet + buy-in flow) once real-money play launches.
 const HowItWorksSection = dynamic(
-  () => import('./how-it-works/how-it-works-section').then((mod) => mod.HowItWorksSection),
+  () => import('./how-it-works/how-it-works-today-section').then((mod) => mod.HowItWorksTodaySection),
   { ssr: false },
 );
 

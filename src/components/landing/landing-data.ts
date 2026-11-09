@@ -1,6 +1,21 @@
-export type JourneyStepId = '1' | '2' | '3' | '4';
-export type StoryStepKey = 'sign-in' | 'lobby' | 'buy-in' | 'play-live';
+export type JourneyStepId = string;
+export type StoryStepKey = string;
 export type LobbyStatus = 'live dealer' | 'warming up';
+
+/** Everything a "How it works" story needs; the panel is rendered by the section. */
+export interface JourneyStep {
+  id: JourneyStepId;
+  /** Used for anchors (#story-{key}) */
+  key: StoryStepKey;
+  /** Short label in the step rail */
+  title: string;
+  /** Headline inside the story frame */
+  frameTitle: string;
+  eyebrow: string;
+  badge: string;
+  badgeClass: string;
+  footer: string;
+}
 
 export interface ValueProp {
   title: string;
@@ -18,13 +33,6 @@ export interface LobbyTable {
   featured?: boolean;
 }
 
-export interface StoryStep {
-  id: JourneyStepId;
-  key: StoryStepKey;
-  title: string;
-  description: string;
-  frameTitle: string;
-}
 
 export interface ChipValue {
   id: string;
@@ -81,34 +89,88 @@ export const lobbyTables: LobbyTable[] = [
   },
 ];
 
-export const journeySteps: StoryStep[] = [
+const badge = {
+  emerald: 'border-emerald-300/20 bg-emerald-300/10 text-emerald-200',
+  gold: 'border-landing-gold/20 bg-landing-gold/[0.07] text-landing-gold-bright',
+  muted: 'border-white/10 bg-white/[0.04] text-slate-400',
+  rose: 'border-rose-300/20 bg-rose-300/10 text-rose-200',
+};
+
+/** Wallet + buy-in flow (for when real-money play launches). */
+export const walletJourneySteps: JourneyStep[] = [
   {
     id: '1',
     key: 'sign-in',
     title: 'Sign in',
-    description: 'Create your account and wallet.',
     frameTitle: 'Sign in, then keep your seat.',
+    eyebrow: 'one-time setup',
+    badge: 'secure wallet',
+    badgeClass: badge.emerald,
+    footer: 'Your wallet is ready before the first hand.',
   },
   {
     id: '2',
     key: 'lobby',
     title: 'Enter Lobby',
-    description: 'Browse live tables and pick your stakes.',
     frameTitle: 'Pick the energy you want.',
+    eyebrow: 'find the room',
+    badge: '12 tables live',
+    badgeClass: badge.gold,
+    footer: 'Every room has a dealer, a rhythm, and a seat with your name on it.',
   },
   {
     id: '3',
     key: 'buy-in',
     title: 'Buy-in',
-    description: 'Join a seat and set your buy-in instantly.',
     frameTitle: 'Buy-in without the busywork.',
+    eyebrow: 'claim your seat',
+    badge: 'instant seat',
+    badgeClass: badge.muted,
+    footer: 'No waiting room. No hidden steps. Just a clear buy-in and a live seat.',
   },
   {
     id: '4',
     key: 'play-live',
     title: 'Play Live',
-    description: 'Chat, bet, and enjoy the show with live dealers.',
     frameTitle: 'The room is live now.',
+    eyebrow: 'the good part',
+    badge: 'dealer on camera',
+    badgeClass: badge.rose,
+    footer: 'Chat, bet, and enjoy the show with live dealers.',
+  },
+];
+
+/** How the app works today: sign in, reserve a seat, play. No real money. */
+export const todayJourneySteps: JourneyStep[] = [
+  {
+    id: '1',
+    key: 'sign-in',
+    title: 'Sign in',
+    frameTitle: 'One tap with Google.',
+    eyebrow: 'no setup',
+    badge: 'no downloads',
+    badgeClass: badge.emerald,
+    footer: 'No wallet. No deposit. Just your Google account.',
+  },
+  {
+    id: '2',
+    key: 'register',
+    title: 'Reserve a seat',
+    frameTitle: 'Grab a seat for Sunday.',
+    eyebrow: 'save your spot',
+    badge: '8 seats per game',
+    badgeClass: badge.gold,
+    footer: 'Full? Join standby and move up when a seat opens.',
+  },
+  {
+    id: '3',
+    key: 'play-live',
+    title: 'Play live',
+    frameTitle: 'Play with a real dealer.',
+    eyebrow: 'the good part',
+    badge: 'dealer on camera',
+    badgeClass: badge.rose,
+    footer: 'Real cards, real dealer, play chips only.',
   },
 ];
 
@@ -124,7 +186,8 @@ export const chipStack: ChipValue[] = [
 
 export const BUY_IN_MAX = 150;
 
-export const mayaDealerImage = '/landing/optimized/maya-dealer.webp';
+/** AI-generated (Higgsfield) from frames of Cris in the demo video. */
+export const dealerImage = '/landing/optimized/cris-dealer.webp';
 
 export const demoVideo = '/landing/optimized/demo.mp4';
 export const demoPoster = '/landing/optimized/demo-poster.webp';

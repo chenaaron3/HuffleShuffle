@@ -3,9 +3,10 @@
 import { motion, useInView } from 'framer-motion';
 import Image from 'next/image';
 import { useRef } from 'react';
-import { mayaDealerImage } from '../landing-data';
+import { dealerImage } from '../landing-data';
 
-export function LivePanel({ reduceMotion }: { reduceMotion: boolean }) {
+/** `playChips` shows chip counts instead of dollar amounts (no real money). */
+export function LivePanel({ reduceMotion, playChips = false }: { reduceMotion: boolean; playChips?: boolean }) {
   const ref = useRef<HTMLDivElement>(null);
   const isInView = useInView(ref, { once: true, amount: 0.3 });
 
@@ -21,12 +22,12 @@ export function LivePanel({ reduceMotion }: { reduceMotion: boolean }) {
         transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
       >
         <Image
-          alt="Maya, a live poker dealer dealing cards at a green-felt table"
+          alt="Cris, a HuffleShuffle dealer, dealing cards at a live poker table"
           className="absolute inset-0 h-full w-full object-cover object-center saturate-[0.88] contrast-[1.06]"
           fill
           loading="lazy"
           sizes="(min-width: 768px) 360px, 90vw"
-          src={mayaDealerImage}
+          src={dealerImage}
         />
         <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(8,11,17,0.08),rgba(8,11,17,0.18)_52%,rgba(8,11,17,0.92))]" />
         <div className="absolute left-4 right-4 top-4 flex items-center justify-between text-[10px] uppercase tracking-[0.18em]">
@@ -38,7 +39,7 @@ export function LivePanel({ reduceMotion }: { reduceMotion: boolean }) {
         </div>
         <div className="absolute bottom-4 left-4 right-4 flex flex-col items-start gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
           <div>
-            <div className="text-lg font-semibold text-white">Maya</div>
+            <div className="text-lg font-semibold text-white">Cris</div>
             <div className="mt-1 text-[10px] uppercase tracking-[0.18em] text-landing-gold-bright">your dealer</div>
           </div>
           <span className="rounded-full border border-white/15 bg-black/30 px-3 py-1.5 text-[10px] text-slate-300">
@@ -91,8 +92,8 @@ export function LivePanel({ reduceMotion }: { reduceMotion: boolean }) {
             </span>
           </div>
           <div className="mt-auto flex items-center justify-between pt-5 text-[10px] uppercase tracking-[0.16em] text-slate-500">
-            <span>Pot $420</span>
-            <span className="text-landing-gold-bright">Call $2 ↗</span>
+            <span>{playChips ? 'Pot 420 chips' : 'Pot $420'}</span>
+            <span className="text-landing-gold-bright">{playChips ? 'Call 20 ↗' : 'Call $2 ↗'}</span>
           </div>
         </div>
         <div className="mt-3 flex items-center gap-2 rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-xs text-slate-500">
