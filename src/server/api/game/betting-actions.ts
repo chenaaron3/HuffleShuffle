@@ -56,6 +56,17 @@ export async function executeBettingAction(
     throw new Error("Actor seat not found");
   }
 
+  // Turn invariant for every caller (player dispatch, timeout, bots).
+  if (game.isCompleted || game.state !== "BETTING") {
+    throw new Error("Betting actions only allowed during an active BETTING round");
+  }
+  if (game.assignedSeatId !== actorSeatId) {
+    throw new Error("Not your turn");
+  }
+  if (currentSeat.seatStatus !== "active") {
+    throw new Error("Seat cannot act (not active status)");
+  }
+
   // Calculate max bet from all non-folded, non-eliminated players
   const maxPlayerBet = Math.max(
     ...orderedSeats

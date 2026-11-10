@@ -17,6 +17,9 @@ export default defineConfig({
           "src/test/headless-bot-game.runner.test.ts",
           "src/test/simulation/run-phh-tests.test.ts",
         ],
+    // DB-backed files share one Postgres and global state (ledger wipes in
+    // clearTestLedger, shared bot users), so run files one at a time.
+    fileParallelism: false,
     testTimeout: 2000000,
     hookTimeout: 2000000,
   },

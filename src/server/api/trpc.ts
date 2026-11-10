@@ -126,7 +126,9 @@ export const createTRPCRouter = t.router;
 const timingMiddleware = t.middleware(async ({ next, path }) => {
   const start = Date.now();
 
-  if (t._config.isDev) {
+  // Simulated network latency for local dev only. tRPC's isDev is also true
+  // under NODE_ENV=test, where this added 100–500ms to every test API call.
+  if (t._config.isDev && process.env.NODE_ENV !== "test") {
     // artificial delay in dev
     const waitMs = Math.floor(Math.random() * 400) + 100;
     await new Promise((resolve) => setTimeout(resolve, waitMs));

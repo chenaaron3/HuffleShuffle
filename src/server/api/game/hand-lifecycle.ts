@@ -242,60 +242,31 @@ export async function triggerBotActions(
   while (iterations < MAX_ITERATIONS) {
     iterations++;
 
-    // Fetch current game state
-    const snapshot = await database.query.pokerTables.findFirst({
-      where: eq(pokerTables.id, tableId),
-      with: {
-        games: { orderBy: (g, { desc }) => [desc(g.createdAt)], limit: 1 },
-        seats: { orderBy: (s, { asc }) => [asc(s.seatNumber)] },
-      },
-    });
+    // Decide and act in one locked transaction. Choosing the bot outside the
+    // lock let concurrent triggers (API + Lambda) act for the same bot twice.
+    const acted = await withTableMutation(database, tableId, async (tx) => {
+      const game = await tx.query.games.findFirst({
+        where: eq(games.tableId, tableId),
+        orderBy: (g, { desc }) => [desc(g.createdAt)],
+      });
+      if (!game || game.isCompleted || game.state !== "BETTING") return false;
+      if (!game.assignedSeatId) return false;
 
-    if (!snapshot) return;
-
-    const game = snapshot.games[0];
-    if (!game || game.isCompleted) return;
-    if (game.state !== "BETTING") return;
-    if (!game.assignedSeatId) return;
-
-    // Find the current seat
-    const currentSeat = snapshot.seats.find(
-      (s) => s.id === game.assignedSeatId,
-    );
-    if (!currentSeat) return;
-
-    // Stop if current player is not a bot
-    if (!isBot(currentSeat.playerId)) {
-      return;
-    }
-
-    // Execute bot action under the per-table mutation lock
-    await withTableMutation(database, tableId, async (txInner) => {
-      // Re-fetch within transaction
-      const orderedSeats = await txInner.query.seats.findMany({
+      const orderedSeats = await tx.query.seats.findMany({
         where: eq(seats.tableId, tableId),
         orderBy: (s, { asc }) => [asc(s.seatNumber)],
       });
+      const botSeat = orderedSeats.find((s) => s.id === game.assignedSeatId);
+      if (!botSeat || !isBot(botSeat.playerId)) return false;
+      if (botSeat.seatStatus !== "active") return false;
 
-      const currentGame = await txInner.query.games.findFirst({
-        where: eq(games.id, game.id),
-      });
+      const decision = makeBotDecision(
+        createBotGameState(botSeat, game, orderedSeats),
+      );
 
-      if (!currentGame) throw new Error("Game not found");
-
-      const botSeat = orderedSeats.find((s) => s.id === currentSeat.id);
-      if (!botSeat || botSeat.seatStatus !== "active") return;
-
-      // Create game state for bot decision
-      const gameState = createBotGameState(botSeat, currentGame, orderedSeats);
-
-      // Make intelligent decision
-      const decision = makeBotDecision(gameState);
-
-      // Execute the bot's decision
-      await executeBettingAction(txInner, {
+      await executeBettingAction(tx, {
         actorSeatId: botSeat.id,
-        gameId: currentGame.id,
+        gameId: game.id,
         action: decision.action,
         raiseAmount: decision.action === "RAISE" ? decision.amount : undefined,
       });
@@ -305,7 +276,9 @@ export async function triggerBotActions(
         action: decision.action,
         raiseTo: decision.action === "RAISE" ? decision.amount : undefined,
       });
+      return true;
     });
+    if (!acted) return;
 
     // Notify clients of table update after successful transaction
     await notifyTableUpdate(tableId);
