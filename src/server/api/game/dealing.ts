@@ -1,3 +1,4 @@
+import { randomInt } from "crypto";
 import { eq, sql } from "drizzle-orm";
 import { logFlop, logRiver, logTurn } from "~/server/api/lib/game-event-logger";
 import { fetchAllSeatsInOrder } from "~/server/api/table/seating";
@@ -264,7 +265,7 @@ export async function generateRandomCard(
   }
 
   // Step 2: Randomly select one from the undealt cards
-  const randomIndex = Math.floor(Math.random() * undealtCards.length);
+  const randomIndex = randomInt(undealtCards.length);
   const randomCard = undealtCards[randomIndex]!;
 
   // Convert from internal format (e.g., "As") to barcode format (e.g., "1010")

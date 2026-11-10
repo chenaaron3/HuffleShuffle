@@ -113,7 +113,6 @@ export default function TableView() {
                 const privateKey = await getPrivateKeyForTable(id);
                 if (!privateKey) return;
                 const roomName = await rsaDecryptBase64(id, currentSeat.encryptedUserNonce);
-                console.log('roomName', roomName);
                 setHandRoomName(roomName);
             } catch (e) {
                 console.error('Error decrypting hand room name', e);

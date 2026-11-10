@@ -38,7 +38,12 @@ import {
   parseRankSuitToBarcode,
 } from "~/server/api/game/helpers/cards";
 import { grantBotFunds } from "~/server/api/ledger";
-import { resolveLiveKitAccess } from "~/server/api/table/livekit-access";
+import {
+  canJoinLiveKitRoom,
+  getHandRoomSecret,
+  handRoomNameForSeat,
+  resolveLiveKitAccess,
+} from "~/server/api/table/livekit-access";
 import { assertTableParticipant } from "~/server/api/table/membership";
 import {
   createSeatTransaction,
@@ -91,13 +96,19 @@ export const tableRouter = createTRPCRouter({
         userId,
         seatedAtThisTable: !!seat,
       });
-      // Spectators may only join the public table room, not private hand rooms.
+      // Only the public table room, or the caller's own hand-camera room.
+      const requestedRoom = input.roomName ?? input.tableId;
+      const ownHandRoom = seat
+        ? handRoomNameForSeat(seat.id, getHandRoomSecret())
+        : null;
       if (
-        access === "subscribe" &&
-        input.roomName &&
-        input.roomName !== input.tableId
+        !canJoinLiveKitRoom({
+          tableId: input.tableId,
+          requestedRoom,
+          ownHandRoom,
+        })
       ) {
-        throw new Error("FORBIDDEN: not part of this table");
+        throw new Error("FORBIDDEN: not your room");
       }
 
       const apiKey = process.env.LIVEKIT_API_KEY;
@@ -109,7 +120,7 @@ export const tableRouter = createTRPCRouter({
 
       // Create grant for this room (tableId). Spectators subscribe only.
       const grant: VideoGrant = {
-        room: input.roomName ?? input.tableId,
+        room: requestedRoom,
         canPublish: access === "publish",
         canSubscribe: true,
         roomJoin: true,
@@ -697,13 +708,15 @@ export const tableRouter = createTRPCRouter({
         // Remove old seat first to satisfy unique constraints
         await tx.delete(seats).where(eq(seats.id, fromSeat.id));
 
-        // Generate fresh nonce and encrypt for user and mapped Pi (if any)
-        const nonce = crypto.randomUUID();
+        // Fresh seat id → fresh hand room; encrypt it for user and mapped Pi
+        const newSeatId = crypto.randomUUID();
+        const nonce = handRoomNameForSeat(newSeatId, getHandRoomSecret());
         const encUser = await rsaEncryptB64(input.userPublicKey, nonce);
         const encPi = await rsaEncryptB64(toPi.publicKey, nonce);
 
         // Create new seat at target seatNumber with carried funds
         await (tx as any).insert(seats).values({
+          id: newSeatId,
           tableId: input.tableId,
           playerId: userId,
           seatNumber: input.toSeatNumber,

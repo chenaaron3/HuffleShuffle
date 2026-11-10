@@ -6,6 +6,10 @@ import {
   ensureAccount,
   getWalletBalance,
 } from "~/server/api/ledger";
+import {
+  getHandRoomSecret,
+  handRoomNameForSeat,
+} from "~/server/api/table/livekit-access";
 import { assertSeatsUnlocked } from "~/server/api/table/tournaments";
 import { db } from "~/server/db";
 import { games, piDevices, seats, users } from "~/server/db/schema";
@@ -76,13 +80,15 @@ export async function createSeatTransaction(
     throw new Error("Pi device not found for seat");
   }
 
-  const nonce = crypto.randomUUID();
+  const seatId = crypto.randomUUID();
+  const nonce = handRoomNameForSeat(seatId, getHandRoomSecret());
   const encUser = await rsaEncryptB64(userPublicKey, nonce);
   const encPi = await rsaEncryptB64(pi.publicKey, nonce);
 
   const seatRows = await tx
     .insert(seats)
     .values({
+      id: seatId,
       tableId,
       playerId,
       seatNumber,
