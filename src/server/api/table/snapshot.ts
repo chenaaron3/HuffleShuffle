@@ -47,21 +47,46 @@ export async function summarizeTable(
     },
   });
   if (!snapshot) throw new Error("Table not found");
-  const latestGame = snapshot.games[0] ?? null;
-  const latestTournament = snapshot.tournaments[0] ?? null;
-  const tableSeats = snapshot.seats;
-  const availableSeats = snapshot.maxSeats - tableSeats.length;
+  // Split relations off the table row. `table` must be the bare row: if the
+  // nested `seats` rode along, every player's hole cards would bypass redaction.
+  const {
+    seats: tableSeats,
+    games,
+    tournaments,
+    ...tableRow
+  } = snapshot;
+  const latestGame = games[0] ?? null;
+  const latestTournament = tournaments[0] ?? null;
+  const availableSeats = tableRow.maxSeats - tableSeats.length;
   const availability = tableAvailability(latestGame, latestTournament);
 
   return {
-    table: snapshot,
+    table: tableRow,
     seats: tableSeats,
     game: latestGame,
     tournament: latestTournament,
     ...availability,
     availableSeats,
-    blinds: computeBlindState(snapshot),
+    blinds: computeBlindState(tableRow),
   };
+}
+
+/** Drop any relation data attached to the table row (defense in depth). */
+function stripTableRelations(
+  table: TableSnapshot["table"],
+): TableSnapshot["table"] {
+  if (!table) return table;
+  const {
+    seats: _seats,
+    games: _games,
+    tournaments: _tournaments,
+    ...row
+  } = table as NonNullable<TableSnapshot["table"]> & {
+    seats?: unknown;
+    games?: unknown;
+    tournaments?: unknown;
+  };
+  return row;
 }
 
 export function redactSnapshotForUser(
@@ -137,5 +162,9 @@ export function redactSnapshotForUser(
     }
     return { ...s, cardsVisibleToOthers };
   });
-  return { ...snapshot, seats: redactedSeats };
+  return {
+    ...snapshot,
+    table: stripTableRelations(snapshot.table),
+    seats: redactedSeats,
+  };
 }

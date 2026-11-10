@@ -1056,4 +1056,42 @@ describe("redactSnapshotForUser", () => {
       expect(result.seats[1]!.seatStatus).toBe("active");
     });
   });
+
+  describe("no leaks outside top-level seats", () => {
+    it("strips relations nested on the table row so hidden cards never serialize", () => {
+      const mySeat = createMockSeat({
+        id: "seat-1",
+        playerId: "player-1",
+        cards: ["AS", "KH"],
+      });
+      const otherSeat = createMockSeat({
+        id: "seat-2",
+        playerId: "player-2",
+        seatNumber: 1,
+        cards: ["QS", "JH"],
+        handType: "High Card",
+        handDescription: "Queen high",
+      });
+      const snapshot = createMockSnapshot([mySeat, otherSeat]);
+      // Mirror what the Drizzle relational query returns: relations ride along
+      // on the table row unless explicitly split off.
+      snapshot.table = {
+        ...snapshot.table!,
+        seats: [mySeat, otherSeat],
+        games: [snapshot.game],
+        tournaments: [],
+      } as unknown as TableSnapshot["table"];
+
+      const result = redactSnapshotForUser(snapshot, "player-1");
+
+      expect(result.table).not.toHaveProperty("seats");
+      expect(result.table).not.toHaveProperty("games");
+      expect(result.table).not.toHaveProperty("tournaments");
+      const wire = JSON.stringify(result);
+      expect(wire).not.toContain("QS");
+      expect(wire).not.toContain("JH");
+      expect(wire).not.toContain("Queen high");
+      expect(wire).toContain("AS");
+    });
+  });
 });

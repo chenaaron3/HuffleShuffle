@@ -641,15 +641,21 @@ async function completeShowdown(
     }
   }
 
-  // Emit End Game event with all winners
+  // Emit End Game event with all winners. An uncontested winner (everyone
+  // else folded) never has to show, so their hand stays out of the log.
+  const handWasShown = contenders.length > 1;
   const allWinners = Object.entries(seatWinnings)
     .filter(([_, amount]) => amount > 0)
-    .map(([seatId, amount]) => ({
-      seatId,
-      amount,
-      handType: seatHandInfo[seatId]?.type,
-      cards: seatHandInfo[seatId]?.cards,
-    }));
+    .map(([seatId, amount]) =>
+      handWasShown
+        ? {
+            seatId,
+            amount,
+            handType: seatHandInfo[seatId]?.type,
+            cards: seatHandInfo[seatId]?.cards,
+          }
+        : { seatId, amount },
+    );
 
   await logEndGame(tx as any, tableId, gameId, {
     winners: allWinners,
