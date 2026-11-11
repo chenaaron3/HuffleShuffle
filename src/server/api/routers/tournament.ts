@@ -1,5 +1,6 @@
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { z } from "zod";
+import { resolvePreferredContact } from "~/lib/contact";
 import { nextOccurrence } from "~/lib/tournament-schedule";
 import {
   cancelTournament,
@@ -49,6 +50,15 @@ export const tournamentRouter = createTRPCRouter({
                 email: true,
                 image: true,
               },
+              with: {
+                contact: {
+                  columns: {
+                    phone: true,
+                    instagram: true,
+                    preferredContact: true,
+                  },
+                },
+              },
             },
           },
         },
@@ -77,7 +87,9 @@ export const tournamentRouter = createTRPCRouter({
           id: r.id,
           userId: r.userId,
           name: r.user.displayName ?? r.user.name ?? "Player",
-          email: isDealer ? r.user.email : null,
+          contact: isDealer
+            ? resolvePreferredContact(r.user.contact, r.user.email)
+            : null,
           image: r.user.image,
           position: i + 1,
           isSeated: i < MAX_SEATS_PER_TABLE,

@@ -150,6 +150,34 @@ describe("tournament registration", () => {
     expect(await findOpenTournament(db, tableId)).toBeNull();
   });
 
+  it("shows dealers each registrant's preferred contact, falling back to email", async () => {
+    const tournamentId = await scheduleAt(new Date(Date.now() + 2 * HOUR));
+    await registerInOrder(tournamentId, [0, 1, 2]);
+    await player(0).contact.save({
+      preferredContact: "instagram",
+      phone: "4155550142",
+      instagram: "@player.zero",
+    });
+    await player(1).contact.save({
+      preferredContact: "phone",
+      phone: "(415) 555-0101",
+    });
+
+    const contactsFor = async (caller: ReturnType<typeof callerFor>) => {
+      const t = (await caller.tournament.list()).find(
+        (x) => x.id === tournamentId,
+      )!;
+      return t.registrations.map((r) => r.contact);
+    };
+
+    expect(await contactsFor(dealer)).toEqual([
+      { method: "instagram", value: "player.zero" },
+      { method: "phone", value: "+14155550101" },
+      { method: "email", value: `${playerId(2)}@vitest.local` },
+    ]);
+    expect(await contactsFor(player(0))).toEqual([null, null, null]);
+  });
+
   it("seats the first 8 registrants after the start time and waitlists the rest", async () => {
     const tournamentId = await scheduleAt(new Date(Date.now() - 1000));
     await registerInOrder(tournamentId, [0, 1, 2, 3, 4, 5, 6, 7, 8]);

@@ -19,7 +19,22 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, Pencil, Plus, Trash2, X } from "lucide-react";
+import {
+  AtSign,
+  GripVertical,
+  Mail,
+  MessageSquare,
+  Pencil,
+  Plus,
+  Trash2,
+  X,
+} from "lucide-react";
+import {
+  contactDisplay,
+  type ContactMethod,
+  type PreferredContact,
+} from "~/lib/contact";
+import { toast } from "sonner";
 import { useState, type ReactNode } from "react";
 import {
   DAY_NAMES,
@@ -525,11 +540,7 @@ function QueueRow({
       <span className={`truncate ${waitlisted ? "text-zinc-400" : ""}`}>
         {r.name}
       </span>
-      {r.email ? (
-        <span className="hidden truncate text-xs text-zinc-600 sm:inline">
-          {r.email}
-        </span>
-      ) : null}
+      {r.contact ? <ContactLink contact={r.contact} /> : null}
       {waitlisted ? (
         <span className="shrink-0 text-xs text-zinc-500">standby</span>
       ) : null}
@@ -545,6 +556,43 @@ function QueueRow({
         <X className="size-3.5" />
       </button>
     </li>
+  );
+}
+
+const CONTACT_ICONS: Record<ContactMethod, typeof Mail> = {
+  phone: MessageSquare,
+  instagram: AtSign,
+  email: Mail,
+};
+
+const CONTACT_LABELS: Record<ContactMethod, string> = {
+  phone: "Text",
+  instagram: "Instagram",
+  email: "Email",
+};
+
+/** A registrant's preferred contact; clicking copies it to the clipboard. */
+function ContactLink({ contact }: { contact: PreferredContact }) {
+  const Icon = CONTACT_ICONS[contact.method];
+  const label = CONTACT_LABELS[contact.method];
+  const display = contactDisplay(contact);
+  const copy = () => {
+    navigator.clipboard.writeText(display).then(
+      () => toast.success(`Copied ${display}`),
+      () => toast.error("Couldn't copy to clipboard"),
+    );
+  };
+  return (
+    <button
+      type="button"
+      onClick={copy}
+      title={`${label}: ${display} (click to copy)`}
+      aria-label={`Copy ${label.toLowerCase()} ${display}`}
+      className="flex min-w-0 cursor-copy items-center gap-1 rounded text-xs text-zinc-500 hover:text-zinc-200 focus-visible:outline-1 focus-visible:outline-white/40"
+    >
+      <Icon className="size-3 shrink-0" aria-hidden />
+      <span className="truncate">{display}</span>
+    </button>
   );
 }
 

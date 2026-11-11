@@ -56,8 +56,9 @@ export const users = createTable(
   }),
 );
 
-export const usersRelations = relations(users, ({ many }) => ({
+export const usersRelations = relations(users, ({ many, one }) => ({
   accounts: many(accounts),
+  contact: one(contacts),
 }));
 
 export const accounts = createTable(
@@ -139,6 +140,10 @@ export const contacts = createTable("contact", (d) => ({
     .default(sql`CURRENT_TIMESTAMP`)
     .notNull(),
   updatedAt: d.timestamp({ withTimezone: true }),
+}));
+
+export const contactsRelations = relations(contacts, ({ one }) => ({
+  user: one(users, { fields: [contacts.userId], references: [users.id] }),
 }));
 
 // Poker table entity
