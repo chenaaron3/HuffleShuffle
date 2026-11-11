@@ -1,4 +1,4 @@
-import { eq, inArray, sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createCaller } from "~/server/api/root";
 import { RECORDING_CONSENT_REQUIRED_ERROR } from "~/server/api/routers/table";
@@ -10,14 +10,12 @@ import {
   pokerTables,
   seats,
   users,
-  waitlist,
 } from "~/server/db/schema";
 import { ensureTestWalletBalance } from "~/test/ledger-test-utils";
 
 const DEALER_ID = "dealer-consent-vitest";
 const PLAYER_ID = "player-consent-vitest";
 const TABLE_NAME = "media-consent-vitest";
-const WAITLIST_EMAILS = ["spam1@consent-vitest.local", "real@consent-vitest.local"];
 
 const publicKey = `-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAyVsuzIuAr7TYmbOtLrAp\nr6rmZBQrgMiXF0apTg7rvvSwa8JfUrZ0wXBHLx5VgpyHWNq0vFUwah7FgkpdGFQ0\nwWqRiwYWU6DG3S0sxWSYwfOiRTTLnnLPcUN3SzJjbJ5gnh7V7ukx5mpsm0dPHSiB\nREg4PNvbOo9suK4eIFKmRCgRdwNskA0pgaBi3PMfOLY+FbyTzlbs4xaQom2RMPt+\n1yD6mEACuOKzHQQP8Ve4ikkR4TdcYrnApUbfGa44xloA4fv500ez1hlBfRZ2ekow\npynGBufiP7koxSK4Nt8TRAVvuS8zZYrtGyboIZvObx6mm2YS6j7T9n0pEACpO2rT\nrwIDAQAB\n-----END PUBLIC KEY-----`;
 
@@ -47,7 +45,6 @@ describe("media consent", () => {
       await db.delete(piDevices).where(eq(piDevices.tableId, t.id));
       await db.delete(pokerTables).where(eq(pokerTables.id, t.id));
     }
-    await db.delete(waitlist).where(inArray(waitlist.email, WAITLIST_EMAILS));
   };
 
   beforeEach(async () => {
@@ -212,7 +209,7 @@ describe("media consent", () => {
     await expect(join()).rejects.toThrow(RECORDING_CONSENT_REQUIRED_ERROR);
   });
 
-  it("restricts consent and waitlist admin endpoints to dealers", async () => {
+  it("restricts consent and contact admin endpoints to dealers", async () => {
     await expect(
       player.dashboard.setConsent({
         userId: PLAYER_ID,
@@ -224,23 +221,7 @@ describe("media consent", () => {
       player.dashboard.listConsent({ page: 1, pageSize: 25 }),
     ).rejects.toThrow();
     await expect(
-      player.dashboard.deleteWaitlistEntries({ ids: ["x"] }),
+      player.dashboard.listContacts({ page: 1, pageSize: 25 }),
     ).rejects.toThrow();
-  });
-
-  it("lets an admin bulk-delete waitlist entries", async () => {
-    const inserted = await db
-      .insert(waitlist)
-      .values(WAITLIST_EMAILS.map((email) => ({ name: "Test", email })))
-      .returning({ id: waitlist.id, email: waitlist.email });
-    const spam = inserted.find((r) => r.email === WAITLIST_EMAILS[0])!;
-
-    const res = await dealer.dashboard.deleteWaitlistEntries({ ids: [spam.id] });
-    expect(res.deletedCount).toBe(1);
-
-    const remaining = await db.query.waitlist.findMany({
-      where: inArray(waitlist.email, WAITLIST_EMAILS),
-    });
-    expect(remaining.map((r) => r.email)).toEqual([WAITLIST_EMAILS[1]]);
   });
 });

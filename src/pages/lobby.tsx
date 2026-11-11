@@ -13,6 +13,10 @@ import {
   DialogTitle,
 } from "~/components/ui/dialog";
 import {
+  ContactDialog,
+  UserAvatar,
+} from "~/components/lobby/contact-dialog";
+import {
   TournamentCard,
   type LobbyTournament,
 } from "~/components/lobby/tournament-card";
@@ -82,6 +86,15 @@ export default function LobbyPage() {
   });
 
   const updateDisplayNameMutation = api.user.updateDisplayName.useMutation();
+
+  const utils = api.useUtils();
+  const { data: contactInfo } = api.contact.get.useQuery(undefined, {
+    refetchOnWindowFocus: false,
+  });
+  const [editingContact, setEditingContact] = useState(false);
+  const needsContact = contactInfo !== undefined && contactInfo.contact === null;
+  const userName =
+    session?.user?.name?.trim() || session?.user?.displayName || "Player";
 
   const { data: consent, refetch: refetchConsent } =
     api.user.getConsent.useQuery(undefined, {
@@ -203,14 +216,30 @@ export default function LobbyPage() {
           <section>
             <div className="mb-4 flex items-center justify-between gap-4">
               <h2 className="text-2xl font-semibold">Tournaments</h2>
-              {isDealer ? (
-                <Link
-                  href="/dashboard?tab=tournaments"
-                  className="rounded-md bg-white px-4 py-2 text-sm font-medium text-black hover:bg-zinc-200"
+              <div className="flex items-center gap-3">
+                {isDealer ? (
+                  <Link
+                    href="/dashboard?tab=tournaments"
+                    className="rounded-md bg-white px-4 py-2 text-sm font-medium text-black hover:bg-zinc-200"
+                  >
+                    Dashboard
+                  </Link>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={() => setEditingContact(true)}
+                  disabled={!contactInfo}
+                  aria-label="Edit contact info"
+                  title="Contact info"
+                  className="rounded-full ring-2 ring-[#FFD700]/50 ring-offset-2 ring-offset-black transition outline-none hover:ring-[#FFD700] focus-visible:ring-[#FFD700] disabled:opacity-50"
                 >
-                  Dashboard
-                </Link>
-              ) : null}
+                  <UserAvatar
+                    name={userName}
+                    image={session?.user?.image}
+                    className="size-9 text-xs"
+                  />
+                </button>
+              </div>
             </div>
             {tournamentList && tournamentList.length === 0 ? (
               <div className="rounded-lg border border-white/10 bg-zinc-900/50 px-6 py-10 text-center text-zinc-300">
@@ -364,6 +393,22 @@ export default function LobbyPage() {
           ) : null}
         </div>
       </main>
+      {contactInfo ? (
+        <ContactDialog
+          open={needsContact || editingContact}
+          onOpenChange={setEditingContact}
+          required={needsContact}
+          info={contactInfo}
+          userName={userName}
+          userImage={session?.user?.image}
+          onSaved={(contact) => {
+            setEditingContact(false);
+            utils.contact.get.setData(undefined, (prev) =>
+              prev ? { ...prev, contact } : prev,
+            );
+          }}
+        />
+      ) : null}
       <Dialog
         open={!!pendingJoinTableId}
         onOpenChange={(open) => {

@@ -115,28 +115,31 @@ export const verificationTokens = createTable(
   (t) => [primaryKey({ columns: [t.identifier, t.token] })],
 );
 
-export const waitlist = createTable(
-  "waitlist",
-  (d) => ({
-    id: d
-      .varchar({ length: 255 })
-      .notNull()
-      .primaryKey()
-      .default(sql`gen_random_uuid()`),
-    name: d.varchar({ length: 255 }).notNull(),
-    email: d.varchar({ length: 255 }).notNull(),
-    phone: d.varchar({ length: 20 }),
-    instagram: d.varchar({ length: 255 }),
-    createdAt: d
-      .timestamp({ withTimezone: true })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
-  }),
-  (t) => [
-    uniqueIndex("waitlist_email_idx").on(t.email),
-    uniqueIndex("waitlist_phone_idx").on(t.phone),
-  ],
-);
+export const contactMethodEnum = pgEnum("contact_method", [
+  "phone",
+  "instagram",
+  "email",
+]);
+
+/**
+ * How we reach a player. One row per user; email comes from the user record
+ * (Google sign-in), so only phone and Instagram are stored here.
+ */
+export const contacts = createTable("contact", (d) => ({
+  userId: d
+    .varchar({ length: 255 })
+    .notNull()
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  phone: d.varchar({ length: 20 }),
+  instagram: d.varchar({ length: 255 }),
+  preferredContact: contactMethodEnum("preferredContact").notNull(),
+  createdAt: d
+    .timestamp({ withTimezone: true })
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull(),
+  updatedAt: d.timestamp({ withTimezone: true }),
+}));
 
 // Poker table entity
 export const pokerTables = createTable(

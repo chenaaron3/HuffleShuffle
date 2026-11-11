@@ -3,7 +3,6 @@ import {
   asc,
   desc,
   eq,
-  inArray,
   notInArray,
   sql,
 } from "drizzle-orm";
@@ -11,11 +10,11 @@ import { z } from "zod";
 import { BOT_USER_IDS } from "~/server/api/bots/constants";
 import { createTRPCRouter, dealerProcedure } from "~/server/api/trpc";
 import {
+  contacts,
   gameEvents,
   games,
   ledgerAccounts,
   users,
-  waitlist,
 } from "~/server/db/schema";
 
 const consentSelection = {
@@ -31,7 +30,7 @@ const paginationInput = z.object({
 });
 
 export const dashboardRouter = createTRPCRouter({
-  listWaitlist: dealerProcedure
+  listContacts: dealerProcedure
     .input(paginationInput)
     .query(async ({ ctx, input }) => {
       const offset = (input.page - 1) * input.pageSize;
@@ -39,34 +38,27 @@ export const dashboardRouter = createTRPCRouter({
       const [rows, countRows] = await Promise.all([
         ctx.db
           .select({
-            id: waitlist.id,
-            name: waitlist.name,
-            email: waitlist.email,
-            phone: waitlist.phone,
-            instagram: waitlist.instagram,
-            createdAt: waitlist.createdAt,
+            userId: contacts.userId,
+            name: users.name,
+            displayName: users.displayName,
+            email: users.email,
+            phone: contacts.phone,
+            instagram: contacts.instagram,
+            preferredContact: contacts.preferredContact,
+            updatedAt: sql<string>`coalesce(${contacts.updatedAt}, ${contacts.createdAt})`,
           })
-          .from(waitlist)
-          .orderBy(desc(waitlist.createdAt))
+          .from(contacts)
+          .innerJoin(users, eq(users.id, contacts.userId))
+          .orderBy(desc(sql`coalesce(${contacts.updatedAt}, ${contacts.createdAt})`))
           .limit(input.pageSize)
           .offset(offset),
-        ctx.db.select({ count: sql<number>`count(*)::int` }).from(waitlist),
+        ctx.db.select({ count: sql<number>`count(*)::int` }).from(contacts),
       ]);
 
       return {
         rows,
         totalCount: countRows[0]?.count ?? 0,
       };
-    }),
-
-  deleteWaitlistEntries: dealerProcedure
-    .input(z.object({ ids: z.array(z.string().min(1)).min(1).max(500) }))
-    .mutation(async ({ ctx, input }) => {
-      const deleted = await ctx.db
-        .delete(waitlist)
-        .where(inArray(waitlist.id, input.ids))
-        .returning({ id: waitlist.id });
-      return { deletedCount: deleted.length };
     }),
 
   listConsent: dealerProcedure

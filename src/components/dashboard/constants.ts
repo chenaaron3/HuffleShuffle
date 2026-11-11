@@ -2,7 +2,7 @@ export const DASHBOARD_PAGE_SIZE = 25;
 
 export const DASHBOARD_TABS = [
   "tournaments",
-  "waitlist",
+  "contacts",
   "players",
   "consent",
   "hands",

@@ -10,10 +10,10 @@ import {
   type DashboardTab,
 } from "~/components/dashboard/constants";
 import { ConsentTab } from "~/components/dashboard/consent-tab";
+import { ContactsTab } from "~/components/dashboard/contacts-tab";
 import { HandsTab } from "~/components/dashboard/hands-tab";
 import { PlayersTab } from "~/components/dashboard/players-tab";
 import { TournamentsTab } from "~/components/dashboard/tournaments-tab";
-import { WaitlistTab } from "~/components/dashboard/waitlist-tab";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import { requireDealerAuth } from "~/server/auth/guards";
 
@@ -21,7 +21,7 @@ import type { GetServerSideProps } from "next";
 
 const TAB_LABELS: Record<DashboardTab, string> = {
   tournaments: "Tournaments",
-  waitlist: "Waitlist",
+  contacts: "Contacts",
   players: "Players",
   consent: "Consent",
   hands: "Hands",
@@ -84,8 +84,8 @@ export default function DashboardPage() {
             <TabsContent value="tournaments">
               <TournamentsTab />
             </TabsContent>
-            <TabsContent value="waitlist">
-              <WaitlistTab
+            <TabsContent value="contacts">
+              <ContactsTab
                 pagination={pagination}
                 onPaginationChange={setPagination}
               />
