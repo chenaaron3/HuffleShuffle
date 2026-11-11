@@ -12,10 +12,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "~/components/ui/dialog";
-import {
-  ContactDialog,
-  UserAvatar,
-} from "~/components/lobby/contact-dialog";
+import { ContactDialog } from "~/components/lobby/contact-dialog";
+import { UserMenu } from "~/components/lobby/user-menu";
 import {
   TournamentCard,
   type LobbyTournament,
@@ -225,20 +223,13 @@ export default function LobbyPage() {
                     Dashboard
                   </Link>
                 ) : null}
-                <button
-                  type="button"
-                  onClick={() => setEditingContact(true)}
-                  disabled={!contactInfo}
-                  aria-label="Edit contact info"
-                  title="Contact info"
-                  className="rounded-full ring-2 ring-[#FFD700]/50 ring-offset-2 ring-offset-black transition outline-none hover:ring-[#FFD700] focus-visible:ring-[#FFD700] disabled:opacity-50"
-                >
-                  <UserAvatar
-                    name={userName}
-                    image={session?.user?.image}
-                    className="size-9 text-xs"
-                  />
-                </button>
+                <UserMenu
+                  name={userName}
+                  email={contactInfo?.email ?? session?.user?.email}
+                  image={session?.user?.image}
+                  contactDisabled={!contactInfo}
+                  onEditContact={() => setEditingContact(true)}
+                />
               </div>
             </div>
             {tournamentList && tournamentList.length === 0 ? (
