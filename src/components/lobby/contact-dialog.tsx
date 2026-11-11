@@ -1,5 +1,11 @@
 import { X } from "lucide-react";
-import { type FormEvent, type ReactNode, useEffect, useId, useState } from "react";
+import {
+  type FormEvent,
+  type ReactNode,
+  useEffect,
+  useId,
+  useState,
+} from "react";
 import {
   Dialog,
   DialogClose,
@@ -178,7 +184,7 @@ export function ContactDialog({
           </DialogTitle>
           <DialogDescription>
             {required
-              ? "We’ll use this to confirm seats and send game-day reminders."
+              ? "We’ll use this to onboard you onto the platform."
               : "Update how we reach you about seats and game days."}
           </DialogDescription>
         </DialogHeader>
